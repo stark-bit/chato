@@ -64,7 +64,6 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton btnRecord;
     private LinearLayout layoutTTS;
     private CheckBox append;
-    private CheckBox translate;
     private CheckBox modeTTS;
     private ProgressBar processingBar;
     private ImageButton btnInfo;
@@ -176,13 +175,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        translate = findViewById(R.id.mode_translate);
-        translate.setOnCheckedChangeListener((compoundButton, isChecked) -> {
-            layoutTTS.setVisibility(isChecked ? View.VISIBLE:View.GONE);
-            if (layoutTTS.getVisibility() == View.GONE) modeTTS.setChecked(false);
-        });
-
-
         // Initialize default model to use
         initModel();
 
@@ -260,8 +252,7 @@ public class MainActivity extends AppCompatActivity {
                     HapticFeedback.vibrate(mContext);
                     revertBackground();
 
-                    if (translate.isChecked()) startProcessing(ACTION_TRANSLATE);
-                    else startProcessing(ACTION_TRANSCRIBE);
+                    startProcessing(ACTION_TRANSLATE);
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
                     HapticFeedback.vibrate(mContext);
                     if (countDownTimer!=null) { countDownTimer.cancel();}

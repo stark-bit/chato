@@ -68,19 +68,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="10dp"
-            android:layout_toStartOf="@id/btnTranslate"
+            android:layout_alignParentEnd="true"
             android:background="@color/darkGrey"
             android:src="@drawable/ic_cloud_off_36dp"
             android:contentDescription="@string/backend_toggle" />
-
-        <ImageButton
-            android:id="@+id/btnTranslate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentEnd="true"
-            android:background="@color/darkGrey"
-            android:src="@drawable/ic_english_off_36dp"
-            android:contentDescription="@string/translate"/>
 
     </RelativeLayout>
     <TextView

@@ -1,7 +1,6 @@
 package com.whisperonnx;
 
 
-import static com.whisperonnx.voice_translation.neural_networks.voice.Recognizer.ACTION_TRANSCRIBE;
 import static com.whisperonnx.voice_translation.neural_networks.voice.Recognizer.ACTION_TRANSLATE;
 
 import android.annotation.SuppressLint;
@@ -38,7 +37,6 @@ public class WhisperInputMethodService extends InputMethodService {
     private static final String TAG = "WhisperInputMethodService";
     private ImageButton btnRecord;
     private ImageButton btnKeyboard;
-    private ImageButton btnTranslate;
     private ImageButton btnModeAuto;
     private ImageButton btnEnter;
     private ImageButton btnDel;
@@ -56,7 +54,6 @@ public class WhisperInputMethodService extends InputMethodService {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Context mContext;
     private CountDownTimer countDownTimer;
-    private static boolean translate = false;
     private boolean modeAuto = false;
     private ViewGroup layoutButtons;
     private GradientBorderDrawable gradientDrawable;
@@ -143,7 +140,6 @@ public class WhisperInputMethodService extends InputMethodService {
         View view = getLayoutInflater().inflate(R.layout.voice_service, null);
         btnRecord = view.findViewById(R.id.btnRecord);
         btnKeyboard = view.findViewById(R.id.btnKeyboard);
-        btnTranslate = view.findViewById(R.id.btnTranslate);
         btnModeAuto = view.findViewById(R.id.btnModeAuto);
         btnEnter = view.findViewById(R.id.btnEnter);
         btnDel = view.findViewById(R.id.btnDel);
@@ -166,7 +162,6 @@ public class WhisperInputMethodService extends InputMethodService {
 
         processingBar = view.findViewById(R.id.processing_bar);
         tvStatus = view.findViewById(R.id.tv_status);
-        btnTranslate.setImageResource(translate ? R.drawable.ic_english_on_36dp : R.drawable.ic_english_off_36dp);
         modeAuto = sp.getBoolean("imeModeAuto",false);
         btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
         layoutButtons = view.findViewById(R.id.layout_buttons);
@@ -301,11 +296,6 @@ public class WhisperInputMethodService extends InputMethodService {
             switchToPreviousInputMethod();
         });
 
-        btnTranslate.setOnClickListener(v -> {
-            translate = !translate;
-            btnTranslate.setImageResource(translate ? R.drawable.ic_english_on_36dp : R.drawable.ic_english_off_36dp);
-        });
-
         btnEnter.setOnClickListener(v -> {
             getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER));
         });
@@ -395,8 +385,7 @@ public class WhisperInputMethodService extends InputMethodService {
         handler.post(() -> processingBar.setProgress(0));
         handler.post(() -> processingBar.setIndeterminate(true));
         if (mWhisper!=null){
-            if (translate) mWhisper.setAction(ACTION_TRANSLATE);
-            else mWhisper.setAction(ACTION_TRANSCRIBE);
+            mWhisper.setAction(ACTION_TRANSLATE);
 
             String langCode = sp.getString("language", "auto");
             Log.d("WhisperIME","default langCode " + langCode);

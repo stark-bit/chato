@@ -1,6 +1,6 @@
 package com.whisperonnx;
 
-import static com.whisperonnx.voice_translation.neural_networks.voice.Recognizer.ACTION_TRANSCRIBE;
+import static com.whisperonnx.voice_translation.neural_networks.voice.Recognizer.ACTION_TRANSLATE;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -263,7 +263,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
             processingBar.setIndeterminate(true);
         });
         if (mWhisper!=null){
-            mWhisper.setAction(ACTION_TRANSCRIBE);
+            mWhisper.setAction(ACTION_TRANSLATE);
             mWhisper.start();
             Log.d(TAG,"Start Transcription");
         }
