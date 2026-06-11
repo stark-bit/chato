@@ -14,8 +14,11 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.graphics.drawable.Drawable;
 import android.widget.ImageButton;
+import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -28,6 +31,7 @@ import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
 import com.whisperonnx.utils.HapticFeedback;
+import com.whisperonnx.utils.GeminiGradientDrawable;
 
 import java.util.ArrayList;
 
@@ -44,6 +48,69 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private Context mContext;
     private CountDownTimer countDownTimer;
     private boolean modeAuto = false;
+    private FrameLayout geminiWrapper;
+
+    private void applyGeminiBackground() {
+        runOnUiThread(() -> {
+            if (geminiWrapper != null) return;
+
+            ViewGroup parent = (ViewGroup) btnRecord.getParent();
+            if (parent == null) return;
+            int index = parent.indexOfChild(btnRecord);
+            ViewGroup.LayoutParams originalParams = btnRecord.getLayoutParams();
+
+            parent.removeViewAt(index);
+
+            float density = getResources().getDisplayMetrics().density;
+            int padding = (int) ((4 + 15) * density);
+            float cornerRadius = 10 * density + padding;
+
+            geminiWrapper = new FrameLayout(mContext);
+            geminiWrapper.setLayoutParams(originalParams);
+            geminiWrapper.setPadding(padding, padding, padding, padding);
+            geminiWrapper.setClipChildren(false);
+
+            FrameLayout.LayoutParams btnParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            );
+            geminiWrapper.addView(btnRecord, btnParams);
+
+            GeminiGradientDrawable drawable = new GeminiGradientDrawable(cornerRadius, 15 * density);
+            drawable.setHostView(geminiWrapper);
+            geminiWrapper.setBackground(drawable);
+            geminiWrapper.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            drawable.startAnimation();
+
+            parent.addView(geminiWrapper, index);
+        });
+    }
+
+    private void revertBackground() {
+        runOnUiThread(() -> {
+            if (geminiWrapper == null) return;
+
+            ViewGroup parent = (ViewGroup) geminiWrapper.getParent();
+            if (parent == null) return;
+            int index = parent.indexOfChild(geminiWrapper);
+
+            Drawable bg = geminiWrapper.getBackground();
+            if (bg instanceof GeminiGradientDrawable) {
+                ((GeminiGradientDrawable) bg).stopAnimation();
+            }
+
+            geminiWrapper.removeView(btnRecord);
+            parent.removeViewAt(index);
+
+            btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
+            btnRecord.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+
+            ViewGroup.LayoutParams wrapperParams = geminiWrapper.getLayoutParams();
+            parent.addView(btnRecord, index, wrapperParams);
+
+            geminiWrapper = null;
+        });
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -90,16 +157,16 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
             @Override
             public void onUpdateReceived(String message) {
                 if (message.equals(Recorder.MSG_RECORDING)) {
-                    runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background_pressed));
+                    applyGeminiBackground();
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
                     HapticFeedback.vibrate(mContext);
-                    runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background));
+                    revertBackground();
                     startTranscription();
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
                     HapticFeedback.vibrate(mContext);
                     if (countDownTimer!=null) { countDownTimer.cancel();}
                     runOnUiThread(() -> {
-                        btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
+                        revertBackground();
                         processingBar.setProgress(0);
                         Toast.makeText(mContext,R.string.error_no_input,Toast.LENGTH_SHORT).show();
                     });
@@ -146,7 +213,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         btnRecord.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 // Pressed
-                runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background_pressed));
+                applyGeminiBackground();
                 if (checkRecordPermission()){
                     if (!mWhisper.isInProgress()) {
                         HapticFeedback.vibrate(this);
@@ -167,7 +234,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                 }
             } else if (event.getAction() == MotionEvent.ACTION_UP) {
                 // Released
-                runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background));
+                revertBackground();
                 if (mRecorder != null && mRecorder.isInProgress()) {
                     mRecorder.stop();
                 }

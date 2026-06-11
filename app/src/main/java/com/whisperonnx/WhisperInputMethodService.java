@@ -20,8 +20,10 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.view.ViewGroup;
+import android.graphics.drawable.Drawable;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -32,6 +34,7 @@ import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
 import com.whisperonnx.utils.HapticFeedback;
+import com.whisperonnx.utils.GeminiGradientDrawable;
 
 public class WhisperInputMethodService extends InputMethodService {
     private static final String TAG = "WhisperInputMethodService";
@@ -58,6 +61,71 @@ public class WhisperInputMethodService extends InputMethodService {
     private static boolean translate = false;
     private boolean modeAuto = false;
     private ViewGroup layoutButtons;
+    private FrameLayout geminiWrapper;
+
+    private void applyGeminiBackground() {
+        handler.post(() -> {
+            if (geminiWrapper != null) return;
+
+            ViewGroup parent = (ViewGroup) btnRecord.getParent();
+            if (parent == null) return;
+            int index = parent.indexOfChild(btnRecord);
+            ViewGroup.LayoutParams originalParams = btnRecord.getLayoutParams();
+
+            parent.removeViewAt(index);
+
+            float density = getResources().getDisplayMetrics().density;
+            int padding = (int) ((4 + 15) * density); // borderWidth + glowBlur
+            float cornerRadius = 10 * density + padding;
+
+            geminiWrapper = new FrameLayout(mContext);
+            geminiWrapper.setLayoutParams(originalParams);
+            geminiWrapper.setPadding(padding, padding, padding, padding);
+            geminiWrapper.setClipChildren(false);
+
+            FrameLayout.LayoutParams btnParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            );
+            geminiWrapper.addView(btnRecord, btnParams);
+
+            GeminiGradientDrawable drawable = new GeminiGradientDrawable(cornerRadius, 15 * density);
+            drawable.setHostView(geminiWrapper);
+            geminiWrapper.setBackground(drawable);
+            geminiWrapper.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            drawable.startAnimation();
+
+            parent.addView(geminiWrapper, index);
+        });
+    }
+
+    private void revertBackground() {
+        handler.post(() -> {
+            if (geminiWrapper == null) return;
+
+            ViewGroup parent = (ViewGroup) geminiWrapper.getParent();
+            if (parent == null) return;
+            int index = parent.indexOfChild(geminiWrapper);
+
+            // Stop animation
+            Drawable bg = geminiWrapper.getBackground();
+            if (bg instanceof GeminiGradientDrawable) {
+                ((GeminiGradientDrawable) bg).stopAnimation();
+            }
+
+            // Unwrap
+            geminiWrapper.removeView(btnRecord);
+            parent.removeViewAt(index);
+
+            btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
+            btnRecord.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+
+            ViewGroup.LayoutParams wrapperParams = geminiWrapper.getLayoutParams();
+            parent.addView(btnRecord, index, wrapperParams);
+
+            geminiWrapper = null;
+        });
+    }
 
     @Override
     public void onCreate() {
@@ -146,16 +214,16 @@ public class WhisperInputMethodService extends InputMethodService {
             @Override
             public void onUpdateReceived(String message) {
                 if (message.equals(Recorder.MSG_RECORDING)) {
-                    handler.post(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background_pressed));
+                    applyGeminiBackground();
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
                     HapticFeedback.vibrate(mContext);
-                    handler.post(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background));
+                    revertBackground();
                     startTranscription();
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
                     HapticFeedback.vibrate(mContext);
                     if (countDownTimer!=null) { countDownTimer.cancel();}
                     handler.post(() -> {
-                        btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
+                        revertBackground();
                         tvStatus.setText(getString(R.string.error_no_input));
                         tvStatus.setVisibility(View.VISIBLE);
                         processingBar.setProgress(0);
@@ -228,7 +296,7 @@ public class WhisperInputMethodService extends InputMethodService {
         btnRecord.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 // Pressed
-                handler.post(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background_pressed));
+                applyGeminiBackground();
                 if (checkRecordPermission()){
                     if (!mWhisper.isInProgress()) {
                         HapticFeedback.vibrate(this);
@@ -256,7 +324,7 @@ public class WhisperInputMethodService extends InputMethodService {
                 }
             } else if (event.getAction() == MotionEvent.ACTION_UP) {
                 // Released
-                handler.post(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background));
+                revertBackground();
                 if (mRecorder != null && mRecorder.isInProgress()) {
                     mRecorder.stop();
                 }

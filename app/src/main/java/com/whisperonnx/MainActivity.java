@@ -28,8 +28,11 @@ import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.CheckBox;
 import android.widget.ImageButton;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.view.ViewGroup;
+import android.graphics.drawable.Drawable;
 import android.widget.TextView;
 import android.widget.EditText;
 import androidx.activity.OnBackPressedCallback;
@@ -44,6 +47,7 @@ import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
 import com.whisperonnx.utils.HapticFeedback;
+import com.whisperonnx.utils.GeminiGradientDrawable;
 import com.whisperonnx.utils.ThemeUtils;
 import com.whisperonnx.voice_translation.neural_networks.voice.Recognizer;
 
@@ -67,6 +71,69 @@ public class MainActivity extends AppCompatActivity {
     private CheckBox modeTTS;
     private ProgressBar processingBar;
     private ImageButton btnInfo;
+    private FrameLayout geminiWrapper;
+
+    private void applyGeminiBackground() {
+        runOnUiThread(() -> {
+            if (geminiWrapper != null) return;
+
+            ViewGroup parent = (ViewGroup) btnRecord.getParent();
+            if (parent == null) return;
+            int index = parent.indexOfChild(btnRecord);
+            ViewGroup.LayoutParams originalParams = btnRecord.getLayoutParams();
+
+            parent.removeViewAt(index);
+
+            float density = getResources().getDisplayMetrics().density;
+            int padding = (int) ((4 + 15) * density);
+            float cornerRadius = 10 * density + padding;
+
+            geminiWrapper = new FrameLayout(mContext);
+            geminiWrapper.setLayoutParams(originalParams);
+            geminiWrapper.setPadding(padding, padding, padding, padding);
+            geminiWrapper.setClipChildren(false);
+
+            FrameLayout.LayoutParams btnParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            );
+            geminiWrapper.addView(btnRecord, btnParams);
+
+            GeminiGradientDrawable drawable = new GeminiGradientDrawable(cornerRadius, 15 * density);
+            drawable.setHostView(geminiWrapper);
+            geminiWrapper.setBackground(drawable);
+            geminiWrapper.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            drawable.startAnimation();
+
+            parent.addView(geminiWrapper, index);
+        });
+    }
+
+    private void revertBackground() {
+        runOnUiThread(() -> {
+            if (geminiWrapper == null) return;
+
+            ViewGroup parent = (ViewGroup) geminiWrapper.getParent();
+            if (parent == null) return;
+            int index = parent.indexOfChild(geminiWrapper);
+
+            Drawable bg = geminiWrapper.getBackground();
+            if (bg instanceof GeminiGradientDrawable) {
+                ((GeminiGradientDrawable) bg).stopAnimation();
+            }
+
+            geminiWrapper.removeView(btnRecord);
+            parent.removeViewAt(index);
+
+            btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
+            btnRecord.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+
+            ViewGroup.LayoutParams wrapperParams = geminiWrapper.getLayoutParams();
+            parent.addView(btnRecord, index, wrapperParams);
+
+            geminiWrapper = null;
+        });
+    }
 
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
@@ -115,7 +182,7 @@ public class MainActivity extends AppCompatActivity {
         mContext = this;
         setContentView(R.layout.activity_main);
         ThemeUtils.setStatusBarAppearance(this);
-        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
         checkInputMethodEnabled();
         processingBar = findViewById(R.id.processing_bar);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
@@ -165,7 +232,7 @@ public class MainActivity extends AppCompatActivity {
         btnRecord.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 // Pressed
-                runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background_pressed));
+                applyGeminiBackground();
                 Log.d(TAG, "Start recording...");
                 if (!mWhisper.isInProgress()) {
                     HapticFeedback.vibrate(this);
@@ -184,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
 
             } else if (event.getAction() == MotionEvent.ACTION_UP) {
                 // Released
-                runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background));
+                revertBackground();
                 if (mRecorder != null && mRecorder.isInProgress()) {
                     Log.d(TAG, "Recording is in progress... stopping...");
                     stopRecording();
@@ -223,10 +290,10 @@ public class MainActivity extends AppCompatActivity {
                 if (message.equals(Recorder.MSG_RECORDING)) {
                     runOnUiThread(() -> tvStatus.setText(getString(R.string.record_button) +"…"));
                     if (!append.isChecked()) runOnUiThread(() -> tvResult.setText(""));
-                    runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background_pressed));
+                    applyGeminiBackground();
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
                     HapticFeedback.vibrate(mContext);
-                    runOnUiThread(() -> btnRecord.setBackgroundResource(R.drawable.rounded_button_background));
+                    revertBackground();
 
                     if (translate.isChecked()) startProcessing(ACTION_TRANSLATE);
                     else startProcessing(ACTION_TRANSCRIBE);
@@ -234,7 +301,7 @@ public class MainActivity extends AppCompatActivity {
                     HapticFeedback.vibrate(mContext);
                     if (countDownTimer!=null) { countDownTimer.cancel();}
                     runOnUiThread(() -> {
-                        btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
+                        revertBackground();
                         processingBar.setProgress(0);
                         tvStatus.setText(getString(R.string.error_no_input));
                     });

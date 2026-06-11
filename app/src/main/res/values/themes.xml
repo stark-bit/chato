@@ -3,12 +3,26 @@
     <style name="Theme.Whisper.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
+        <item name="colorPrimary">@color/colorAccent</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorSecondary">@color/darkGrey</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="colorSurface">@color/darkGrey</item>
+        <item name="colorOnSurface">@color/black</item>
+        <item name="colorOutline">@color/lightGrey</item>
     </style>
 
     <!-- Base application theme. -->
     <style name="Theme.Whisper.ActionBar" parent="Theme.Material3.DayNight">
         <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
+        <item name="colorPrimary">@color/colorAccent</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorSecondary">@color/darkGrey</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="colorSurface">@color/darkGrey</item>
+        <item name="colorOnSurface">@color/black</item>
+        <item name="colorOutline">@color/lightGrey</item>
     </style>
 
     <style name="Theme.WhisperFloating" parent="Theme.Whisper.NoActionBar">

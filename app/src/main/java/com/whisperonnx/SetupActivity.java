@@ -39,7 +39,7 @@ public class SetupActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_download);
         ThemeUtils.setStatusBarAppearance(this);
-        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
         progressBar = findViewById(R.id.progress_bar);
         extractedFileTV = findViewById(R.id.extracted_file);
         startButton = findViewById(R.id.button_start);
