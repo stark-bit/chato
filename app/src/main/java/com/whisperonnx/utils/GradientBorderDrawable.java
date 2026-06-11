@@ -17,7 +17,7 @@ import java.lang.ref.WeakReference;
  * 2. Sharp gradient fill — at button bounds (border ring)
  * 3. Solid center fill — covers inner area, matches original button color
  */
-public class GeminiGradientDrawable extends Drawable {
+public class GradientBorderDrawable extends Drawable {
 
     private static final int[] GRADIENT_COLORS = {
         0xFF6366F1, // indigo
@@ -70,7 +70,7 @@ public class GeminiGradientDrawable extends Drawable {
         }
     };
 
-    public GeminiGradientDrawable(float cornerRadiusPx, float borderWidthPx, float blurRadiusPx) {
+    public GradientBorderDrawable(float cornerRadiusPx, float borderWidthPx, float blurRadiusPx) {
         this.cornerRadius = cornerRadiusPx;
         this.borderWidth = borderWidthPx;
         this.glowBlur = blurRadiusPx;

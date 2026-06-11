@@ -44,7 +44,7 @@ import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
 import com.whisperonnx.utils.HapticFeedback;
-import com.whisperonnx.utils.GeminiGradientDrawable;
+import com.whisperonnx.utils.GradientBorderDrawable;
 import com.whisperonnx.utils.ThemeUtils;
 import com.whisperonnx.voice_translation.neural_networks.voice.Recognizer;
 
@@ -68,25 +68,25 @@ public class MainActivity extends AppCompatActivity {
     private CheckBox modeTTS;
     private ProgressBar processingBar;
     private ImageButton btnInfo;
-    private GeminiGradientDrawable geminiDrawable;
+    private GradientBorderDrawable gradientDrawable;
 
-    private GeminiGradientDrawable getGeminiDrawable() {
-        if (geminiDrawable == null) {
+    private GradientBorderDrawable getGradientDrawable() {
+        if (gradientDrawable == null) {
             float density = getResources().getDisplayMetrics().density;
-            geminiDrawable = new GeminiGradientDrawable(
+            gradientDrawable = new GradientBorderDrawable(
                 10 * density,   // cornerRadius
                 0.5f * density, // borderWidth (near-invisible)
                 15 * density    // glowBlur
             );
         }
-        return geminiDrawable;
+        return gradientDrawable;
     }
 
-    private void applyGeminiBackground() {
+    private void applyGradientBackground() {
         runOnUiThread(() -> {
-            GeminiGradientDrawable drawable = getGeminiDrawable();
+            GradientBorderDrawable drawable = getGradientDrawable();
             drawable.setHostView(btnRecord);
-            GeminiGradientDrawable.enableGlowClipping(btnRecord);
+            GradientBorderDrawable.enableGlowClipping(btnRecord);
             btnRecord.setBackground(drawable);
             drawable.startAnimation();
         });
@@ -94,8 +94,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void revertBackground() {
         runOnUiThread(() -> {
-            if (geminiDrawable != null) geminiDrawable.stopAnimation();
-            GeminiGradientDrawable.restoreGlowClipping(btnRecord);
+            if (gradientDrawable != null) gradientDrawable.stopAnimation();
+            GradientBorderDrawable.restoreGlowClipping(btnRecord);
             btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
         });
     }
@@ -197,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
         btnRecord.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 // Pressed
-                applyGeminiBackground();
+                applyGradientBackground();
                 Log.d(TAG, "Start recording...");
                 if (!mWhisper.isInProgress()) {
                     HapticFeedback.vibrate(this);
@@ -255,7 +255,7 @@ public class MainActivity extends AppCompatActivity {
                 if (message.equals(Recorder.MSG_RECORDING)) {
                     runOnUiThread(() -> tvStatus.setText(getString(R.string.record_button) +"…"));
                     if (!append.isChecked()) runOnUiThread(() -> tvResult.setText(""));
-                    applyGeminiBackground();
+                    applyGradientBackground();
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
                     HapticFeedback.vibrate(mContext);
                     revertBackground();

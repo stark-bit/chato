@@ -32,7 +32,7 @@ import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
 import com.whisperonnx.utils.HapticFeedback;
-import com.whisperonnx.utils.GeminiGradientDrawable;
+import com.whisperonnx.utils.GradientBorderDrawable;
 
 public class WhisperInputMethodService extends InputMethodService {
     private static final String TAG = "WhisperInputMethodService";
@@ -59,25 +59,25 @@ public class WhisperInputMethodService extends InputMethodService {
     private static boolean translate = false;
     private boolean modeAuto = false;
     private ViewGroup layoutButtons;
-    private GeminiGradientDrawable geminiDrawable;
+    private GradientBorderDrawable gradientDrawable;
 
-    private GeminiGradientDrawable getGeminiDrawable() {
-        if (geminiDrawable == null) {
+    private GradientBorderDrawable getGradientDrawable() {
+        if (gradientDrawable == null) {
             float density = getResources().getDisplayMetrics().density;
-            geminiDrawable = new GeminiGradientDrawable(
+            gradientDrawable = new GradientBorderDrawable(
                 10 * density,   // cornerRadius (matches XML 10dp)
                 0.5f * density, // borderWidth (near-invisible)
                 15 * density    // glowBlur (CSS blur(15px))
             );
         }
-        return geminiDrawable;
+        return gradientDrawable;
     }
 
-    private void applyGeminiBackground() {
+    private void applyGradientBackground() {
         handler.post(() -> {
-            GeminiGradientDrawable drawable = getGeminiDrawable();
+            GradientBorderDrawable drawable = getGradientDrawable();
             drawable.setHostView(btnRecord);
-            GeminiGradientDrawable.enableGlowClipping(btnRecord);
+            GradientBorderDrawable.enableGlowClipping(btnRecord);
             btnRecord.setBackground(drawable);
             drawable.startAnimation();
         });
@@ -85,8 +85,8 @@ public class WhisperInputMethodService extends InputMethodService {
 
     private void revertBackground() {
         handler.post(() -> {
-            if (geminiDrawable != null) geminiDrawable.stopAnimation();
-            GeminiGradientDrawable.restoreGlowClipping(btnRecord);
+            if (gradientDrawable != null) gradientDrawable.stopAnimation();
+            GradientBorderDrawable.restoreGlowClipping(btnRecord);
             btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
         });
     }
@@ -178,7 +178,7 @@ public class WhisperInputMethodService extends InputMethodService {
             @Override
             public void onUpdateReceived(String message) {
                 if (message.equals(Recorder.MSG_RECORDING)) {
-                    applyGeminiBackground();
+                    applyGradientBackground();
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
                     HapticFeedback.vibrate(mContext);
                     revertBackground();
@@ -260,7 +260,7 @@ public class WhisperInputMethodService extends InputMethodService {
         btnRecord.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 // Pressed
-                applyGeminiBackground();
+                applyGradientBackground();
                 if (checkRecordPermission()){
                     if (!mWhisper.isInProgress()) {
                         HapticFeedback.vibrate(this);
