@@ -85,7 +85,7 @@ public class Recorder {
     }
 
     public void initVad(){
-        int silenceDurationMs = sp.getInt("silenceDurationMs", 800);
+        int silenceDurationMs = sp.getInt("silenceDurationMs", 3000);
         vad = Vad.builder()
                 .setSampleRate(SampleRate.SAMPLE_RATE_16K)
                 .setFrameSize(FrameSize.FRAME_SIZE_480)
@@ -161,10 +161,11 @@ public class Recorder {
         int sampleRateInHz = 16000;
         int channelConfig = AudioFormat.CHANNEL_IN_MONO;
         int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-        int audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION;
+        int audioSource = MediaRecorder.AudioSource.MIC;
 
         int bufferSize = AudioRecord.getMinBufferSize(sampleRateInHz, channelConfig, audioFormat);
         if (bufferSize < VAD_FRAME_SIZE * 2) bufferSize = VAD_FRAME_SIZE * 2;
+        bufferSize *= 4;  // larger buffer to prevent dropped frames
 
         AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
         if (sp.getBoolean("bluetooth", false)){
