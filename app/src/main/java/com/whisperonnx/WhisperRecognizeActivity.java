@@ -63,8 +63,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         runOnUiThread(() -> {
             GeminiGradientDrawable drawable = getGeminiDrawable();
             drawable.setHostView(btnRecord);
+            GeminiGradientDrawable.enableGlowClipping(btnRecord);
             btnRecord.setBackground(drawable);
-            btnRecord.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
             drawable.startAnimation();
         });
     }
@@ -72,8 +72,8 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private void revertBackground() {
         runOnUiThread(() -> {
             if (geminiDrawable != null) geminiDrawable.stopAnimation();
+            GeminiGradientDrawable.restoreGlowClipping(btnRecord);
             btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
-            btnRecord.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         });
     }
 

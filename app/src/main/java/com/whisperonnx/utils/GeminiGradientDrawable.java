@@ -3,18 +3,19 @@ package com.whisperonnx.utils;
 import android.graphics.*;
 import android.graphics.drawable.Drawable;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewParent;
 
 import java.lang.ref.WeakReference;
 
 /**
- * Rotating sweep gradient border with blur glow.
- * Set as button background. Center is cleared (transparent) so parent bg
- * and button src (icon) show through. Creates a Gemini-style gradient border ring.
+ * Rotating sweep gradient border with glow that extends OUTSIDE the button bounds.
+ * Requires: clipChildren=false on the button's parent View.
  *
  * Draw order:
- * 1. Blurred gradient fill → glow effect
- * 2. Sharp gradient fill → clean gradient surface
- * 3. Inner clear cutout → transparent center (parent bg + icon visible)
+ * 1. Glow layers — semi-transparent gradient copies extending beyond bounds
+ * 2. Sharp gradient fill — at button bounds (border ring)
+ * 3. Solid center fill — covers inner area, matches original button color
  */
 public class GeminiGradientDrawable extends Drawable {
 
@@ -33,14 +34,18 @@ public class GeminiGradientDrawable extends Drawable {
         0f, 0.27f, 0.33f, 0.41f, 0.49f, 0.65f, 0.93f, 1f
     };
 
+    private static final int GLOW_STEPS = 10;
+    private static final float GLOW_MAX_ALPHA = 0.18f; // 18% peak opacity
+
     private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gradientPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint clearPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint centerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix gradientMatrix = new Matrix();
-    private final RectF tempOuter = new RectF();
+    private final RectF tempGlow = new RectF();
     private final RectF tempInner = new RectF();
     private final float cornerRadius;
     private final float borderWidth;
+    private final float glowBlur;
     private float rotationDegrees = 0f;
     private WeakReference<View> hostViewRef;
     private SweepGradient cachedGradient;
@@ -68,21 +73,58 @@ public class GeminiGradientDrawable extends Drawable {
     public GeminiGradientDrawable(float cornerRadiusPx, float borderWidthPx, float blurRadiusPx) {
         this.cornerRadius = cornerRadiusPx;
         this.borderWidth = borderWidthPx;
+        this.glowBlur = blurRadiusPx;
 
-        // Glow — blurred gradient fill, soft edges glow outward
+        // Glow paint — used for semi-transparent gradient copies
         glowPaint.setStyle(Paint.Style.FILL);
-        glowPaint.setMaskFilter(new BlurMaskFilter(blurRadiusPx, BlurMaskFilter.Blur.NORMAL));
 
-        // Sharp gradient fill
+        // Sharp gradient paint
         gradientPaint.setStyle(Paint.Style.FILL);
 
-        // Clear — cuts transparent center so parent bg + icon show through
-        clearPaint.setStyle(Paint.Style.FILL);
-        clearPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+        // Center paint — solid fill matching original button color (slate-500)
+        centerPaint.setStyle(Paint.Style.FILL);
+        centerPaint.setColor(0xFF64748B);
     }
 
     public void setHostView(View view) {
         this.hostViewRef = new WeakReference<>(view);
+    }
+
+    /**
+     * Enable drawing outside bounds. Call on the button's parent ViewGroup.
+     */
+    public static void enableGlowClipping(View button) {
+        ViewParent vp = button.getParent();
+        if (vp instanceof ViewGroup) {
+            ViewGroup parent = (ViewGroup) vp;
+            parent.setClipChildren(false);
+            parent.setClipToPadding(false);
+            // Also check grandparent for nested clipping
+            ViewParent gvp = parent.getParent();
+            if (gvp instanceof ViewGroup) {
+                ViewGroup grandparent = (ViewGroup) gvp;
+                grandparent.setClipChildren(false);
+                grandparent.setClipToPadding(false);
+            }
+        }
+    }
+
+    /**
+     * Restore default clipping. Call when reverting.
+     */
+    public static void restoreGlowClipping(View button) {
+        ViewParent vp = button.getParent();
+        if (vp instanceof ViewGroup) {
+            ViewGroup parent = (ViewGroup) vp;
+            parent.setClipChildren(true);
+            parent.setClipToPadding(true);
+            ViewParent gvp = parent.getParent();
+            if (gvp instanceof ViewGroup) {
+                ViewGroup grandparent = (ViewGroup) gvp;
+                grandparent.setClipChildren(true);
+                grandparent.setClipToPadding(true);
+            }
+        }
     }
 
     public void startAnimation() {
@@ -123,29 +165,39 @@ public class GeminiGradientDrawable extends Drawable {
         gradientMatrix.setRotate(rotationDegrees, cx, cy);
         gradient.setLocalMatrix(gradientMatrix);
 
-        // Outer rect = full bounds
-        tempOuter.set(bounds);
+        // Layer 1: Glow — semi-transparent gradient copies extending BEYOND bounds
+        // Each step is larger and more transparent, creating a soft glow effect
+        float stepSize = glowBlur / GLOW_STEPS;
+        for (int i = 1; i <= GLOW_STEPS; i++) {
+            float expand = i * stepSize;
+            float t = (float) i / GLOW_STEPS; // 0 at inner edge, 1 at outer edge
+            // Quadratic falloff: bright near button edge, fading outward
+            int alpha = (int) (255 * GLOW_MAX_ALPHA * (1f - t) * (1f - t));
+            if (alpha <= 0) continue;
 
-        // Inner rect = inset by borderWidth (creates border ring)
+            glowPaint.setColor(Color.argb(alpha, 255, 255, 255));
+            glowPaint.setShader(gradient);
+            tempGlow.set(
+                bounds.left - expand, bounds.top - expand,
+                bounds.right + expand, bounds.bottom + expand
+            );
+            canvas.drawRoundRect(tempGlow, cornerRadius + expand, cornerRadius + expand, glowPaint);
+        }
+
+        // Layer 2: Sharp gradient fill at button bounds
+        gradientPaint.setShader(gradient);
+        tempGlow.set(bounds);
+        canvas.drawRoundRect(tempGlow, cornerRadius, cornerRadius, gradientPaint);
+
+        // Layer 3: Solid center fill (covers inner area, leaves border ring visible)
+        float innerInset = borderWidth;
         tempInner.set(
-            bounds.left + borderWidth,
-            bounds.top + borderWidth,
-            bounds.right - borderWidth,
-            bounds.bottom - borderWidth
+            bounds.left + innerInset, bounds.top + innerInset,
+            bounds.right - innerInset, bounds.bottom - innerInset
         );
         float innerRadius = Math.max(0, cornerRadius - borderWidth);
-
-        // Layer 1: Glow — blurred gradient fill
-        glowPaint.setShader(gradient);
-        canvas.drawRoundRect(tempOuter, cornerRadius, cornerRadius, glowPaint);
-
-        // Layer 2: Sharp gradient fill
-        gradientPaint.setShader(gradient);
-        canvas.drawRoundRect(tempOuter, cornerRadius, cornerRadius, gradientPaint);
-
-        // Layer 3: Clear center — transparent hole so parent bg + icon show through
         if (tempInner.width() > 0 && tempInner.height() > 0) {
-            canvas.drawRoundRect(tempInner, innerRadius, innerRadius, clearPaint);
+            canvas.drawRoundRect(tempInner, innerRadius, innerRadius, centerPaint);
         }
     }
 

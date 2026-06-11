@@ -77,8 +77,8 @@ public class WhisperInputMethodService extends InputMethodService {
         handler.post(() -> {
             GeminiGradientDrawable drawable = getGeminiDrawable();
             drawable.setHostView(btnRecord);
+            GeminiGradientDrawable.enableGlowClipping(btnRecord);
             btnRecord.setBackground(drawable);
-            btnRecord.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
             drawable.startAnimation();
         });
     }
@@ -86,8 +86,8 @@ public class WhisperInputMethodService extends InputMethodService {
     private void revertBackground() {
         handler.post(() -> {
             if (geminiDrawable != null) geminiDrawable.stopAnimation();
+            GeminiGradientDrawable.restoreGlowClipping(btnRecord);
             btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
-            btnRecord.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         });
     }
 
