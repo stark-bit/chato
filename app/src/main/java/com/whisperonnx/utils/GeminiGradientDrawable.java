@@ -81,9 +81,9 @@ public class GeminiGradientDrawable extends Drawable {
         // Sharp gradient paint
         gradientPaint.setStyle(Paint.Style.FILL);
 
-        // Center paint — solid fill matching original button color (slate-500)
+        // Center paint — solid fill, slightly darker than normal button (slate-600)
         centerPaint.setStyle(Paint.Style.FILL);
-        centerPaint.setColor(0xFF64748B);
+        centerPaint.setColor(0xFF475569);
     }
 
     public void setHostView(View view) {

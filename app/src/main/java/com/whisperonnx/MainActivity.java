@@ -75,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
             float density = getResources().getDisplayMetrics().density;
             geminiDrawable = new GeminiGradientDrawable(
                 10 * density,   // cornerRadius
-                4 * density,    // borderWidth
+                0.5f * density, // borderWidth (near-invisible)
                 15 * density    // glowBlur
             );
         }

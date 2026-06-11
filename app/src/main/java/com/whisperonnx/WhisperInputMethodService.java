@@ -66,7 +66,7 @@ public class WhisperInputMethodService extends InputMethodService {
             float density = getResources().getDisplayMetrics().density;
             geminiDrawable = new GeminiGradientDrawable(
                 10 * density,   // cornerRadius (matches XML 10dp)
-                4 * density,    // borderWidth (CSS 4px)
+                0.5f * density, // borderWidth (near-invisible)
                 15 * density    // glowBlur (CSS blur(15px))
             );
         }
