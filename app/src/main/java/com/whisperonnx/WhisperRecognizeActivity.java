@@ -14,11 +14,8 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.graphics.drawable.Drawable;
 import android.widget.ImageButton;
-import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -48,67 +45,35 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     private Context mContext;
     private CountDownTimer countDownTimer;
     private boolean modeAuto = false;
-    private FrameLayout geminiWrapper;
+    private GeminiGradientDrawable geminiDrawable;
+
+    private GeminiGradientDrawable getGeminiDrawable() {
+        if (geminiDrawable == null) {
+            float density = getResources().getDisplayMetrics().density;
+            geminiDrawable = new GeminiGradientDrawable(
+                10 * density,   // cornerRadius
+                4 * density,    // borderWidth
+                15 * density    // glowBlur
+            );
+        }
+        return geminiDrawable;
+    }
 
     private void applyGeminiBackground() {
         runOnUiThread(() -> {
-            if (geminiWrapper != null) return;
-
-            ViewGroup parent = (ViewGroup) btnRecord.getParent();
-            if (parent == null) return;
-            int index = parent.indexOfChild(btnRecord);
-            ViewGroup.LayoutParams originalParams = btnRecord.getLayoutParams();
-
-            parent.removeViewAt(index);
-
-            float density = getResources().getDisplayMetrics().density;
-            int padding = (int) ((4 + 15) * density);
-            float cornerRadius = 10 * density + padding;
-
-            geminiWrapper = new FrameLayout(mContext);
-            geminiWrapper.setLayoutParams(originalParams);
-            geminiWrapper.setPadding(padding, padding, padding, padding);
-            geminiWrapper.setClipChildren(false);
-
-            FrameLayout.LayoutParams btnParams = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            );
-            geminiWrapper.addView(btnRecord, btnParams);
-
-            GeminiGradientDrawable drawable = new GeminiGradientDrawable(cornerRadius, 15 * density);
-            drawable.setHostView(geminiWrapper);
-            geminiWrapper.setBackground(drawable);
-            geminiWrapper.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            GeminiGradientDrawable drawable = getGeminiDrawable();
+            drawable.setHostView(btnRecord);
+            btnRecord.setBackground(drawable);
+            btnRecord.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
             drawable.startAnimation();
-
-            parent.addView(geminiWrapper, index);
         });
     }
 
     private void revertBackground() {
         runOnUiThread(() -> {
-            if (geminiWrapper == null) return;
-
-            ViewGroup parent = (ViewGroup) geminiWrapper.getParent();
-            if (parent == null) return;
-            int index = parent.indexOfChild(geminiWrapper);
-
-            Drawable bg = geminiWrapper.getBackground();
-            if (bg instanceof GeminiGradientDrawable) {
-                ((GeminiGradientDrawable) bg).stopAnimation();
-            }
-
-            geminiWrapper.removeView(btnRecord);
-            parent.removeViewAt(index);
-
+            if (geminiDrawable != null) geminiDrawable.stopAnimation();
             btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
             btnRecord.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-
-            ViewGroup.LayoutParams wrapperParams = geminiWrapper.getLayoutParams();
-            parent.addView(btnRecord, index, wrapperParams);
-
-            geminiWrapper = null;
         });
     }
 

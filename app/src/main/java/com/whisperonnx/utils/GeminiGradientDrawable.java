@@ -7,14 +7,14 @@ import android.view.View;
 import java.lang.ref.WeakReference;
 
 /**
- * Custom Drawable that draws a rotating sweep gradient with blur glow.
- * Designed to be set as background on a FrameLayout wrapper around a button.
- * The button sits on top; the gradient border ring and glow peek out around it.
+ * Rotating sweep gradient border with blur glow.
+ * Set as button background. Center is cleared (transparent) so parent bg
+ * and button src (icon) show through. Creates a Gemini-style gradient border ring.
  *
- * Structure (back to front):
- * 1. Glow layer: blurred gradient fill → soft edges act as glow
+ * Draw order:
+ * 1. Blurred gradient fill → glow effect
  * 2. Sharp gradient fill → clean gradient surface
- * The button on top covers the center — no inner fill needed.
+ * 3. Inner clear cutout → transparent center (parent bg + icon visible)
  */
 public class GeminiGradientDrawable extends Drawable {
 
@@ -35,14 +35,19 @@ public class GeminiGradientDrawable extends Drawable {
 
     private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gradientPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint clearPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix gradientMatrix = new Matrix();
+    private final RectF tempOuter = new RectF();
+    private final RectF tempInner = new RectF();
     private final float cornerRadius;
+    private final float borderWidth;
     private float rotationDegrees = 0f;
     private WeakReference<View> hostViewRef;
     private SweepGradient cachedGradient;
     private float cachedCx = Float.NaN;
     private float cachedCy = Float.NaN;
     private boolean animating = false;
+
     private static final long FRAME_DELAY = 16; // ~60fps
     private static final float DEGREES_PER_FRAME = 360f / (5000f / FRAME_DELAY); // 360° over 5s
 
@@ -60,15 +65,20 @@ public class GeminiGradientDrawable extends Drawable {
         }
     };
 
-    public GeminiGradientDrawable(float cornerRadiusPx, float blurRadiusPx) {
+    public GeminiGradientDrawable(float cornerRadiusPx, float borderWidthPx, float blurRadiusPx) {
         this.cornerRadius = cornerRadiusPx;
+        this.borderWidth = borderWidthPx;
 
-        // Glow paint — FILLED, blurred edges create the glow effect
+        // Glow — blurred gradient fill, soft edges glow outward
         glowPaint.setStyle(Paint.Style.FILL);
         glowPaint.setMaskFilter(new BlurMaskFilter(blurRadiusPx, BlurMaskFilter.Blur.NORMAL));
 
-        // Gradient paint — FILLED, sharp gradient surface
+        // Sharp gradient fill
         gradientPaint.setStyle(Paint.Style.FILL);
+
+        // Clear — cuts transparent center so parent bg + icon show through
+        clearPaint.setStyle(Paint.Style.FILL);
+        clearPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
     }
 
     public void setHostView(View view) {
@@ -113,15 +123,30 @@ public class GeminiGradientDrawable extends Drawable {
         gradientMatrix.setRotate(rotationDegrees, cx, cy);
         gradient.setLocalMatrix(gradientMatrix);
 
-        RectF area = new RectF(bounds);
+        // Outer rect = full bounds
+        tempOuter.set(bounds);
 
-        // Layer 1: Glow — blurred gradient fill, soft edges glow outward
+        // Inner rect = inset by borderWidth (creates border ring)
+        tempInner.set(
+            bounds.left + borderWidth,
+            bounds.top + borderWidth,
+            bounds.right - borderWidth,
+            bounds.bottom - borderWidth
+        );
+        float innerRadius = Math.max(0, cornerRadius - borderWidth);
+
+        // Layer 1: Glow — blurred gradient fill
         glowPaint.setShader(gradient);
-        canvas.drawRoundRect(area, cornerRadius, cornerRadius, glowPaint);
+        canvas.drawRoundRect(tempOuter, cornerRadius, cornerRadius, glowPaint);
 
         // Layer 2: Sharp gradient fill
         gradientPaint.setShader(gradient);
-        canvas.drawRoundRect(area, cornerRadius, cornerRadius, gradientPaint);
+        canvas.drawRoundRect(tempOuter, cornerRadius, cornerRadius, gradientPaint);
+
+        // Layer 3: Clear center — transparent hole so parent bg + icon show through
+        if (tempInner.width() > 0 && tempInner.height() > 0) {
+            canvas.drawRoundRect(tempInner, innerRadius, innerRadius, clearPaint);
+        }
     }
 
     @Override
