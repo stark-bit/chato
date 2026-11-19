@@ -19,7 +19,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
@@ -41,11 +40,9 @@ public class WhisperInputMethodService extends InputMethodService {
     private ImageButton btnModeAuto;
     private ImageButton btnEnter;
     private ImageButton btnDel;
-    private ImageButton btnLang1;
-    private ImageButton btnLang2;
     private ImageButton btnBackend;
     private ImageButton btnDot;
-    private Button btnSpace;
+    private ImageButton btnSpace;
     private ImageButton btnDash;
     private TextView tvStatus;
     private Recorder mRecorder = null;
@@ -57,6 +54,9 @@ public class WhisperInputMethodService extends InputMethodService {
     private CountDownTimer countDownTimer;
     private boolean modeAuto = false;
     private ViewGroup layoutButtons;
+    private ViewGroup layoutToolbar;
+    private ImageButton btnToolbarToggle;
+    private boolean toolbarExpanded;
     private GradientBorderDrawable gradientDrawable;
 
     private GradientBorderDrawable getGradientDrawable() {
@@ -85,7 +85,7 @@ public class WhisperInputMethodService extends InputMethodService {
         handler.post(() -> {
             if (gradientDrawable != null) gradientDrawable.stopAnimation();
             GradientBorderDrawable.restoreGlowClipping(btnRecord);
-            btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
+            btnRecord.setBackgroundResource(R.drawable.ime_mic_background);
         });
     }
 
@@ -128,44 +128,28 @@ public class WhisperInputMethodService extends InputMethodService {
     public View onCreateInputView() {  //runs before onStartInputView
         sp = PreferenceManager.getDefaultSharedPreferences(this);
 
-        String langCodeIME = sp.getString("language", "auto");
-
-        if (!sp.contains("langSelected")){
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putInt("langSelected",1);
-            editor.putString("language1",langCodeIME);
-            editor.putString("language2","auto");
-            editor.commit();
-        }
-
         View view = getLayoutInflater().inflate(R.layout.voice_service, null);
         btnRecord = view.findViewById(R.id.btnRecord);
         btnKeyboard = view.findViewById(R.id.btnKeyboard);
         btnModeAuto = view.findViewById(R.id.btnModeAuto);
         btnEnter = view.findViewById(R.id.btnEnter);
         btnDel = view.findViewById(R.id.btnDel);
-        btnLang1 = view.findViewById(R.id.btnLang1);
-        btnLang2 = view.findViewById(R.id.btnLang2);
         btnBackend = view.findViewById(R.id.btnBackend);
         btnDot = view.findViewById(R.id.btnDot);
         btnSpace = view.findViewById(R.id.btnSpace);
         btnDash = view.findViewById(R.id.btnDash);
         String backendType = sp.getString("backend_type", "local");
-        btnBackend.setImageResource(backendType.equals("openai") ? R.drawable.ic_cloud_on_36dp : R.drawable.ic_cloud_off_36dp);
-        int langSelected = sp.getInt("langSelected", 1);
-        if (langSelected == 1) {
-            btnLang1.setImageResource(R.drawable.ic_counter_1_on_36dp);
-            btnLang2.setImageResource(R.drawable.ic_counter_2_off_36dp);
-        } else {
-            btnLang1.setImageResource(R.drawable.ic_counter_1_off_36dp);
-            btnLang2.setImageResource(R.drawable.ic_counter_2_on_36dp);
-        }
+        btnBackend.setActivated(backendType.equals("openai"));
 
         processingBar = view.findViewById(R.id.processing_bar);
         tvStatus = view.findViewById(R.id.tv_status);
         modeAuto = sp.getBoolean("imeModeAuto",false);
-        btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
+        btnModeAuto.setActivated(modeAuto);
         layoutButtons = view.findViewById(R.id.layout_buttons);
+        layoutToolbar = view.findViewById(R.id.layout_toolbar);
+        btnToolbarToggle = view.findViewById(R.id.btnToolbarToggle);
+        toolbarExpanded = sp.getBoolean("imeToolbarExpanded", true);
+        updateToolbarVisibility();
         checkRecordPermission();
 
         // Audio recording functionality
@@ -312,28 +296,15 @@ public class WhisperInputMethodService extends InputMethodService {
             editor.putBoolean("imeModeAuto", modeAuto);
             editor.apply();
             layoutButtons.setVisibility(modeAuto ? View.GONE : View.VISIBLE);
-            btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
+            btnModeAuto.setActivated(modeAuto);
+            updateToolbarVisibility();
             switchToPreviousInputMethod();
         });
 
-        btnLang1.setOnClickListener(v -> {
-            String lang = sp.getString("language1", "auto");
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putInt("langSelected", 1);
-            editor.putString("language", lang);
-            editor.apply();
-            btnLang1.setImageResource(R.drawable.ic_counter_1_on_36dp);
-            btnLang2.setImageResource(R.drawable.ic_counter_2_off_36dp);
-        });
-
-        btnLang2.setOnClickListener(v -> {
-            String lang = sp.getString("language2", "auto");
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putInt("langSelected", 2);
-            editor.putString("language", lang);
-            editor.apply();
-            btnLang1.setImageResource(R.drawable.ic_counter_1_off_36dp);
-            btnLang2.setImageResource(R.drawable.ic_counter_2_on_36dp);
+        btnToolbarToggle.setOnClickListener(v -> {
+            toolbarExpanded = !toolbarExpanded;
+            sp.edit().putBoolean("imeToolbarExpanded", toolbarExpanded).apply();
+            updateToolbarVisibility();
         });
 
         btnBackend.setOnClickListener(v -> {
@@ -341,7 +312,7 @@ public class WhisperInputMethodService extends InputMethodService {
             String next = current.equals("openai") ? "local" : "openai";
             Log.d(TAG, "btnBackend: " + current + " -> " + next);
             sp.edit().putString("backend_type", next).apply();
-            btnBackend.setImageResource(next.equals("openai") ? R.drawable.ic_cloud_on_36dp : R.drawable.ic_cloud_off_36dp);
+            btnBackend.setActivated(next.equals("openai"));
         });
 
         return view;
@@ -415,6 +386,12 @@ public class WhisperInputMethodService extends InputMethodService {
             mWhisper.unloadModel();
             mWhisper = null;
         }
+    }
+
+    /** Top row shows when expanded, and always in auto mode (bottom row is hidden there). */
+    private void updateToolbarVisibility() {
+        layoutToolbar.setVisibility(toolbarExpanded || modeAuto ? View.VISIBLE : View.GONE);
+        btnToolbarToggle.setRotation(toolbarExpanded ? 180f : 0f);
     }
 
     /** Deletes the word (plus trailing whitespace) before the cursor, or the selection if any. */

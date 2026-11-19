@@ -52,4 +52,5 @@
     <string name="settings_openai_language">Language (optional, e.g. en)</string>
     <string name="backend_toggle">Toggle local/remote backend</string>
 
+    <string name="toolbar_toggle_button">Show or hide top row</string>
 </resources>
