@@ -33,6 +33,16 @@ public class Recorder {
         void onUpdateReceived(String message);
     }
 
+    /** Receives raw PCM (16 kHz, 16 bit, mono) chunks while recording continues. */
+    public interface ChunkListener {
+        void onChunk(byte[] pcm);
+    }
+
+    /** Target chunk length in chunked mode. */
+    public static final int CHUNK_MS = 8000;
+    /** Chunks are cut at the quietest 30 ms frame within this window before CHUNK_MS. */
+    private static final int CUT_SEARCH_MS = 1000;
+
     private static final String TAG = "Recorder";
     public static final String ACTION_STOP = "Stop";
     public static final String ACTION_RECORD = "Record";
@@ -44,6 +54,7 @@ public class Recorder {
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
     private RecorderListener mListener;
+    private volatile ChunkListener mChunkListener;
     private final Lock lock = new ReentrantLock();
     private final Condition hasTask = lock.newCondition();
     private final Object fileSavedLock = new Object(); // Lock object for wait/notify
@@ -66,6 +77,14 @@ public class Recorder {
 
     public void setListener(RecorderListener listener) {
         this.mListener = listener;
+    }
+
+    /**
+     * Enables chunked mode: audio is delivered in ~CHUNK_MS pieces via the listener and
+     * recording continues until stop() (no 30 s limit). RecordBuffer is not filled.
+     */
+    public void setChunkListener(ChunkListener listener) {
+        this.mChunkListener = listener;
     }
 
 
@@ -190,6 +209,11 @@ public class Recorder {
 
         ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream(); // Buffer for saving data RecordBuffer
 
+        ChunkListener chunkListener = mChunkListener;
+        boolean chunked = chunkListener != null;
+        int bytesPerChunk = sampleRateInHz * bytesPerSample * channels * CHUNK_MS / 1000;
+        int bytesCutSearch = sampleRateInHz * bytesPerSample * channels * CUT_SEARCH_MS / 1000;
+
         byte[] audioData = new byte[bufferSize];
         int totalBytesRead = 0;
 
@@ -197,21 +221,29 @@ public class Recorder {
         boolean isRecording = false;
         byte[] vadAudioBuffer = new byte[VAD_FRAME_SIZE * 2];  //VAD needs 16 bit
 
-        while (mInProgress.get() && totalBytesRead < bytesForThirtySeconds) {
+        while (mInProgress.get() && (chunked || totalBytesRead < bytesForThirtySeconds)) {
             int bytesRead = audioRecord.read(audioData, 0, VAD_FRAME_SIZE * 2);
             if (bytesRead > 0) {
-                outputBuffer.write(audioData, 0, bytesRead);  // Save all bytes read up to 30 seconds
+                outputBuffer.write(audioData, 0, bytesRead);
                 totalBytesRead += bytesRead;
             } else {
                 Log.d(TAG, "AudioRecord error, bytes read: " + bytesRead);
                 break;
             }
 
+            if (chunked && outputBuffer.size() >= bytesPerChunk) {
+                byte[] pcm = outputBuffer.toByteArray();
+                int cut = findQuietCut(pcm, bytesPerChunk - bytesCutSearch, bytesPerChunk);
+                chunkListener.onChunk(java.util.Arrays.copyOfRange(pcm, 0, cut));
+                outputBuffer.reset();
+                outputBuffer.write(pcm, cut, pcm.length - cut);
+                Log.d(TAG, "Chunk emitted: " + cut + " bytes, carried over " + (pcm.length - cut));
+            }
+
             if (useVAD){
-                byte[] outputBufferByteArray = outputBuffer.toByteArray();
-                if (outputBufferByteArray.length >= VAD_FRAME_SIZE * 2) {
-                    // Always use the last VAD_FRAME_SIZE * 2 bytes (16 bit) from outputBuffer for VAD
-                    System.arraycopy(outputBufferByteArray, outputBufferByteArray.length - VAD_FRAME_SIZE * 2, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
+                if (bytesRead == VAD_FRAME_SIZE * 2) {
+                    // Use the frame just read (16 bit) for VAD
+                    System.arraycopy(audioData, 0, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
 
                     isSpeech = vad.isSpeech(vadAudioBuffer);
                     if (isSpeech) {
@@ -245,8 +277,13 @@ public class Recorder {
         audioManager.stopBluetoothSco();
         audioManager.setBluetoothScoOn(false);
 
-        // Save recorded audio data to BufferStore (up to 30 seconds)
-        RecordBuffer.setOutputBuffer(outputBuffer.toByteArray());
+        if (chunked) {
+            // Flush the remainder as the final chunk (skip if shorter than 0.2 s)
+            if (outputBuffer.size() > 6400) chunkListener.onChunk(outputBuffer.toByteArray());
+        } else {
+            // Save recorded audio data to BufferStore (up to 30 seconds)
+            RecordBuffer.setOutputBuffer(outputBuffer.toByteArray());
+        }
         if (totalBytesRead > 6400){  //min 0.2s
             sendUpdate(MSG_RECORDING_DONE);
         } else {
@@ -260,4 +297,29 @@ public class Recorder {
 
     }
 
+
+    /**
+     * Returns a byte offset in [from, to] at the middle of the quietest VAD-sized frame,
+     * so chunks are split in pauses rather than mid-word.
+     */
+    private static int findQuietCut(byte[] pcm, int from, int to) {
+        final int frameBytes = VAD_FRAME_SIZE * 2;
+        from = Math.max(0, from) & ~1;
+        to = Math.min(pcm.length, to) & ~1;
+        int bestStart = -1;
+        long bestEnergy = Long.MAX_VALUE;
+        for (int start = from; start + frameBytes <= to; start += frameBytes / 2) {
+            long energy = 0;
+            for (int i = start; i < start + frameBytes; i += 2) {
+                int sample = (short) ((pcm[i] & 0xFF) | (pcm[i + 1] << 8));
+                energy += (long) sample * sample;
+            }
+            if (energy < bestEnergy) {
+                bestEnergy = energy;
+                bestStart = start;
+            }
+        }
+        if (bestStart < 0) return to;
+        return (bestStart + frameBytes / 2) & ~1;
+    }
 }

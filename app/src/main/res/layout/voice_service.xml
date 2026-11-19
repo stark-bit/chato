@@ -9,16 +9,6 @@
     android:paddingTop="5dp"
     android:paddingBottom="0dp">
 
-    <ProgressBar
-        android:id="@+id/processing_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:indeterminate="false"
-        android:progressTint="@color/colorAccent"
-        android:progressBackgroundTint="@color/lightGrey"
-        android:indeterminateTint="@color/colorAccent"
-        style="?android:attr/progressBarStyleHorizontal"/>
-
     <!-- Top row: collapsible via btnToolbarToggle -->
     <LinearLayout
         android:id="@+id/layout_toolbar"

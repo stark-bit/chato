@@ -9,7 +9,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.inputmethodservice.InputMethodService;
 
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Looper;
 import androidx.preference.PreferenceManager;
@@ -21,12 +20,12 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.widget.ImageButton;
 import android.view.ViewGroup;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 
 import com.github.houbb.opencc4j.util.ZhConverterUtil;
+import com.whisperonnx.asr.OpenAITranscriber;
 import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
@@ -47,11 +46,9 @@ public class WhisperInputMethodService extends InputMethodService {
     private TextView tvStatus;
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
-    private ProgressBar processingBar = null;
     private SharedPreferences sp = null;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Context mContext;
-    private CountDownTimer countDownTimer;
     private boolean modeAuto = false;
     private ViewGroup layoutButtons;
     private ViewGroup layoutToolbar;
@@ -116,6 +113,13 @@ public class WhisperInputMethodService extends InputMethodService {
     }
 
     @Override
+    public void onFinishInputView(boolean finishingInput) {
+        // A toggled (auto mode) recording must not keep running with the keyboard hidden
+        if (mRecorder != null && mRecorder.isInProgress()) stopMicRecording();
+        super.onFinishInputView(finishingInput);
+    }
+
+    @Override
     public void onStartInputView(EditorInfo attribute, boolean restarting){
 
         if (mWhisper == null)  initModel();
@@ -141,7 +145,6 @@ public class WhisperInputMethodService extends InputMethodService {
         String backendType = sp.getString("backend_type", "local");
         btnBackend.setActivated(backendType.equals("openai"));
 
-        processingBar = view.findViewById(R.id.processing_bar);
         tvStatus = view.findViewById(R.id.tv_status);
         modeAuto = sp.getBoolean("imeModeAuto",false);
         btnModeAuto.setActivated(modeAuto);
@@ -162,40 +165,25 @@ public class WhisperInputMethodService extends InputMethodService {
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
                     HapticFeedback.vibrate(mContext);
                     revertBackground();
-                    startTranscription();
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
                     HapticFeedback.vibrate(mContext);
-                    if (countDownTimer!=null) { countDownTimer.cancel();}
                     handler.post(() -> {
                         revertBackground();
                         tvStatus.setText(getString(R.string.error_no_input));
                         tvStatus.setVisibility(View.VISIBLE);
-                        processingBar.setProgress(0);
                     });
                 }
             }
 
         });
+        // Stream chunks (Recorder.CHUNK_MS) to the transcriber while the mic is held
+        mRecorder.setChunkListener(pcm -> {
+            Whisper whisper = mWhisper;
+            if (whisper != null) {
+                whisper.enqueueChunk(pcm);
+            }
+        });
 
-        if (modeAuto) {
-            layoutButtons.setVisibility(View.GONE);
-            HapticFeedback.vibrate(this);
-            startRecording();
-            handler.post(() -> processingBar.setProgress(100));
-            countDownTimer = new CountDownTimer(30000, 1000) {
-                @Override
-                public void onTick(long l) {
-                    handler.post(() -> processingBar.setProgress((int) (l / 300)));
-                }
-                @Override
-                public void onFinish() {}
-            };
-            countDownTimer.start();
-            handler.post(() -> {
-                tvStatus.setText("");
-                tvStatus.setVisibility(View.GONE);
-            });
-        }
 
         // Tap: delete one character. Hold: delete whole words, accelerating.
         btnDel.setOnTouchListener(new View.OnTouchListener() {
@@ -238,41 +226,19 @@ public class WhisperInputMethodService extends InputMethodService {
             }
         });
 
+        // Normal mode: hold to record. Auto mode: tap to start, tap again to stop.
         btnRecord.setOnTouchListener((v, event) -> {
-            if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                // Pressed
-                applyGradientBackground();
-                if (checkRecordPermission()){
-                    if (!mWhisper.isInProgress()) {
-                        HapticFeedback.vibrate(this);
-                        startRecording();
-                        handler.post(() -> processingBar.setProgress(100));
-                        countDownTimer = new CountDownTimer(30000, 1000) {
-                            @Override
-                            public void onTick(long l) {
-                                handler.post(() -> processingBar.setProgress((int) (l / 300)));
-                            }
-                            @Override
-                            public void onFinish() {}
-                        };
-                        countDownTimer.start();
-                        handler.post(() -> {
-                            tvStatus.setText("");
-                            tvStatus.setVisibility(View.GONE);
-                        });
-                    } else {
-                        handler.post(() -> {
-                            tvStatus.setText(getString(R.string.please_wait));
-                            tvStatus.setVisibility(View.VISIBLE);
-                        });
-                    }
+            int action = event.getActionMasked();
+            boolean recording = mRecorder != null && mRecorder.isInProgress();
+            if (modeAuto) {
+                if (action == MotionEvent.ACTION_DOWN) {
+                    if (recording) stopMicRecording();
+                    else startMicRecording();
                 }
-            } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                // Released
-                revertBackground();
-                if (mRecorder != null && mRecorder.isInProgress()) {
-                    mRecorder.stop();
-                }
+            } else if (action == MotionEvent.ACTION_DOWN) {
+                startMicRecording();
+            } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+                stopMicRecording();
             }
             return true;
         });
@@ -291,14 +257,11 @@ public class WhisperInputMethodService extends InputMethodService {
         btnDash.setOnClickListener(v -> getCurrentInputConnection().commitText("-", 1));
 
         btnModeAuto.setOnClickListener(v -> {
+            // Switching modes mid-recording would leave the mic in the wrong state
+            if (mRecorder != null && mRecorder.isInProgress()) stopMicRecording();
             modeAuto = !modeAuto;
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putBoolean("imeModeAuto", modeAuto);
-            editor.apply();
-            layoutButtons.setVisibility(modeAuto ? View.GONE : View.VISIBLE);
+            sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
             btnModeAuto.setActivated(modeAuto);
-            updateToolbarVisibility();
-            switchToPreviousInputMethod();
         });
 
         btnToolbarToggle.setOnClickListener(v -> {
@@ -319,8 +282,36 @@ public class WhisperInputMethodService extends InputMethodService {
     }
 
     private void startRecording() {
-        if (modeAuto) mRecorder.initVad();
+        if (mWhisper != null) {
+            mWhisper.setAction(ACTION_TRANSLATE);
+            mWhisper.setLanguage(sp.getString("language", "auto"));
+        }
         mRecorder.start();
+    }
+
+    private void startMicRecording() {
+        applyGradientBackground();
+        if (!checkRecordPermission()) return;
+        if (mWhisper != null && !mWhisper.isInProgress()) {
+            HapticFeedback.vibrate(this);
+            startRecording();
+            handler.post(() -> {
+                tvStatus.setText("");
+                tvStatus.setVisibility(View.GONE);
+            });
+        } else {
+            handler.post(() -> {
+                tvStatus.setText(getString(R.string.please_wait));
+                tvStatus.setVisibility(View.VISIBLE);
+            });
+        }
+    }
+
+    private void stopMicRecording() {
+        revertBackground();
+        if (mRecorder != null && mRecorder.isInProgress()) {
+            mRecorder.stop();
+        }
     }
 
     // Model initialization
@@ -331,11 +322,21 @@ public class WhisperInputMethodService extends InputMethodService {
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
+                if (modeAuto && message.equals(OpenAITranscriber.MSG_EMPTY_TRANSCRIPTION)) {
+                    // Auto mode records pauses too; silent chunks are expected, not an error
+                    Log.d(TAG, "Ignoring empty transcription in auto mode");
+                } else if (!message.equals(Whisper.MSG_PROCESSING)
+                        && !message.equals(Whisper.MSG_PROCESSING_DONE)
+                        && !message.equals(Whisper.MSG_QUEUE_EMPTY)) {  // status messages, not errors
+                    handler.post(() -> {  // errors, e.g. network / API
+                        tvStatus.setText(message);
+                        tvStatus.setVisibility(View.VISIBLE);
+                    });
+                }
             }
 
             @Override
             public void onResultReceived(WhisperResult whisperResult) {
-                handler.post(() -> processingBar.setIndeterminate(false));
                 handler.post(() -> {
                     tvStatus.setText("");
                     tvStatus.setVisibility(View.GONE);
@@ -346,29 +347,17 @@ public class WhisperInputMethodService extends InputMethodService {
                     boolean simpleChinese = sp.getBoolean("simpleChinese",false);
                     result = simpleChinese ? ZhConverterUtil.toSimple(result) : ZhConverterUtil.toTraditional(result);
                 }
-                boolean commitSuccess = false;
-                if (result.trim().length() > 0) commitSuccess = getCurrentInputConnection().commitText(result.trim() + " ",1);
-                if (modeAuto && commitSuccess) handler.postDelayed(() -> switchToPreviousInputMethod(), 100);  //slightly delayed, otherwise some apps, e.g. WhatsApp, do not accept the committed text (commitText on inactive InputConnection)
+                String text = result.trim();
+                handler.post(() -> {
+                    InputConnection ic = getCurrentInputConnection();
+                    if (text.length() > 0 && ic != null) ic.commitText(text + " ", 1);
+                });
             }
         });
     }
 
-    private void startTranscription() {
-        if (countDownTimer!=null) { countDownTimer.cancel();}
-        handler.post(() -> processingBar.setProgress(0));
-        handler.post(() -> processingBar.setIndeterminate(true));
-        if (mWhisper!=null){
-            mWhisper.setAction(ACTION_TRANSLATE);
-
-            String langCode = sp.getString("language", "auto");
-            Log.d("WhisperIME","default langCode " + langCode);
-            mWhisper.setLanguage(langCode);
-            mWhisper.start();
-        }
-    }
-
     private void stopTranscription() {
-        handler.post(() -> processingBar.setIndeterminate(false));
+        mWhisper.clearChunks();
         mWhisper.stop();
     }
 
@@ -388,9 +377,8 @@ public class WhisperInputMethodService extends InputMethodService {
         }
     }
 
-    /** Top row shows when expanded, and always in auto mode (bottom row is hidden there). */
     private void updateToolbarVisibility() {
-        layoutToolbar.setVisibility(toolbarExpanded || modeAuto ? View.VISIBLE : View.GONE);
+        layoutToolbar.setVisibility(toolbarExpanded ? View.VISIBLE : View.GONE);
         btnToolbarToggle.setRotation(toolbarExpanded ? 180f : 0f);
     }
 

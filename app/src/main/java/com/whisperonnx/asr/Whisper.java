@@ -15,7 +15,12 @@ import com.whisperonnx.voice_translation.neural_networks.voice.Recognizer;
 import com.whisperonnx.voice_translation.neural_networks.voice.RecognizerListener;
 
 import java.io.File;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -30,6 +35,8 @@ public class Whisper {
     private static final String TAG = "Whisper";
     public static final String MSG_PROCESSING = "Processing...";
     public static final String MSG_PROCESSING_DONE = "Processing done...!";
+    /** Sent when the chunk queue has been fully processed. */
+    public static final String MSG_QUEUE_EMPTY = "Queue empty";
 
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
@@ -45,6 +52,12 @@ public class Whisper {
     private long startTime;
     private OpenAITranscriber openaiTranscriber;
     private String mBackendType;
+
+    // Chunked (streaming) transcription: processed strictly in order on one thread
+    private final BlockingQueue<byte[]> chunkQueue = new LinkedBlockingQueue<>();
+    private final AtomicInteger chunksPending = new AtomicInteger(0);
+    private Thread chunkThread;
+    private volatile CountDownLatch localResultLatch;
 
     public Whisper(Context context) {
         mContext = context;
@@ -115,6 +128,8 @@ public class Whisper {
                 WhisperResult whisperResult = new WhisperResult(text,languageCode, mAction);
 
                 sendResult(whisperResult);
+                CountDownLatch latch = localResultLatch;
+                if (latch != null) latch.countDown();
 
                 long timeTaken = System.currentTimeMillis() - startTime;
                 Log.d(TAG, "Time Taken for transcription: " + timeTaken + "ms");
@@ -124,11 +139,18 @@ public class Whisper {
             @Override
             public void onError(int[] reasons, long value) {
                 Log.d(TAG, "ERROR during recognition");
+                CountDownLatch latch = localResultLatch;
+                if (latch != null) latch.countDown();
             }
         });
     }
 
     public void unloadModel() {
+        clearChunks();
+        if (chunkThread != null) {
+            chunkThread.interrupt();
+            chunkThread = null;
+        }
         if (recognizer != null) {
             recognizer.destroy();
         }
@@ -166,6 +188,91 @@ public class Whisper {
 
     public boolean isInProgress() {
         return mInProgress.get();
+    }
+
+    /** Queues a PCM chunk for transcription. Results arrive in order via onResultReceived. */
+    public synchronized void enqueueChunk(byte[] pcm) {
+        if (chunkThread == null) {
+            chunkThread = new Thread(this::processChunkLoop, "whisper-chunks");
+            chunkThread.start();
+        }
+        chunksPending.incrementAndGet();
+        chunkQueue.offer(pcm);
+    }
+
+    public boolean hasPendingChunks() {
+        return chunksPending.get() > 0;
+    }
+
+    /** Drops chunks that have not started processing yet. */
+    public void clearChunks() {
+        int dropped = 0;
+        while (chunkQueue.poll() != null) dropped++;
+        chunksPending.addAndGet(-dropped);
+    }
+
+    private void processChunkLoop() {
+        while (!Thread.currentThread().isInterrupted()) {
+            byte[] pcm;
+            try {
+                pcm = chunkQueue.take();
+            } catch (InterruptedException e) {
+                return;
+            }
+            try {
+                transcribeChunkBlocking(pcm);
+            } catch (InterruptedException e) {
+                return;
+            } catch (Exception e) {
+                Log.e(TAG, "Chunk transcription failed", e);
+                sendUpdate("Transcription failed: " + e.getMessage());
+            } finally {
+                if (chunksPending.decrementAndGet() <= 0) {
+                    chunksPending.set(0);
+                    sendUpdate(MSG_QUEUE_EMPTY);
+                }
+            }
+        }
+    }
+
+    /** Transcribes one chunk and waits for its result so output order matches speech order. */
+    private void transcribeChunkBlocking(byte[] pcm) throws InterruptedException {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        String backend = sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL);
+        startTime = System.currentTimeMillis();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        if (backend.equals(OpenAITranscriber.BACKEND_OPENAI)) {
+            if (openaiTranscriber == null) openaiTranscriber = new OpenAITranscriber();
+            openaiTranscriber.transcribe(mContext, pcm, new OpenAITranscriber.Callback() {
+                @Override
+                public void onSuccess(String transcription) {
+                    Log.d(TAG, "OpenAI chunk time taken: " + (System.currentTimeMillis() - startTime) + "ms");
+                    sendResult(new WhisperResult(transcription, detectLanguageFromText(transcription), mAction));
+                    latch.countDown();
+                }
+
+                @Override
+                public void onError(String errorMessage) {
+                    Log.e(TAG, "OpenAI chunk error: " + errorMessage);
+                    sendUpdate(errorMessage);
+                    latch.countDown();
+                }
+            });
+        } else {
+            if (recognizer == null) {
+                sendUpdate("Local model not loaded");
+                return;
+            }
+            localResultLatch = latch;
+            recognizer.recognize(RecordBuffer.getSamples(pcm), 1, mLangCode, mAction);
+        }
+
+        if (!latch.await(120, TimeUnit.SECONDS)) {
+            Log.e(TAG, "Chunk transcription timed out");
+            sendUpdate("Transcription timed out");
+        }
+        localResultLatch = null;
     }
 
     private void processRecordBufferLoop() {

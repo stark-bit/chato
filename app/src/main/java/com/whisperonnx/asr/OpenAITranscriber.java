@@ -39,6 +39,9 @@ public class OpenAITranscriber {
     public static final String BACKEND_LOCAL = "local";
     public static final String BACKEND_OPENAI = "openai";
 
+    /** Error sent when the API returns no text (e.g. a silent chunk). */
+    public static final String MSG_EMPTY_TRANSCRIPTION = "OpenAI returned empty transcription";
+
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -115,7 +118,7 @@ public class OpenAITranscriber {
                         : "";
 
                 if (transcription.isEmpty()) {
-                    callback.onError("OpenAI returned empty transcription");
+                    callback.onError(MSG_EMPTY_TRANSCRIPTION);
                     return;
                 }
 
