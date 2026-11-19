@@ -1,99 +1,120 @@
-<a href="http://unmaintained.tech/">
-     <img src="http://unmaintained.tech/badge.svg?4" width="400">
-   </a>
-   
-# stark-bit/whisperIMEplus — Fork Changes
+# Whisper+ (stark-bit fork)
 
-   **Fork adds an OpenAI remote backend toggle**, allowing switching between local ONNX transcription and remote OpenAI Whisper API on the fly.
+A voice keyboard for Android. Hold the mic, speak, and the text lands at the cursor
+or is POSTed to a URL you choose. Transcription runs on the phone (Whisper ONNX)
+or on any OpenAI-compatible server.
 
-   ### Changes:
-   - **OpenAI remote backend** toggle — local ONNX ↔ cloud Whisper API
-   - One-tap backend switch via toggle button (IME + standalone)
-   - In-app settings for endpoint, key, model, and language
-   - Punctuation row: `·` `—` ␣ buttons alongside the mic
+This is a fork of [woheller69/whisperIMEplus](https://github.com/woheller69/whisperIMEplus).
+It is English-only, and the keyboard was rebuilt around dictating notes.
 
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/fork-1.jpeg" height="250"/> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/fork-2.jpeg" height="250"/> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/fork-3.jpeg" height="250"/>
+<img src="docs/screenshots/keyboard.jpg" height="500"/>
 
-   ---
+## The keyboard
 
-   # Original Fork Content
+| | |
+|---|---|
+| <img src="docs/screenshots/strip-cursor.jpg" width="380"/> | **Default.** Text is typed at the cursor. |
+| <img src="docs/screenshots/strip-endpoint.jpg" width="380"/> | **Send to endpoint.** The send key is lit with a badge showing which endpoint (1 or 2) is active. Dictated text is POSTed there instead of typed. |
+| <img src="docs/screenshots/strip-auto.jpg" width="380"/> | **Auto mode** (`A` lit). Tap the mic to start, tap again to stop. |
+| <img src="docs/screenshots/strip-collapsed.jpg" width="380"/> | **Collapsed.** The top row is hidden, leaving only the essentials. |
+
+**Top row**, left to right:
+- `-`, `.` and space.
+- Bullet: starts a new `- ` line, or adds `- ` if the cursor is already at the start of a line.
+- Status text: shows the current target, upload results and errors inline, so the keyboard doesn't change height.
+- Send target: cycles through cursor → endpoint 1 → endpoint 2 and skips endpoints that have no URL.
+- Backend toggle: the cloud key is lit while the remote backend is in use.
+- Settings.
+
+**Bottom row**, left to right:
+- Collapse/expand the top row.
+- Auto mode.
+- Mic.
+- Backspace: tap deletes one character; hold deletes whole words and speeds up the longer you hold.
+- Enter.
+- Switch back to your normal keyboard.
+
+Every key gives a short haptic tick.
+
+## Features
+
+### Recording
+- **Hold-to-talk:** the mic records while held and audio is sent in 30 s chunks, which gives the model more context.
+- **Auto mode:** audio is sent in 8 s chunks so text appears while you are still speaking. A pause ends the recording; the minimum silence length is set in Settings.
+- Chunks are split at the quietest point near the boundary, so words are not cut in half.
+- You can keep talking while earlier chunks are still being transcribed.
+- Bluetooth headset microphone (optional).
+
+### Transcription backends
+- **Local (ONNX):** Whisper runs entirely on the phone, offline. The model is downloaded from HuggingFace on first launch.
+- **OpenAI API:** any OpenAI-compatible `/v1/audio/transcriptions` server. Set its URL, API key and model in Settings. This works with self-hosted servers too, for example a Whisper or Parakeet server on your LAN.
+- Switch between the two with the cloud key without leaving the keyboard.
+
+### Send to endpoint
+Up to two endpoints can be configured in Settings. Each has:
+- **Name**, shown in the status text.
+- **URL.** An endpoint with an empty URL is disabled.
+- **Headers**, one per line, e.g. `Authorization: Bearer …`.
+- **Body template.** Placeholders:
+  - `{{text}}`: the text, escaped for JSON.
+  - `{{text_raw}}`: the text exactly as transcribed.
+  - `{{timestamp}}`: ISO 8601.
+  - `{{name}}`: the endpoint name.
+- **One message per recording**, or one message per chunk.
+
+`Content-Type` defaults to `application/json`; set it as a header to change it.
+If a send fails, the error is shown and the text is copied to the clipboard, so nothing is lost.
+
+Example: append each dictation as a bullet to a note by replacing a marker in it:
+
+```json
+{"edits":[{"oldText":"<!-- voice -->","newText":"- {{text}}\n<!-- voice -->"}]}
+```
+
+### Also included
+- **Standalone app:** record, then copy the transcript.
+- **System voice input** (`RecognitionService`) and `RecognizerIntent.ACTION_RECOGNIZE_SPEECH`, so other apps can use it.
+
+## Setup
+
+1. Install the app, open it and download the Whisper model (needed for the local backend).
+2. Enable **Whisper+** as a keyboard in Android settings.
+3. Optional: in **Settings**, configure the OpenAI-compatible backend and endpoints.
+4. Use the keyboard's last key to switch back to your normal keyboard. Some keyboards, e.g. HeliBoard, can open Whisper+ from their mic key.
+
+To use it as system voice input: *System › Languages › Speech › Voice input*. If it does not appear in that list:
 
 ```
-Google has announced that, starting in 2026/2027, all apps on certified Android devices
-will require the developer to submit personal identity details directly to Google.
-Since the developers of this app do not agree to this requirement, this app will no longer
-work on certified Android devices after that time.
+adb shell settings put secure voice_recognition_service org.woheller69.whisperplus/com.whisperonnx.WhisperRecognitionService
 ```
 
-## Donate
-<pre>Send a coffee to
-woheller69@t-online.de
-<a href= "https://www.paypal.com/signin"><img  align="left" src="https://www.paypalobjects.com/webstatic/de_DE/i/de-pp-logo-150px.png"></a>
+## Building
 
+```
+make build     # debug APK
+make run       # build and install on a connected device
+make test      # JVM unit tests, no device needed
+make help      # all targets
+```
 
-Or via this link (with fees)
-<a href="https://www.paypal.com/donate?hosted_button_id=XVXQ54LBLZ4AA"><img  align="left" src="https://img.shields.io/badge/Donate%20with%20Debit%20or%20Credit%20Card-002991?style=plastic"></a></pre>
-# Fast Voice recognition based on Whisper
+## License
 
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01.png" height="250"/> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02.png" height="250"/> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03.png" height="250"/>
+GPLv3, © woheller69. Fork changes are under the same license.
+- Based on [whisperIME](https://github.com/woheller69/whisperIME) (MIT).
+- Uses code and the Whisper ONNX models from [RTranslator](https://github.com/niedev/RTranslator).
+- Uses code from [Whisper-Android](https://github.com/vilassn/whisper_android) (MIT).
+- Uses [OpenAI Whisper](https://github.com/openai/whisper) (MIT). Details are in the [paper](https://arxiv.org/abs/2212.04356).
+- Uses [Android VAD](https://github.com/gkonovalov/android-vad) (MIT).
+- The model is downloaded from [HuggingFace](https://huggingface.co/DocWolle/whisperOnnx) (MIT).
 
-Whisper+ is an input method editor (IME) that leverages voice recognition technology based on the Whisper engine.
-It offers a seamless user experience, functioning both as a standalone application and an integrated IME that can be activated, e.g. via the microphone button in HeliBoard.
-As a standalone app Whisper+ can also translate any supported language to English.
+---
 
-Besides providing an IME, Whisper+ can also be selected as system-wide voice input (RecognitionService) and it supports calls via intent (RecognizerIntent.ACTION_RECOGNIZE_SPEECH).
+## Original Whisper+
 
-## Initial Setup
+For reference, this is how the upstream app looked before this fork. It has a
+standalone recorder and a keyboard with two preset languages (`1`/`2`), auto mode (`A`),
+and translation to English.
 
-Upon launching Whisper+ for the first time, you will need to download the Whisper model from Hugging Face and install it.
-Voice recognition works entirely offline, ensuring your privacy and convenience.
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01.png" height="350"/> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02.png" height="350"/>
 
-Please note that for use as voice input (not as IME) there is a separate settings activity which can be accessed from Android settings
-(System > Languages > Speech > Voice Input). There you can activate the app as voice input and then click the settings button.
-
-If after installation you do not find Whisper+ as voice input or only see a limited list (hard-coded ones like Google/Samsung)
-- enable USB debugging
-- type adb shell settings put secure voice_recognition_service org.woheller69.whisperplus/com.whisperonnx.WhisperRecognitionService
-
-## Using Whisper+
-
-To get the most out of Whisper+, follow these simple tips:
-
-- Press and hold the button while speaking or use automatic mode where available
-- Pause briefly before starting to speak
-- Speak clearly, loudly, and at a moderate pace
-- Please note that there is a limit of 30s for each recording. For longer transcriptions briefly release the button and press it again. You can continue to speak while transcription is running.
-
-By following these guidelines, you'll be able to enjoy accurate and efficient voice recognition with Whisper.
-
-You can predefine 2 languages and quickly switch between them. You can also let the app translate your input to English.
-
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="75">](https://f-droid.org/de/packages/org.woheller69.whisperplus/)
-
-# License
-This work is licensed under GPLv3 license, © woheller69
-- This app is based on [whisperIME](https://github.com/woheller69/whisperIME), which is published under MIT license
-- It uses code and the Whisper ONNX models from [RTranslator](https://github.com/niedev/RTranslator)
-- It uses code from [Whisper-Android project](https://github.com/vilassn/whisper_android), published under MIT license
-- It uses [OpenAI Whisper](https://github.com/openai/whisper) published under MIT license. Details on Whisper are found [here](https://arxiv.org/abs/2212.04356).
-- It uses [Android VAD](https://github.com/gkonovalov/android-vad), which is published under MIT license
-- It uses [Opencc4j](https://github.com/houbb/opencc4j), for Chinese conversions, published under Apache-2.0 license
-- At first start you need to download the Whisper model from [HuggingFace](https://huggingface.co/DocWolle/whisperOnnx), which is published under MIT license
-
-# OTHER APPS
-
-| **RadarWeather** | **Gas Prices** | **Smart Eggtimer** |
-|:---:|:---:|:--:|
-| [<img src="https://github.com/woheller69/weather/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.weather/) | [<img src="https://github.com/woheller69/spritpreise/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.spritpreise/) | [<img src="https://github.com/woheller69/eggtimer/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.eggtimer/) |
-| **Bubble** | **hEARtest** | **GPS Cockpit** |
-| [<img src="https://github.com/woheller69/Level/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.level/) | [<img src="https://github.com/woheller69/audiometry/blob/new/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.audiometry/) | [<img src="https://github.com/woheller69/gpscockpit/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.gpscockpit/) |
-| **Audio Analyzer** | **LavSeeker** | **TimeLapseCam** |
-| [<img src="https://github.com/woheller69/audio-analyzer-for-android/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.audio_analyzer_for_android/) |[<img src="https://github.com/woheller69/lavatories/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.lavatories/) | [<img src="https://github.com/woheller69/TimeLapseCamera/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.TimeLapseCam/) |
-| **Arity** | **Cirrus** | **solXpect** |
-| [<img src="https://github.com/woheller69/arity/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.arity/) | [<img src="https://github.com/woheller69/omweather/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.omweather/) | [<img src="https://github.com/woheller69/solXpect/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.solxpect/) |
-| **gptAssist** | **dumpSeeker** | **huggingAssist** |
-| [<img src="https://github.com/woheller69/gptassist/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.gptassist/) | [<img src="https://github.com/woheller69/dumpseeker/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.dumpseeker/) | [<img src="https://github.com/woheller69/huggingassist/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.hugassist/) |
-| **FREE Browser** | **whoBIRD** | **PeakOrama** |
-| [<img src="https://github.com/woheller69/browser/blob/newmaster/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.browser/) | [<img src="https://github.com/woheller69/whoBIRD/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.whobird/) | [<img src="https://github.com/woheller69/PeakOrama/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.PeakOrama/) |
-| **Whisper** | **Seamless** | **SherpaTTS** |
-| [<img src="https://github.com/woheller69/whisperIME/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.whisper/) | [<img src="https://github.com/woheller69/seamless/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.seemless/) | [<img src="https://github.com/woheller69/ttsengine/blob/master/fastlane/metadata/android/en-US/images/icon.png" width="50">](https://f-droid.org/packages/org.woheller69.ttsengine/) |
+Upstream project, F-Droid listing and donation links: [woheller69/whisperIMEplus](https://github.com/woheller69/whisperIMEplus).
