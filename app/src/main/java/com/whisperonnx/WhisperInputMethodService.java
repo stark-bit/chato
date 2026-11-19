@@ -18,6 +18,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.view.ViewGroup;
@@ -212,41 +213,42 @@ public class WhisperInputMethodService extends InputMethodService {
             });
         }
 
+        // Tap: delete one character. Hold: delete whole words, accelerating.
         btnDel.setOnTouchListener(new View.OnTouchListener() {
-            private Runnable initialDeleteRunnable;
-            private Runnable repeatDeleteRunnable;
+            private static final long HOLD_DELAY_MS = 400;
+            private static final long START_INTERVAL_MS = 300;
+            private static final long MIN_INTERVAL_MS = 60;
+            private static final float ACCELERATION = 0.8f;
+
+            private long interval;
+
+            private final Runnable repeatWordDelete = new Runnable() {
+                @Override
+                public void run() {
+                    deleteWordBeforeCursor();
+                    HapticFeedback.tick(mContext);
+                    interval = Math.max(MIN_INTERVAL_MS, (long) (interval * ACCELERATION));
+                    handler.postDelayed(this, interval);
+                }
+            };
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
-                    // Post the initial delay of 500ms
-                    initialDeleteRunnable = new Runnable() {
-                        @Override
-                        public void run() {
-                            getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
-                            // Start repeating every 100ms
-                            repeatDeleteRunnable = new Runnable() {
-                                @Override
-                                public void run() {
-                                    getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
-                                    handler.postDelayed(this, 100);
-                                }
-                            };
-                            handler.postDelayed(repeatDeleteRunnable, 100);
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        InputConnection ic = getCurrentInputConnection();
+                        if (ic != null) {
+                            ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
+                            ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL));
                         }
-                    };
-                    handler.postDelayed(initialDeleteRunnable, 500);
-                } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                    // Remove both callbacks
-                    if (initialDeleteRunnable != null) {
-                        handler.removeCallbacks(initialDeleteRunnable);
-                    }
-                    if (repeatDeleteRunnable != null) {
-                        handler.removeCallbacks(repeatDeleteRunnable);
-                    }
-                    initialDeleteRunnable = null;
-                    repeatDeleteRunnable = null;
+                        HapticFeedback.tick(mContext);
+                        interval = START_INTERVAL_MS;
+                        handler.postDelayed(repeatWordDelete, HOLD_DELAY_MS);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        handler.removeCallbacks(repeatWordDelete);
+                        break;
                 }
                 return true;
             }
@@ -413,5 +415,28 @@ public class WhisperInputMethodService extends InputMethodService {
             mWhisper.unloadModel();
             mWhisper = null;
         }
+    }
+
+    /** Deletes the word (plus trailing whitespace) before the cursor, or the selection if any. */
+    private void deleteWordBeforeCursor() {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return;
+        CharSequence selected = ic.getSelectedText(0);
+        if (selected != null && selected.length() > 0) {
+            ic.commitText("", 1);
+            return;
+        }
+        CharSequence before = ic.getTextBeforeCursor(64, 0);
+        if (before == null || before.length() == 0) return;
+        int i = before.length();
+        while (i > 0 && Character.isWhitespace(before.charAt(i - 1))) i--;
+        if (i > 0 && Character.isLetterOrDigit(before.charAt(i - 1))) {
+            while (i > 0 && Character.isLetterOrDigit(before.charAt(i - 1))) i--;
+        } else {
+            // punctuation / symbols / emoji run
+            while (i > 0 && !Character.isWhitespace(before.charAt(i - 1))
+                    && !Character.isLetterOrDigit(before.charAt(i - 1))) i--;
+        }
+        ic.deleteSurroundingText(before.length() - i, 0);
     }
 }

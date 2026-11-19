@@ -23,6 +23,18 @@ public class HapticFeedback {
         }
     }
 
+    /** Short, light tick for repeated actions such as backspace. */
+    public static void tick(Context context){
+        if (hapticEnabled(context)){
+            Vibrator vibrator = (Vibrator) context.getSystemService(VIBRATOR_SERVICE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK));
+            } else {
+                vibrator.vibrate(VibrationEffect.createOneShot(5, 128));
+            }
+        }
+    }
+
     private static boolean hapticEnabled(Context context){
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             VibratorManager vibratorManager = (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
