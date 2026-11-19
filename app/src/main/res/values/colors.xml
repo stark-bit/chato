@@ -7,4 +7,14 @@
     <color name="colorAccentDark">#FF475569</color>
     <color name="windowBackground">#FF0F172A</color>
     <color name="textPrimary">#FFF8FAFC</color>
+    <!-- IME keyboard palette (FUTO-like). Overridden by dynamic colours in values-v31 -->
+    <color name="ime_bg">#FF1D100A</color>
+    <color name="ime_key">#FF36271F</color>
+    <color name="ime_key_pressed">#FF4E3D33</color>
+    <color name="ime_accent">#FFFFB691</color>
+    <color name="ime_accent_pressed">#FFF0A37C</color>
+    <color name="ime_on_key">#FFF3DED5</color>
+    <color name="ime_on_key_dim">#FFB8A39A</color>
+    <color name="ime_on_accent">#FF552100</color>
+    <color name="ime_error">#FFFFB4AB</color>
 </resources>

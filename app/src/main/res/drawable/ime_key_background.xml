@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Secondary IME keys (dash, dot, space, delete, enter) -->
+<!-- Regular IME key -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#33FFFFFF">
+    android:color="#22FFFFFF">
     <item>
         <selector>
             <item android:state_pressed="true">
                 <shape>
-                    <solid android:color="@color/colorAccentDark" />
-                    <corners android:radius="10dp" />
+                    <solid android:color="@color/ime_key_pressed" />
+                    <corners android:radius="8dp" />
                 </shape>
             </item>
             <item>
                 <shape>
-                    <solid android:color="@color/lightGrey" />
-                    <corners android:radius="10dp" />
+                    <solid android:color="@color/ime_key" />
+                    <corners android:radius="8dp" />
                 </shape>
             </item>
         </selector>

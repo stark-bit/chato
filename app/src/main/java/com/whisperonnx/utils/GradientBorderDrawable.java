@@ -86,6 +86,12 @@ public class GradientBorderDrawable extends Drawable {
         centerPaint.setColor(0xFF475569);
     }
 
+    /** Fill colour inside the rainbow border. */
+    public void setCenterColor(int color) {
+        centerPaint.setColor(color);
+        invalidateSelf();
+    }
+
     public void setHostView(View view) {
         this.hostViewRef = new WeakReference<>(view);
     }

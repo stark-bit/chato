@@ -60,10 +60,11 @@ public class WhisperInputMethodService extends InputMethodService {
         if (gradientDrawable == null) {
             float density = getResources().getDisplayMetrics().density;
             gradientDrawable = new GradientBorderDrawable(
-                10 * density,   // cornerRadius (matches XML 10dp)
+                8 * density,    // cornerRadius (matches ime_mic_background 8dp)
                 0.5f * density, // borderWidth (near-invisible)
                 15 * density    // glowBlur (CSS blur(15px))
             );
+            gradientDrawable.setCenterColor(getColor(R.color.ime_key_pressed));
         }
         return gradientDrawable;
     }
@@ -188,9 +189,10 @@ public class WhisperInputMethodService extends InputMethodService {
         // Tap: delete one character. Hold: delete whole words, accelerating.
         btnDel.setOnTouchListener(new View.OnTouchListener() {
             private static final long HOLD_DELAY_MS = 400;
-            private static final long START_INTERVAL_MS = 300;
-            private static final long MIN_INTERVAL_MS = 60;
-            private static final float ACCELERATION = 0.8f;
+            // Continuous ramp: 350ms -> 40ms over ~4.5s of holding (~30 words), then 25 words/s
+            private static final long START_INTERVAL_MS = 350;
+            private static final long MIN_INTERVAL_MS = 40;
+            private static final float ACCELERATION = 0.93f;
 
             private long interval;
 
@@ -242,6 +244,16 @@ public class WhisperInputMethodService extends InputMethodService {
             }
             return true;
         });
+
+        // Same tick haptic as backspace, on press for all simple keys
+        View.OnTouchListener tickOnPress = (v, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) HapticFeedback.tick(mContext);
+            return false; // let the click listener handle the action
+        };
+        for (View b : new View[]{btnKeyboard, btnEnter, btnDot, btnSpace, btnDash,
+                btnModeAuto, btnToolbarToggle, btnBackend}) {
+            b.setOnTouchListener(tickOnPress);
+        }
 
         btnKeyboard.setOnClickListener(v -> {
             if (mWhisper != null) stopTranscription();
