@@ -4,7 +4,11 @@ package com.whisperonnx;
 import static com.whisperonnx.voice_translation.neural_networks.voice.Recognizer.ACTION_TRANSLATE;
 
 import android.annotation.SuppressLint;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.inputmethodservice.InputMethodService;
@@ -29,6 +33,7 @@ import com.whisperonnx.asr.OpenAITranscriber;
 import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
+import com.whisperonnx.utils.EndpointSender;
 import com.whisperonnx.utils.HapticFeedback;
 import com.whisperonnx.utils.GradientBorderDrawable;
 
@@ -44,6 +49,15 @@ public class WhisperInputMethodService extends InputMethodService {
     private ImageButton btnSpace;
     private ImageButton btnDash;
     private ImageButton btnBullet;
+    private ImageButton btnSendTarget;
+    private ImageButton btnSettings;
+    private TextView tvSendTargetBadge;
+    // 0 = type at cursor, otherwise 1-based endpoint index
+    private int sendTarget = 0;
+    // Endpoint routing for the current recording; null = type at cursor
+    private EndpointSender.Endpoint sessionEndpoint;
+    private final StringBuilder sessionBuffer = new StringBuilder();
+    private boolean sessionEnded = true;
     private TextView tvStatus;
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
@@ -145,6 +159,9 @@ public class WhisperInputMethodService extends InputMethodService {
         btnSpace = view.findViewById(R.id.btnSpace);
         btnDash = view.findViewById(R.id.btnDash);
         btnBullet = view.findViewById(R.id.btnBullet);
+        btnSendTarget = view.findViewById(R.id.btnSendTarget);
+        btnSettings = view.findViewById(R.id.btnSettings);
+        tvSendTargetBadge = view.findViewById(R.id.tvSendTargetBadge);
         String backendType = sp.getString("backend_type", "local");
         btnBackend.setActivated(backendType.equals("openai"));
 
@@ -156,6 +173,9 @@ public class WhisperInputMethodService extends InputMethodService {
         btnToolbarToggle = view.findViewById(R.id.btnToolbarToggle);
         toolbarExpanded = sp.getBoolean("imeToolbarExpanded", true);
         updateToolbarVisibility();
+        sendTarget = sp.getInt("imeSendTarget", 0);
+        if (sendTarget != 0 && !EndpointSender.load(sp, sendTarget).isConfigured()) sendTarget = 0;
+        updateSendTargetUi();
         checkRecordPermission();
 
         // Audio recording functionality
@@ -168,8 +188,10 @@ public class WhisperInputMethodService extends InputMethodService {
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
                     HapticFeedback.vibrate(mContext);
                     revertBackground();
+                    handler.post(() -> onSessionEnded());
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
                     HapticFeedback.vibrate(mContext);
+                    handler.post(() -> onSessionEnded());
                     handler.post(() -> {
                         revertBackground();
                         tvStatus.setText(getString(R.string.error_no_input));
@@ -253,7 +275,7 @@ public class WhisperInputMethodService extends InputMethodService {
             return false; // let the click listener handle the action
         };
         for (View b : new View[]{btnKeyboard, btnEnter, btnDot, btnSpace, btnDash, btnBullet,
-                btnModeAuto, btnToolbarToggle, btnBackend}) {
+                btnModeAuto, btnToolbarToggle, btnBackend, btnSendTarget, btnSettings}) {
             b.setOnTouchListener(tickOnPress);
         }
 
@@ -286,6 +308,31 @@ public class WhisperInputMethodService extends InputMethodService {
             btnModeAuto.setActivated(modeAuto);
         });
 
+        // Cycle: cursor -> endpoint 1 -> endpoint 2 -> cursor, skipping endpoints without a URL
+        btnSendTarget.setOnClickListener(v -> {
+            if (mRecorder != null && mRecorder.isInProgress()) stopMicRecording();
+            int next = 0;
+            for (int i = sendTarget + 1; i <= EndpointSender.COUNT; i++) {
+                if (EndpointSender.load(sp, i).isConfigured()) { next = i; break; }
+            }
+            if (next == 0 && sendTarget == 0) {
+                showStatus(getString(R.string.endpoint_none_configured));
+                return;
+            }
+            sendTarget = next;
+            sp.edit().putInt("imeSendTarget", sendTarget).apply();
+            updateSendTargetUi();
+            showTransientStatus(sendTarget == 0
+                    ? getString(R.string.endpoint_target_cursor)
+                    : getString(R.string.endpoint_target, EndpointSender.load(sp, sendTarget).displayName()));
+        });
+
+        btnSettings.setOnClickListener(v -> {
+            requestHideSelf(0);
+            startActivity(new Intent(this, SettingsActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+        });
+
         btnToolbarToggle.setOnClickListener(v -> {
             toolbarExpanded = !toolbarExpanded;
             sp.edit().putBoolean("imeToolbarExpanded", toolbarExpanded).apply();
@@ -308,6 +355,8 @@ public class WhisperInputMethodService extends InputMethodService {
             mWhisper.setAction(ACTION_TRANSLATE);
             mWhisper.setLanguage(sp.getString("language", "auto"));
         }
+        // Auto mode streams text every 8 s; hold-to-talk sends 30 s pieces for better context
+        mRecorder.setChunkMs(modeAuto ? 8000 : 30000);
         mRecorder.start();
     }
 
@@ -316,6 +365,7 @@ public class WhisperInputMethodService extends InputMethodService {
         if (!checkRecordPermission()) return;
         if (mWhisper != null && !mWhisper.isInProgress()) {
             HapticFeedback.vibrate(this);
+            beginSession();
             startRecording();
             handler.post(() -> {
                 tvStatus.setText("");
@@ -344,6 +394,10 @@ public class WhisperInputMethodService extends InputMethodService {
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
+                if (message.equals(Whisper.MSG_QUEUE_EMPTY)) {
+                    // Posted after the last result, so a combined message is complete here
+                    handler.post(() -> { if (sessionEnded) flushSession(); });
+                }
                 if (modeAuto && message.equals(OpenAITranscriber.MSG_EMPTY_TRANSCRIPTION)) {
                     // Auto mode records pauses too; silent chunks are expected, not an error
                     Log.d(TAG, "Ignoring empty transcription in auto mode");
@@ -370,12 +424,83 @@ public class WhisperInputMethodService extends InputMethodService {
                     result = simpleChinese ? ZhConverterUtil.toSimple(result) : ZhConverterUtil.toTraditional(result);
                 }
                 String text = result.trim();
-                handler.post(() -> {
-                    InputConnection ic = getCurrentInputConnection();
-                    if (text.length() > 0 && ic != null) ic.commitText(text + " ", 1);
-                });
+                handler.post(() -> deliverText(text));
             }
         });
+    }
+
+    /** Routes a transcribed chunk to the cursor or the current recording's endpoint. */
+    private void deliverText(String text) {
+        if (text.isEmpty()) return;
+        if (sessionEndpoint == null) {
+            InputConnection ic = getCurrentInputConnection();
+            if (ic != null) ic.commitText(text + " ", 1);
+        } else if (sessionEndpoint.combine) {
+            if (sessionBuffer.length() > 0) sessionBuffer.append(' ');
+            sessionBuffer.append(text);
+        } else {
+            EndpointSender.post(sessionEndpoint, text, this::onEndpointResult);
+        }
+    }
+
+    /** Called when a recording starts: locks in the endpoint for this recording. */
+    private void beginSession() {
+        flushSession();  // leftovers from a previous recording still go to its endpoint
+        sessionEndpoint = sendTarget == 0 ? null : EndpointSender.load(sp, sendTarget);
+        if (sessionEndpoint != null && !sessionEndpoint.isConfigured()) sessionEndpoint = null;
+        sessionEnded = false;
+    }
+
+    private void onSessionEnded() {
+        sessionEnded = true;
+        // No chunks left: every result was posted before the pending count dropped,
+        // so a flush posted now runs after them. Otherwise MSG_QUEUE_EMPTY flushes.
+        if (mWhisper == null || !mWhisper.hasPendingChunks()) handler.post(this::flushSession);
+    }
+
+    private void flushSession() {
+        if (sessionEndpoint == null || sessionBuffer.length() == 0) return;
+        String text = sessionBuffer.toString();
+        sessionBuffer.setLength(0);
+        EndpointSender.post(sessionEndpoint, text, this::onEndpointResult);
+    }
+
+    private void onEndpointResult(EndpointSender.Endpoint ep, String text, String error) {
+        if (error == null) {
+            HapticFeedback.tick(mContext);
+            showTransientStatus(getString(R.string.endpoint_sent, ep.displayName()));
+        } else {
+            HapticFeedback.vibrate(mContext);
+            ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Dictation", text));
+            showStatus(getString(R.string.endpoint_failed, ep.displayName(), error));
+        }
+    }
+
+    private void updateSendTargetUi() {
+        boolean active = sendTarget != 0;
+        btnSendTarget.setActivated(active);
+        tvSendTargetBadge.setVisibility(active ? View.VISIBLE : View.GONE);
+        tvSendTargetBadge.setText(String.valueOf(sendTarget));
+        // Mic turns accent-coloured so the target is visible even with the top row collapsed
+        btnRecord.setImageTintList(ColorStateList.valueOf(
+                getColor(active ? R.color.ime_accent : R.color.ime_on_key)));
+    }
+
+    private void showStatus(String message) {
+        handler.removeCallbacks(hideStatus);
+        tvStatus.setText(message);
+        tvStatus.setVisibility(View.VISIBLE);
+    }
+
+    private final Runnable hideStatus = () -> {
+        tvStatus.setText("");
+        tvStatus.setVisibility(View.GONE);
+    };
+
+    private void showTransientStatus(String message) {
+        showStatus(message);
+        handler.postDelayed(hideStatus, 1500);
     }
 
     private void stopTranscription() {

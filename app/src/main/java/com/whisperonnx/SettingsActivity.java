@@ -19,6 +19,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ImageButton;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 
@@ -29,6 +30,7 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.slider.RangeSlider;
+import com.whisperonnx.utils.EndpointSender;
 import com.whisperonnx.utils.LanguagePairAdapter;
 import com.whisperonnx.utils.ThemeUtils;
 
@@ -265,8 +267,39 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
 
+        setupEndpointSettings();
+
         checkPermissions();
 
+    }
+
+    private void setupEndpointSettings() {
+        LinearLayout container = findViewById(R.id.layout_endpoints);
+        for (int i = 1; i <= EndpointSender.COUNT; i++) {
+            final int index = i;
+            View item = getLayoutInflater().inflate(R.layout.item_endpoint_settings, container, false);
+            ((TextView) item.findViewById(R.id.endpoint_title)).setText(getString(R.string.endpoint_title, index));
+            EndpointSender.Endpoint ep = EndpointSender.load(sp, index);
+            bindText(item.findViewById(R.id.edit_endpoint_name), EndpointSender.key(index, "name"), ep.name);
+            bindText(item.findViewById(R.id.edit_endpoint_url), EndpointSender.key(index, "url"), ep.url);
+            bindText(item.findViewById(R.id.edit_endpoint_headers), EndpointSender.key(index, "headers"), ep.headers);
+            bindText(item.findViewById(R.id.edit_endpoint_body), EndpointSender.key(index, "body"), ep.body);
+            CheckBox combine = item.findViewById(R.id.check_endpoint_combine);
+            combine.setChecked(ep.combine);
+            combine.setOnCheckedChangeListener((b, checked) ->
+                    sp.edit().putBoolean(EndpointSender.key(index, "combine"), checked).apply());
+            container.addView(item);
+        }
+    }
+
+    /** Shows the current value and saves every edit to the given preference key. */
+    private void bindText(EditText edit, String prefKey, String value) {
+        edit.setText(value);
+        edit.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(Editable s) { sp.edit().putString(prefKey, s.toString()).apply(); }
+        });
     }
 
     private void checkPermissions() {

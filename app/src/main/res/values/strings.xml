@@ -22,6 +22,22 @@
     <string name="space_button">Space</string>
     <string name="dash_button">Dash</string>
     <string name="bullet_button">New bullet point</string>
+    <string name="settings_button">Settings</string>
+    <string name="send_target_button">Send text to endpoint</string>
+    <string name="settings_endpoints">Send to endpoint</string>
+    <string name="settings_endpoints_help">Tap the send key on the keyboard to cycle: type at cursor → endpoint 1 → endpoint 2. While an endpoint is selected, dictated text is POSTed there instead of typed.</string>
+    <string name="endpoint_title">Endpoint %d</string>
+    <string name="endpoint_name">Name</string>
+    <string name="endpoint_url">URL (empty = disabled)</string>
+    <string name="endpoint_headers">Headers, one per line (Name: value)</string>
+    <string name="endpoint_body">Body template</string>
+    <string name="endpoint_body_help">Placeholders: {{text}} (JSON-escaped), {{text_raw}}, {{timestamp}}, {{name}}. Content-Type defaults to application/json.</string>
+    <string name="endpoint_combine">One message per recording (otherwise one per chunk)</string>
+    <string name="endpoint_target_cursor">Typing at cursor</string>
+    <string name="endpoint_target">Sending to %s</string>
+    <string name="endpoint_sent">Sent to %s</string>
+    <string name="endpoint_failed">%1$s: %2$s. Text copied to clipboard</string>
+    <string name="endpoint_none_configured">No endpoint configured. Add one in Settings</string>
     <string name="model_output">Model output</string>
     <string name="processing_done">Processing done in\u2009</string>
     <string name="language">Language:</string>

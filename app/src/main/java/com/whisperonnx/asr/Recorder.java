@@ -38,9 +38,9 @@ public class Recorder {
         void onChunk(byte[] pcm);
     }
 
-    /** Target chunk length in chunked mode. */
+    /** Default target chunk length in chunked mode. */
     public static final int CHUNK_MS = 8000;
-    /** Chunks are cut at the quietest 30 ms frame within this window before CHUNK_MS. */
+    /** Chunks are cut at the quietest 30 ms frame within this window before the chunk length. */
     private static final int CUT_SEARCH_MS = 1000;
 
     private static final String TAG = "Recorder";
@@ -55,6 +55,7 @@ public class Recorder {
 
     private RecorderListener mListener;
     private volatile ChunkListener mChunkListener;
+    private volatile int mChunkMs = CHUNK_MS;
     private final Lock lock = new ReentrantLock();
     private final Condition hasTask = lock.newCondition();
     private final Object fileSavedLock = new Object(); // Lock object for wait/notify
@@ -85,6 +86,11 @@ public class Recorder {
      */
     public void setChunkListener(ChunkListener listener) {
         this.mChunkListener = listener;
+    }
+
+    /** Target chunk length for the next recording (the Whisper model tops out at 30 s). */
+    public void setChunkMs(int chunkMs) {
+        this.mChunkMs = Math.min(chunkMs, 30000);
     }
 
 
@@ -211,7 +217,7 @@ public class Recorder {
 
         ChunkListener chunkListener = mChunkListener;
         boolean chunked = chunkListener != null;
-        int bytesPerChunk = sampleRateInHz * bytesPerSample * channels * CHUNK_MS / 1000;
+        int bytesPerChunk = sampleRateInHz * bytesPerSample * channels * mChunkMs / 1000;
         int bytesCutSearch = sampleRateInHz * bytesPerSample * channels * CUT_SEARCH_MS / 1000;
 
         byte[] audioData = new byte[bufferSize];

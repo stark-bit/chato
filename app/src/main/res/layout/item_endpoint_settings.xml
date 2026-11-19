@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One "send to endpoint" target; inflated per endpoint by SettingsActivity -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginBottom="12dp">
+
+    <TextView
+        android:id="@+id/endpoint_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:textSize="16sp"
+        android:textColor="@color/colorAccent" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:hint="@string/endpoint_name">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/edit_endpoint_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:singleLine="true" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:hint="@string/endpoint_url">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/edit_endpoint_url"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textUri"
+            android:singleLine="true" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:hint="@string/endpoint_headers">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/edit_endpoint_headers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textMultiLine|textNoSuggestions"
+            android:minLines="1"
+            android:typeface="monospace" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:hint="@string/endpoint_body"
+        app:helperText="@string/endpoint_body_help">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/edit_endpoint_body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textMultiLine|textNoSuggestions"
+            android:minLines="2"
+            android:typeface="monospace" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <CheckBox
+        android:id="@+id/check_endpoint_combine"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/endpoint_combine" />
+</LinearLayout>

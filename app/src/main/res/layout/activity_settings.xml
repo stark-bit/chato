@@ -191,6 +191,27 @@
 
             </LinearLayout>
 
+            <!-- ===== Send to endpoint (filled by SettingsActivity) ===== -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textSize="20dp"
+                android:text="@string/settings_endpoints"
+                />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:textSize="14sp"
+                android:text="@string/settings_endpoints_help"
+                />
+            <LinearLayout
+                android:id="@+id/layout_endpoints"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
