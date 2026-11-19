@@ -33,6 +33,8 @@ import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
 import com.whisperonnx.utils.EndpointSender;
+import com.whisperonnx.utils.SendSession;
+import com.whisperonnx.utils.TextEdits;
 import com.whisperonnx.utils.HapticFeedback;
 import com.whisperonnx.utils.GradientBorderDrawable;
 
@@ -54,9 +56,6 @@ public class WhisperInputMethodService extends InputMethodService {
     // 0 = type at cursor, otherwise 1-based endpoint index
     private int sendTarget = 0;
     // Endpoint routing for the current recording; null = type at cursor
-    private EndpointSender.Endpoint sessionEndpoint;
-    private final StringBuilder sessionBuffer = new StringBuilder();
-    private boolean sessionEnded = true;
     private TextView tvStatus;        // line above the main row, used while the top row is collapsed
     private TextView tvStatusInline;  // gap in the top row, used while it is expanded
     private String statusMessage = "";
@@ -64,6 +63,15 @@ public class WhisperInputMethodService extends InputMethodService {
     private Whisper mWhisper = null;
     private SharedPreferences sp = null;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final SendSession session = new SendSession(new SendSession.Output() {
+        @Override public void type(String text) {
+            InputConnection ic = getCurrentInputConnection();
+            if (ic != null) ic.commitText(text, 1);
+        }
+        @Override public void send(EndpointSender.Endpoint ep, String text) {
+            EndpointSender.post(ep, text, WhisperInputMethodService.this::onEndpointResult);
+        }
+    }, handler::post);
     private Context mContext;
     private boolean modeAuto = false;
     private ViewGroup layoutButtons;
@@ -296,9 +304,7 @@ public class WhisperInputMethodService extends InputMethodService {
         btnBullet.setOnClickListener(v -> {
             InputConnection ic = getCurrentInputConnection();
             if (ic == null) return;
-            CharSequence before = ic.getTextBeforeCursor(1, 0);
-            boolean atLineStart = before == null || before.length() == 0 || before.charAt(0) == '\n';
-            ic.commitText(atLineStart ? "- " : "\n- ", 1);
+            ic.commitText(TextEdits.bulletInsert(ic.getTextBeforeCursor(1, 0)), 1);
         });
 
         btnModeAuto.setOnClickListener(v -> {
@@ -394,7 +400,7 @@ public class WhisperInputMethodService extends InputMethodService {
             public void onUpdateReceived(String message) {
                 if (message.equals(Whisper.MSG_QUEUE_EMPTY)) {
                     // Posted after the last result, so a combined message is complete here
-                    handler.post(() -> { if (sessionEnded) flushSession(); });
+                    handler.post(() -> session.onQueueEmpty());
                 }
                 if (modeAuto && message.equals(OpenAITranscriber.MSG_EMPTY_TRANSCRIPTION)) {
                     // Auto mode records pauses too; silent chunks are expected, not an error
@@ -415,45 +421,18 @@ public class WhisperInputMethodService extends InputMethodService {
                 });
 
                 String text = whisperResult.getResult().trim();
-                handler.post(() -> deliverText(text));
+                handler.post(() -> session.deliver(text));
             }
         });
     }
 
-    /** Routes a transcribed chunk to the cursor or the current recording's endpoint. */
-    private void deliverText(String text) {
-        if (text.isEmpty()) return;
-        if (sessionEndpoint == null) {
-            InputConnection ic = getCurrentInputConnection();
-            if (ic != null) ic.commitText(text + " ", 1);
-        } else if (sessionEndpoint.combine) {
-            if (sessionBuffer.length() > 0) sessionBuffer.append(' ');
-            sessionBuffer.append(text);
-        } else {
-            EndpointSender.post(sessionEndpoint, text, this::onEndpointResult);
-        }
-    }
-
-    /** Called when a recording starts: locks in the endpoint for this recording. */
+    /** Called when a recording starts: locks in the target for this recording. */
     private void beginSession() {
-        flushSession();  // leftovers from a previous recording still go to its endpoint
-        sessionEndpoint = sendTarget == 0 ? null : EndpointSender.load(sp, sendTarget);
-        if (sessionEndpoint != null && !sessionEndpoint.isConfigured()) sessionEndpoint = null;
-        sessionEnded = false;
+        session.begin(sendTarget == 0 ? null : EndpointSender.load(sp, sendTarget));
     }
 
     private void onSessionEnded() {
-        sessionEnded = true;
-        // No chunks left: every result was posted before the pending count dropped,
-        // so a flush posted now runs after them. Otherwise MSG_QUEUE_EMPTY flushes.
-        if (mWhisper == null || !mWhisper.hasPendingChunks()) handler.post(this::flushSession);
-    }
-
-    private void flushSession() {
-        if (sessionEndpoint == null || sessionBuffer.length() == 0) return;
-        String text = sessionBuffer.toString();
-        sessionBuffer.setLength(0);
-        EndpointSender.post(sessionEndpoint, text, this::onEndpointResult);
+        session.end(mWhisper != null && mWhisper.hasPendingChunks());
     }
 
     private void onEndpointResult(EndpointSender.Endpoint ep, String text, String error) {
@@ -544,17 +523,7 @@ public class WhisperInputMethodService extends InputMethodService {
             ic.commitText("", 1);
             return;
         }
-        CharSequence before = ic.getTextBeforeCursor(64, 0);
-        if (before == null || before.length() == 0) return;
-        int i = before.length();
-        while (i > 0 && Character.isWhitespace(before.charAt(i - 1))) i--;
-        if (i > 0 && Character.isLetterOrDigit(before.charAt(i - 1))) {
-            while (i > 0 && Character.isLetterOrDigit(before.charAt(i - 1))) i--;
-        } else {
-            // punctuation / symbols / emoji run
-            while (i > 0 && !Character.isWhitespace(before.charAt(i - 1))
-                    && !Character.isLetterOrDigit(before.charAt(i - 1))) i--;
-        }
-        ic.deleteSurroundingText(before.length() - i, 0);
+        int n = TextEdits.wordDeleteLength(ic.getTextBeforeCursor(64, 0));
+        if (n > 0) ic.deleteSurroundingText(n, 0);
     }
 }

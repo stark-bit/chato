@@ -51,7 +51,7 @@ NC     := \033[0m # No Color
 .DEFAULT_GOAL := help
 
 # ---- Targets ---------------------------------------------------------------
-.PHONY: help device build install uninstall clean run
+.PHONY: help device build install uninstall clean run test
 
 help: ## Show this help message
 	@echo "$(CYAN)WhisperIME+ Makefile$(NC)"
@@ -102,10 +102,11 @@ clean: ## Remove build artifacts
 	$(GRADLEW) clean
 	@echo "$(GREEN)Clean.$(NC)"
 
-# ---- Future: tests ---------------------------------------------------------
-# test: ## Run unit tests (JVM)
-# 	$(GRADLEW) test
-#
+# ---- Tests -----------------------------------------------------------------
+test: ## Run unit tests (JVM, no device needed)
+	$(GRADLEW) testDebugUnitTest
+
+# ---- Future: device tests --------------------------------------------------
 # connected-test: ## Run instrumented tests on device
 # ifeq ($(DEVICE),)
 # 	$(error $(RED)No device found.$(NC))

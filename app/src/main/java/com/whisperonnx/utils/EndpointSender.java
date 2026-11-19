@@ -12,6 +12,8 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -41,7 +43,7 @@ public class EndpointSender {
         public final String body;
         public final boolean combine;
 
-        Endpoint(int index, String name, String url, String headers, String body, boolean combine) {
+        public Endpoint(int index, String name, String url, String headers, String body, boolean combine) {
             this.index = index;
             this.name = name;
             this.url = url;
@@ -76,51 +78,72 @@ public class EndpointSender {
             .readTimeout(30, TimeUnit.SECONDS)
             .build();
     private static final ExecutorService sendQueue = Executors.newSingleThreadExecutor();
-    private static final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private static Handler mainHandler;  // created lazily so the class loads in JVM unit tests
 
     public static void post(Endpoint ep, String text, ResultCallback callback) {
-        Request request;
+        final Request req;
         try {
-            Request.Builder builder = new Request.Builder().url(ep.url);
-            String contentType = "application/json; charset=utf-8";
-            for (String line : ep.headers.split("\n")) {
-                int colon = line.indexOf(':');
-                if (colon <= 0) continue;
-                String name = line.substring(0, colon).trim();
-                String value = line.substring(colon + 1).trim();
-                if (name.equalsIgnoreCase("Content-Type")) contentType = value;
-                else builder.addHeader(name, value);
-            }
-            String body = fillTemplate(ep, text);
-            request = builder.post(RequestBody.create(body, MediaType.parse(contentType))).build();
+            req = buildRequest(ep, text);
         } catch (IllegalArgumentException e) {  // malformed URL or header
             callback.onDone(ep, text, "Invalid endpoint config: " + e.getMessage());
             return;
         }
+        if (mainHandler == null) mainHandler = new Handler(Looper.getMainLooper());
+        final Handler main = mainHandler;
 
         // One request at a time so per-chunk messages arrive in speech order
-        final Request req = request;
         sendQueue.execute(() -> {
-            String error;
-            try (Response response = client.newCall(req).execute()) {
-                error = response.isSuccessful() ? null : "HTTP " + response.code();
-            } catch (IOException e) {
-                Log.e(TAG, "POST to " + ep.url + " failed", e);
-                error = "Network error: " + e.getMessage();
-            }
-            final String err = error;
-            mainHandler.post(() -> callback.onDone(ep, text, err));
+            String err = execute(client, req);
+            main.post(() -> callback.onDone(ep, text, err));
         });
     }
 
+    /** Builds the POST request. Throws IllegalArgumentException for a bad URL or header. */
+    static Request buildRequest(Endpoint ep, String text) {
+        Request.Builder builder = new Request.Builder().url(ep.url);
+        String contentType = "application/json; charset=utf-8";
+        for (String line : ep.headers.split("\n")) {
+            int colon = line.indexOf(':');
+            if (colon <= 0) continue;
+            String name = line.substring(0, colon).trim();
+            String value = line.substring(colon + 1).trim();
+            if (name.equalsIgnoreCase("Content-Type")) contentType = value;
+            else builder.addHeader(name, value);
+        }
+        String body = fillTemplate(ep, text);
+        return builder.post(RequestBody.create(body, MediaType.parse(contentType))).build();
+    }
+
+    /** Runs the request synchronously. Returns null on 2xx, otherwise an error message. */
+    static String execute(OkHttpClient client, Request req) {
+        try (Response response = client.newCall(req).execute()) {
+            return response.isSuccessful() ? null : "HTTP " + response.code();
+        } catch (IOException e) {
+            Log.e(TAG, "POST to " + req.url() + " failed", e);
+            return "Network error: " + e.getMessage();
+        }
+    }
+
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{(text_raw|text|timestamp|name)\\}\\}");
+
+    /** Fills placeholders in one pass, so placeholder-like text in the dictation stays as-is. */
     static String fillTemplate(Endpoint ep, String text) {
         String timestamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(new Date());
         String template = ep.body.isEmpty() ? DEFAULT_BODY : ep.body;
-        return template
-                .replace("{{text_raw}}", text)
-                .replace("{{text}}", jsonEscape(text))
-                .replace("{{timestamp}}", timestamp)
-                .replace("{{name}}", jsonEscape(ep.displayName()));
+        Matcher m = PLACEHOLDER.matcher(template);
+        StringBuffer out = new StringBuffer(template.length() + text.length() + 16);
+        while (m.find()) {
+            String value;
+            switch (m.group(1)) {
+                case "text_raw": value = text; break;
+                case "text": value = jsonEscape(text); break;
+                case "timestamp": value = timestamp; break;
+                default: value = jsonEscape(ep.displayName()); break;
+            }
+            m.appendReplacement(out, Matcher.quoteReplacement(value));
+        }
+        m.appendTail(out);
+        return out.toString();
     }
 
     static String jsonEscape(String s) {

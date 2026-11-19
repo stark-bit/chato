@@ -63,7 +63,7 @@ public class Recorder {
     private volatile boolean shouldStartRecording = false;
     private boolean useVAD = false;
     private VadWebRTC vad = null;
-    private static final int VAD_FRAME_SIZE = 480;
+    static final int VAD_FRAME_SIZE = 480;
     private SharedPreferences sp;
 
     private final Thread workerThread;
@@ -308,7 +308,7 @@ public class Recorder {
      * Returns a byte offset in [from, to] at the middle of the quietest VAD-sized frame,
      * so chunks are split in pauses rather than mid-word.
      */
-    private static int findQuietCut(byte[] pcm, int from, int to) {
+    static int findQuietCut(byte[] pcm, int from, int to) {
         final int frameBytes = VAD_FRAME_SIZE * 2;
         from = Math.max(0, from) & ~1;
         to = Math.min(pcm.length, to) & ~1;
