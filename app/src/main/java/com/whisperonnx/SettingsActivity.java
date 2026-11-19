@@ -7,17 +7,15 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.Pair;
 import android.view.MenuItem;
 import android.view.View;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -31,7 +29,6 @@ import androidx.preference.PreferenceManager;
 
 import com.google.android.material.slider.RangeSlider;
 import com.whisperonnx.utils.EndpointSender;
-import com.whisperonnx.utils.LanguagePairAdapter;
 import com.whisperonnx.utils.ThemeUtils;
 
 import java.util.ArrayList;
@@ -41,15 +38,8 @@ public class SettingsActivity extends AppCompatActivity {
     private static final String TAG = "SettingsActivity";
 
     private SharedPreferences sp = null;
-    private Spinner spinnerLanguage;
-    private Spinner spinnerLanguage1IME;
-    private Spinner spinnerLanguage2IME;
-    private CheckBox modeSimpleChinese;
-    private CheckBox modeSimpleChineseIME;
-    private CheckBox modeBluetooth;
-    private String langCodeIME = "";
+    private CompoundButton modeBluetooth;
     private RangeSlider minSilence;
-    private int langSelected;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -61,111 +51,6 @@ public class SettingsActivity extends AppCompatActivity {
         actionBar.setDisplayHomeAsUpEnabled(true);
 
         sp = PreferenceManager.getDefaultSharedPreferences(this);
-        langCodeIME = sp.getString("language", "auto");
-
-        if (!sp.contains("langSelected")){
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putInt("langSelected",1);
-            editor.putString("language1",langCodeIME);
-            editor.putString("language2","auto");
-            editor.commit();
-        }
-
-        ImageButton btnLang1 = findViewById(R.id.btnLang1);
-        ImageButton btnLang2 = findViewById(R.id.btnLang2);
-
-        langSelected = sp.getInt("langSelected", 1);
-        if (langSelected == 1) {
-            btnLang1.setImageResource(R.drawable.ic_counter_1_on_36dp);
-            btnLang2.setImageResource(R.drawable.ic_counter_2_off_36dp);
-        } else {
-            btnLang1.setImageResource(R.drawable.ic_counter_1_off_36dp);
-            btnLang2.setImageResource(R.drawable.ic_counter_2_on_36dp);
-        }
-
-        btnLang1.setOnClickListener(v -> {
-            String lang = sp.getString("language1", "auto");
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putInt("langSelected", 1);
-            editor.putString("language", lang);
-            editor.apply();
-            langSelected = 1;
-            btnLang1.setImageResource(R.drawable.ic_counter_1_on_36dp);
-            btnLang2.setImageResource(R.drawable.ic_counter_2_off_36dp);
-        });
-
-        btnLang2.setOnClickListener(v -> {
-            String lang = sp.getString("language2", "auto");
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putInt("langSelected", 2);
-            editor.putString("language", lang);
-            editor.apply();
-            langSelected = 2;
-            btnLang1.setImageResource(R.drawable.ic_counter_1_off_36dp);
-            btnLang2.setImageResource(R.drawable.ic_counter_2_on_36dp);
-        });
-
-        spinnerLanguage1IME = findViewById(R.id.spnrLanguage1_ime);
-        spinnerLanguage2IME = findViewById(R.id.spnrLanguage2_ime);
-
-        List<Pair<String, String>> languagePairs = LanguagePairAdapter.getLanguagePairs(this);
-
-        LanguagePairAdapter languagePairAdapter1IME = new LanguagePairAdapter(this, android.R.layout.simple_spinner_item, languagePairs);
-        LanguagePairAdapter languagePairAdapter2IME = new LanguagePairAdapter(this, android.R.layout.simple_spinner_item, languagePairs);
-        languagePairAdapter1IME.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerLanguage1IME.setAdapter(languagePairAdapter1IME);
-        spinnerLanguage2IME.setAdapter(languagePairAdapter2IME);
-        String langCode1IME = sp.getString("language1", "auto");
-        String langCode2IME = sp.getString("language2", "auto");
-
-        spinnerLanguage1IME.setSelection(languagePairAdapter1IME.getIndexByCode(langCode1IME));
-        spinnerLanguage2IME.setSelection(languagePairAdapter2IME.getIndexByCode(langCode2IME));
-
-        spinnerLanguage1IME.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                SharedPreferences.Editor editor = sp.edit();
-                editor.putString("language1",languagePairs.get(i).first);
-                if (langSelected == 1) {
-                    langCodeIME = languagePairs.get(i).first;
-                    editor.putString("language",languagePairs.get(i).first);
-                }
-                editor.apply();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-
-            }
-        });
-
-        spinnerLanguage2IME.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                SharedPreferences.Editor editor = sp.edit();
-                editor.putString("language2",languagePairs.get(i).first);
-                if (langSelected == 2) {
-                    langCodeIME = languagePairs.get(i).first;
-                    editor.putString("language",languagePairs.get(i).first);
-                }
-                editor.apply();
-
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-
-            }
-        });
-
-        modeSimpleChineseIME = findViewById(R.id.mode_simple_chinese_ime);
-        modeSimpleChineseIME.setChecked(sp.getBoolean("simpleChinese",false));  //default to traditional Chinese
-        modeSimpleChineseIME.setOnCheckedChangeListener((compoundButton, isChecked) -> {
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putBoolean("simpleChinese", isChecked);
-            editor.apply();
-        });
-
         modeBluetooth = findViewById(R.id.mode_bluetooth);
         modeBluetooth.setChecked(sp.getBoolean("bluetooth",false));
         modeBluetooth.setOnCheckedChangeListener((compoundButton, isChecked) -> {
@@ -184,7 +69,6 @@ public class SettingsActivity extends AppCompatActivity {
         EditText editEndpoint = findViewById(R.id.edit_openai_endpoint);
         EditText editApiKey = findViewById(R.id.edit_openai_api_key);
         EditText editModel = findViewById(R.id.edit_openai_model);
-        EditText editLanguage = findViewById(R.id.edit_openai_language);
 
         String[] backendOptions = {"Local (ONNX)", "OpenAI API"};
         ArrayAdapter<String> backendAdapter = new ArrayAdapter<>(
@@ -198,7 +82,6 @@ public class SettingsActivity extends AppCompatActivity {
         editEndpoint.setText(sp.getString("openai_endpoint", "https://api.openai.com/v1/audio/transcriptions"));
         editApiKey.setText(sp.getString("openai_api_key", ""));
         editModel.setText(sp.getString("openai_model", "whisper-1"));
-        editLanguage.setText(sp.getString("openai_language", ""));
 
         layoutOpenaiSettings.setVisibility(backendType.equals("openai") ? View.VISIBLE : View.GONE);
 
@@ -223,37 +106,6 @@ public class SettingsActivity extends AppCompatActivity {
         editEndpoint.addTextChangedListener(openaiSaveWatcher);
         editApiKey.addTextChangedListener(openaiSaveWatcher);
         editModel.addTextChangedListener(openaiSaveWatcher);
-        editLanguage.addTextChangedListener(openaiSaveWatcher);
-
-        spinnerLanguage = findViewById(R.id.spnrLanguage);
-
-        LanguagePairAdapter languagePairAdapter = new LanguagePairAdapter(this, android.R.layout.simple_spinner_item, languagePairs);
-        languagePairAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerLanguage.setAdapter(languagePairAdapter);
-
-        String langCode = sp.getString("recognitionServiceLanguage", "auto");
-        spinnerLanguage.setSelection(languagePairAdapter.getIndexByCode(langCode));
-        spinnerLanguage.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                SharedPreferences.Editor editor = sp.edit();
-                editor.putString("recognitionServiceLanguage", languagePairs.get(i).first);
-                editor.apply();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {
-
-            }
-        });
-
-        modeSimpleChinese = findViewById(R.id.mode_simple_chinese);
-        modeSimpleChinese.setChecked(sp.getBoolean("RecognitionServiceSimpleChinese",false));  //default to traditional Chinese
-        modeSimpleChinese.setOnCheckedChangeListener((compoundButton, isChecked) -> {
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putBoolean("RecognitionServiceSimpleChinese", isChecked);
-            editor.apply();
-        });
 
         minSilence = findViewById(R.id.settings_min_silence);
         float silence = sp.getInt("silenceDurationMs", 800);
@@ -268,6 +120,9 @@ public class SettingsActivity extends AppCompatActivity {
         });
 
         setupEndpointSettings();
+
+        // Tapping anywhere on a switch row toggles it, as in FUTO settings
+        findViewById(R.id.layout_mode_bluetooth).setOnClickListener(v -> modeBluetooth.toggle());
 
         checkPermissions();
 
@@ -284,7 +139,8 @@ public class SettingsActivity extends AppCompatActivity {
             bindText(item.findViewById(R.id.edit_endpoint_url), EndpointSender.key(index, "url"), ep.url);
             bindText(item.findViewById(R.id.edit_endpoint_headers), EndpointSender.key(index, "headers"), ep.headers);
             bindText(item.findViewById(R.id.edit_endpoint_body), EndpointSender.key(index, "body"), ep.body);
-            CheckBox combine = item.findViewById(R.id.check_endpoint_combine);
+            CompoundButton combine = item.findViewById(R.id.check_endpoint_combine);
+            item.findViewById(R.id.row_endpoint_combine).setOnClickListener(v -> combine.toggle());
             combine.setChecked(ep.combine);
             combine.setOnCheckedChangeListener((b, checked) ->
                     sp.edit().putBoolean(EndpointSender.key(index, "combine"), checked).apply());
@@ -339,13 +195,11 @@ public class SettingsActivity extends AppCompatActivity {
         EditText editEndpoint = findViewById(R.id.edit_openai_endpoint);
         EditText editApiKey = findViewById(R.id.edit_openai_api_key);
         EditText editModel = findViewById(R.id.edit_openai_model);
-        EditText editLanguage = findViewById(R.id.edit_openai_language);
 
         sp.edit()
             .putString("openai_endpoint", editEndpoint.getText().toString().trim())
             .putString("openai_api_key", editApiKey.getText().toString().trim())
             .putString("openai_model", editModel.getText().toString().trim())
-            .putString("openai_language", editLanguage.getText().toString().trim())
             .apply();
     }
 }

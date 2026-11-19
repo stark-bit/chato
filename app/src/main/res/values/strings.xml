@@ -23,6 +23,9 @@
     <string name="dash_button">Dash</string>
     <string name="bullet_button">New bullet point</string>
     <string name="settings_button">Settings</string>
+    <string name="pref_backend">Transcription backend</string>
+    <string name="pref_bluetooth_summary">Record from a connected Bluetooth headset</string>
+    <string name="pref_min_silence_summary">How long a pause ends a recording in automatic mode</string>
     <string name="send_target_button">Send text to endpoint</string>
     <string name="settings_endpoints">Send to endpoint</string>
     <string name="settings_endpoints_help">Tap the send key on the keyboard to cycle: type at cursor → endpoint 1 → endpoint 2. While an endpoint is selected, dictated text is POSTed there instead of typed.</string>
@@ -44,29 +47,21 @@
     <string name="mode_transcription">transcription</string>
     <string name="mode_translation">translation</string>
     <string name="instructions">Press and hold the microphone button while speaking.</string>
-    <string name="simple_chinese">Simplified Chinese:</string>
     <string name="text_to_speech">Text-to-speech:</string>
     <string name="tts_language_not_supported">TTS: Language not supported</string>
     <string name="tts_initialization_failed">TTS: Initialization failed</string>
     <string name="auto_button">automatic mode</string>
     <string name="error_no_input">No voice input received</string>
     <string name="install_model">Install model</string>
-    <string name="auto_lang">Detect language</string>
     <string name="settings">Settings</string>
-    <string name="settings_voice_input">Voice Input</string>
-    <string name="settings_ime">Input Method (IME) &amp; Test</string>
     <string name="settings_general">General</string>
     <string name="whisper_test">Whisper+ Test</string>
     <string name="settings_minimum_silence">Minimum silence in automatic mode (ms)</string>
-    <string name="lang1">Language 1</string>
-    <string name="lang2">Language 2</string>
     <string name="setting_bluetooth">Use Bluetooth devices</string>
 
-    <string name="settings_backend_type">Backend:</string>
     <string name="settings_openai_endpoint">Endpoint URL</string>
     <string name="settings_openai_api_key">API Key</string>
     <string name="settings_openai_model">Model</string>
-    <string name="settings_openai_language">Language (optional, e.g. en)</string>
     <string name="backend_toggle">Toggle local/remote backend</string>
 
     <string name="toolbar_toggle_button">Show or hide top row</string>

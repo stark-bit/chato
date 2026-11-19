@@ -28,7 +28,6 @@ import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 
-import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.whisperonnx.asr.OpenAITranscriber;
 import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
@@ -353,7 +352,6 @@ public class WhisperInputMethodService extends InputMethodService {
     private void startRecording() {
         if (mWhisper != null) {
             mWhisper.setAction(ACTION_TRANSLATE);
-            mWhisper.setLanguage(sp.getString("language", "auto"));
         }
         // Auto mode streams text every 8 s; hold-to-talk sends 30 s pieces for better context
         mRecorder.setChunkMs(modeAuto ? 8000 : 30000);
@@ -418,12 +416,7 @@ public class WhisperInputMethodService extends InputMethodService {
                     tvStatus.setVisibility(View.GONE);
                 });
 
-                String result = whisperResult.getResult();
-                if (whisperResult.getLanguage().equals("zh")){
-                    boolean simpleChinese = sp.getBoolean("simpleChinese",false);
-                    result = simpleChinese ? ZhConverterUtil.toSimple(result) : ZhConverterUtil.toTraditional(result);
-                }
-                String text = result.trim();
+                String text = whisperResult.getResult().trim();
                 handler.post(() -> deliverText(text));
             }
         });

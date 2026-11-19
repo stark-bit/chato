@@ -34,7 +34,6 @@ public class OpenAITranscriber {
     public static final String PREF_OPENAI_ENDPOINT = "openai_endpoint";
     public static final String PREF_OPENAI_API_KEY = "openai_api_key";
     public static final String PREF_OPENAI_MODEL = "openai_model";
-    public static final String PREF_OPENAI_LANGUAGE = "openai_language";
 
     public static final String BACKEND_LOCAL = "local";
     public static final String BACKEND_OPENAI = "openai";
@@ -64,7 +63,6 @@ public class OpenAITranscriber {
                 String endpoint = sp.getString(PREF_OPENAI_ENDPOINT, DEFAULT_ENDPOINT);
                 String apiKey = sp.getString(PREF_OPENAI_API_KEY, "");
                 String model = sp.getString(PREF_OPENAI_MODEL, DEFAULT_MODEL);
-                String language = sp.getString(PREF_OPENAI_LANGUAGE, "");
 
                 // Validate
                 if (endpoint.isEmpty()) {
@@ -89,12 +87,9 @@ public class OpenAITranscriber {
                         .setType(MultipartBody.FORM)
                         .addFormDataPart("file", "audio.wav", fileBody)
                         .addFormDataPart("model", model)
-                        .addFormDataPart("response_format", "text");
+                        .addFormDataPart("response_format", "text")
+                        .addFormDataPart("language", Whisper.LANGUAGE);
 
-                // Language is optional — omit if empty (OpenAI auto-detects)
-                if (!language.isEmpty()) {
-                    builder.addFormDataPart("language", language);
-                }
 
                 Request request = new Request.Builder()
                         .url(endpoint)

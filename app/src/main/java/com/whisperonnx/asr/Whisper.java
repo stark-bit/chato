@@ -41,7 +41,9 @@ public class Whisper {
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
     private Recognizer.Action mAction;
-    private String mLangCode = "";
+    /** The app only transcribes English. */
+    public static final String LANGUAGE = "en";
+    private final String mLangCode = LANGUAGE;
     private WhisperListener mUpdateListener;
 
     private final Lock taskLock = new ReentrantLock();
@@ -164,10 +166,6 @@ public class Whisper {
         this.mAction = action;
     }
 
-    public void setLanguage(String language){
-        this.mLangCode = language;
-    }
-
     public void start() {
         if (!mInProgress.compareAndSet(false, true)) {
             Log.d(TAG, "Execution is already in progress...");
@@ -248,7 +246,7 @@ public class Whisper {
                 @Override
                 public void onSuccess(String transcription) {
                     Log.d(TAG, "OpenAI chunk time taken: " + (System.currentTimeMillis() - startTime) + "ms");
-                    sendResult(new WhisperResult(transcription, detectLanguageFromText(transcription), mAction));
+                    sendResult(new WhisperResult(transcription, LANGUAGE, mAction));
                     latch.countDown();
                 }
 
@@ -344,8 +342,7 @@ public class Whisper {
                 long timeTaken = System.currentTimeMillis() - startTime;
                 Log.d(TAG, "OpenAI time taken: " + timeTaken + "ms");
 
-                String detectedLang = detectLanguageFromText(transcription);
-                WhisperResult result = new WhisperResult(transcription, detectedLang, mAction);
+                WhisperResult result = new WhisperResult(transcription, LANGUAGE, mAction);
                 sendResult(result);
                 sendUpdate(MSG_PROCESSING_DONE);
             }
@@ -356,23 +353,6 @@ public class Whisper {
                 sendUpdate(errorMessage);
             }
         });
-    }
-
-    /**
-     * Simple heuristic: if text contains CJK characters, guess "zh".
-     * Otherwise default to "en". Used for Chinese postprocessing
-     * (switching between traditional/simplified).
-     */
-    private String detectLanguageFromText(String text) {
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (Character.UnicodeBlock.of(c) == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS
-                || Character.UnicodeBlock.of(c) == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A
-                || Character.UnicodeBlock.of(c) == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B) {
-                return "zh";
-            }
-        }
-        return "en";
     }
 
     private void sendUpdate(String message) {

@@ -23,7 +23,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
-import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
@@ -84,18 +83,7 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
         mContext = this;
         sp = PreferenceManager.getDefaultSharedPreferences(this);
 
-        String targetLang = getIntent().getStringExtra(RecognizerIntent.EXTRA_LANGUAGE);
-        String langCode = sp.getString("language", "auto");
-        Log.d("WhisperRecognition","default langCode " + langCode);
-
-        if (targetLang != null) {
-            Log.d("WhisperRecognition","StartListening in " + targetLang);
-            langCode = targetLang.split("[-_]")[0].toLowerCase();  //support both de_DE and de-DE
-        } else {
-            Log.d("WhisperRecognition","StartListening, no language specified");
-        }
-
-        initModel(langCode);
+        initModel();
 
         setContentView(R.layout.activity_recognize);
 
@@ -220,12 +208,10 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
     }
 
     // Model initialization
-    private void initModel(String langCode) {
+    private void initModel() {
 
         mWhisper = new Whisper(this);
         mWhisper.loadModel();
-        mWhisper.setLanguage(langCode);
-        Log.d(TAG, "Language code " + langCode);
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) { }
@@ -235,10 +221,6 @@ public class WhisperRecognizeActivity extends AppCompatActivity {
                 runOnUiThread(() -> processingBar.setIndeterminate(false));
 
                 String result = whisperResult.getResult();
-                if (whisperResult.getLanguage().equals("zh")){
-                    boolean simpleChinese = sp.getBoolean("simpleChinese",false);
-                    result = simpleChinese ? ZhConverterUtil.toSimple(result) : ZhConverterUtil.toTraditional(result);
-                }
                 if (result.trim().length() > 0){
                     sendResult(result.trim());
                 }

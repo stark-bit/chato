@@ -38,7 +38,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
-import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
@@ -311,13 +310,7 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> tvStatus.setText(getString(R.string.processing_done) + timeTaken + "\u2009ms" + "\n"+ getString(R.string.language) + " " + new Locale(whisperResult.getLanguage()).getDisplayLanguage() + " " + (whisperResult.getTask() == ACTION_TRANSCRIBE ? getString(R.string.mode_transcription) : getString(R.string.mode_translation))));
                 runOnUiThread(() -> processingBar.setIndeterminate(false));
                 Log.d(TAG, "Result: " + whisperResult.getResult() + " " + whisperResult.getLanguage() + " " + (whisperResult.getTask() == ACTION_TRANSCRIBE ? "transcribing" : "translating"));
-                if ((whisperResult.getLanguage().equals("zh")) && (whisperResult.getTask() == ACTION_TRANSCRIBE)){
-                    boolean simpleChinese = sp.getBoolean("simpleChinese",false);  //convert to desired Chinese mode
-                    String result = simpleChinese ? ZhConverterUtil.toSimple(whisperResult.getResult()) : ZhConverterUtil.toTraditional(whisperResult.getResult());
-                    runOnUiThread(() -> tvResult.append(result));
-                } else {
-                    runOnUiThread(() -> tvResult.append(whisperResult.getResult()));
-                }
+                runOnUiThread(() -> tvResult.append(whisperResult.getResult()));
                 if (modeTTS.isChecked()){
                     tts.speak(whisperResult.getResult(), TextToSpeech.QUEUE_FLUSH, null, null);
                 }
@@ -387,8 +380,6 @@ public class MainActivity extends AppCompatActivity {
             processingBar.setIndeterminate(true);
         });
         mWhisper.setAction(action);
-        String langCode = sp.getString("language", "auto");
-        mWhisper.setLanguage(langCode);
         mWhisper.start();
     }
 

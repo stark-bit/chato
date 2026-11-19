@@ -25,7 +25,6 @@
     <string name="mode_transcription">תמלול</string>
     <string name="mode_translation">‌תרגום</string>
     <string name="instructions">לחץ והחזק את לחצן המיקרופון תוך כדי דיבור.</string>
-    <string name="simple_chinese">סינית פשוטה:</string>
     <string name="text_to_speech">טקסט לדיבור:</string>
     <string name="tts_language_not_supported">TTS: שפה לא נתמכת</string>
     <string name="tts_initialization_failed">TTS: האתחול נכשל</string>

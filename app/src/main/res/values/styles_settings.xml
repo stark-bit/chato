@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings screen styled after FUTO keyboard settings (uses the IME palette) -->
+<resources>
+    <style name="Theme.Whisper.Settings" parent="Theme.Material3.Dark">
+        <item name="android:windowBackground">@color/ime_bg</item>
+        <item name="android:statusBarColor">@color/ime_bg</item>
+        <item name="android:navigationBarColor">@color/ime_bg</item>
+        <item name="colorPrimary">@color/ime_accent</item>
+        <item name="colorOnPrimary">@color/ime_on_accent</item>
+        <item name="colorPrimaryContainer">@color/ime_key</item>
+        <item name="colorOnPrimaryContainer">@color/ime_on_key</item>
+        <item name="colorSecondary">@color/ime_accent</item>
+        <item name="colorOnSecondary">@color/ime_on_accent</item>
+        <item name="colorSurface">@color/ime_bg</item>
+        <item name="colorOnSurface">@color/ime_on_key</item>
+        <item name="colorOnSurfaceVariant">@color/ime_on_key_dim</item>
+        <item name="colorSurfaceVariant">@color/ime_key</item>
+        <item name="colorSurfaceContainer">@color/ime_key</item>
+        <item name="colorSurfaceContainerHigh">@color/ime_key</item>
+        <item name="colorSurfaceContainerHighest">@color/ime_key_pressed</item>
+        <item name="colorOnBackground">@color/ime_on_key</item>
+        <item name="colorOutline">@color/ime_on_key_dim</item>
+        <item name="colorOutlineVariant">@color/ime_key_pressed</item>
+        <item name="android:textColorPrimary">@color/ime_on_key</item>
+        <item name="android:textColorSecondary">@color/ime_on_key_dim</item>
+        <item name="android:colorBackground">@color/ime_bg</item>
+        <item name="actionBarStyle">@style/Settings.ActionBar</item>
+    </style>
+
+    <style name="Settings.ActionBar" parent="Widget.Material3.ActionBar.Solid">
+        <item name="background">@color/ime_bg</item>
+        <item name="elevation">0dp</item>
+        <item name="titleTextStyle">@style/Settings.ActionBarTitle</item>
+    </style>
+
+    <style name="Settings.ActionBarTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textColor">@color/ime_on_key</item>
+        <item name="android:textSize">22sp</item>
+    </style>
+
+    <!-- Section header: small accent label above a group of rows -->
+    <style name="Settings.Header" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingHorizontal">20dp</item>
+        <item name="android:paddingTop">24dp</item>
+        <item name="android:paddingBottom">8dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/ime_accent</item>
+    </style>
+
+    <!-- One setting: title (+ optional summary) with a trailing control -->
+    <style name="Settings.Row" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">64dp</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingHorizontal">20dp</item>
+        <item name="android:paddingVertical">8dp</item>
+    </style>
+
+    <style name="Settings.Title" parent="">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">@color/ime_on_key</item>
+    </style>
+
+    <style name="Settings.Summary" parent="">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/ime_on_key_dim</item>
+        <item name="android:layout_marginTop">2dp</item>
+    </style>
+
+    <style name="Settings.Field" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginHorizontal">20dp</item>
+        <item name="android:layout_marginBottom">12dp</item>
+        <item name="boxCornerRadiusTopStart">12dp</item>
+        <item name="boxCornerRadiusTopEnd">12dp</item>
+        <item name="boxCornerRadiusBottomStart">12dp</item>
+        <item name="boxCornerRadiusBottomEnd">12dp</item>
+        <item name="boxStrokeColor">@color/ime_accent</item>
+        <item name="hintTextColor">@color/ime_accent</item>
+    </style>
+</resources>

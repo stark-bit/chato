@@ -14,7 +14,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.RemoteException;
 import android.speech.RecognitionService;
-import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.util.Log;
 import android.widget.Toast;
@@ -22,7 +21,6 @@ import android.widget.Toast;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
-import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
@@ -38,21 +36,11 @@ public class WhisperRecognitionService extends RecognitionService {
 
     @Override
     protected void onStartListening(Intent recognizerIntent, Callback callback) {
-        String targetLang = recognizerIntent.getStringExtra(RecognizerIntent.EXTRA_LANGUAGE);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
-        String langCode = sp.getString("recognitionServiceLanguage", "auto");
-        Log.d(TAG,"default langCode " + langCode);
-
-        if (targetLang != null) {
-            Log.d(TAG,"StartListening in " + targetLang);
-            langCode = targetLang.split("[-_]")[0].toLowerCase();   //support both de_DE and de-DE
-        } else {
-            Log.d(TAG,"StartListening, no language specified");
-        }
 
         checkRecordPermission(callback);
 
-        initModel(callback, langCode);
+        initModel(callback);
 
         mRecorder = new Recorder(this);
         mRecorder.setListener(message -> {
@@ -113,12 +101,10 @@ public class WhisperRecognitionService extends RecognitionService {
     }
 
     // Model initialization
-    private void initModel(Callback callback, String langCode) {
+    private void initModel(Callback callback) {
 
         mWhisper = new Whisper(this);
         mWhisper.loadModel();
-        mWhisper.setLanguage(langCode);
-        Log.d(TAG, "Language token " + langCode);
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) { }
@@ -134,11 +120,6 @@ public class WhisperRecognitionService extends RecognitionService {
                         ArrayList<String> resultList = new ArrayList<>();
 
                         String result = whisperResult.getResult();
-                        if (whisperResult.getLanguage().equals("zh")){
-                            boolean simpleChinese = sp.getBoolean("RecognitionServiceSimpleChinese",false);
-                            result = simpleChinese ? ZhConverterUtil.toSimple(result) : ZhConverterUtil.toTraditional(result);
-                        }
-
                         resultList.add(result.trim());
                         results.putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, resultList);
                         callback.results(results);

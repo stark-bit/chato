@@ -23,22 +23,16 @@
     <string name="mode_transcription">Transkription</string>
     <string name="mode_translation">Übersetzung</string>
     <string name="instructions">Halten Sie die Mikrofontaste gedrückt während Sie sprechen.</string>
-    <string name="simple_chinese">Vereinfachtes Chinesisch:</string>
     <string name="text_to_speech">Sprachausgabe:</string>
     <string name="tts_language_not_supported">Sprachausgabe: Sprache nicht unterstützt</string>
     <string name="tts_initialization_failed">Sprachausgabe: Initialisierung fehlgeschlagen</string>
     <string name="auto_button">automatischer Modus</string>
     <string name="error_no_input">Keine Sprache detektiert</string>
     <string name="install_model">Modell installieren</string>
-    <string name="auto_lang">Sprache erkennen</string>
     <string name="settings">Einstellungen</string>
-    <string name="settings_voice_input">Spracheingabe</string>
-    <string name="settings_ime">Eingabemethode (IME) &amp; Test</string>
     <string name="settings_general">Allgemein</string>
     <string name="whisper_test">Whisper+ Test</string>
     <string name="settings_minimum_silence">Mindeststille im Automatikmodus (ms)</string>
-    <string name="lang1">Sprache 1</string>
-    <string name="lang2">Sprache 2</string>
     <string name="setting_bluetooth">Bluetoothgeräte verwenden</string>
 
 </resources>
