@@ -20,13 +20,11 @@
 
         <ImageButton
             android:id="@+id/btnDash"
-            android:layout_width="0dp"
+            android:layout_width="32dp"
             android:layout_height="36dp"
-            android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
             android:layout_marginVertical="3dp"
-            android:paddingHorizontal="2dp"
-            android:paddingVertical="10dp"
+            android:padding="8dp"
             android:scaleType="fitCenter"
             android:background="@drawable/ime_key_background"
             android:src="@drawable/ic_ime_dash"
@@ -34,13 +32,11 @@
             android:contentDescription="@string/dash_button"/>
         <ImageButton
             android:id="@+id/btnDot"
-            android:layout_width="0dp"
+            android:layout_width="32dp"
             android:layout_height="36dp"
-            android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
             android:layout_marginVertical="3dp"
-            android:paddingHorizontal="2dp"
-            android:paddingVertical="10dp"
+            android:padding="8dp"
             android:scaleType="fitCenter"
             android:background="@drawable/ime_key_background"
             android:src="@drawable/ic_ime_dot"
@@ -48,33 +44,45 @@
             android:contentDescription="@string/dot_button"/>
         <ImageButton
             android:id="@+id/btnSpace"
-            android:layout_width="0dp"
+            android:layout_width="32dp"
             android:layout_height="36dp"
-            android:layout_weight="3"
             android:layout_marginHorizontal="2dp"
             android:layout_marginVertical="3dp"
-            android:paddingHorizontal="2dp"
-            android:paddingVertical="10dp"
+            android:padding="7dp"
             android:scaleType="fitCenter"
             android:background="@drawable/ime_key_background"
             android:src="@drawable/ic_ime_space"
             android:tint="@color/ime_on_key"
             android:contentDescription="@string/space_button"/>
         <ImageButton
-            android:id="@+id/btnBackend"
-            android:layout_width="0dp"
+            android:id="@+id/btnBullet"
+            android:layout_width="32dp"
             android:layout_height="36dp"
-            android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
             android:layout_marginVertical="3dp"
-            android:paddingHorizontal="4dp"
-            android:paddingVertical="8dp"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:background="@drawable/ime_key_background"
+            android:src="@drawable/ic_ime_bullet_list"
+            android:tint="@color/ime_on_key"
+            android:contentDescription="@string/bullet_button"/>
+        <!-- Spacer: keys keep FUTO size, cloud toggle sits far right -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+        <ImageButton
+            android:id="@+id/btnBackend"
+            android:layout_width="32dp"
+            android:layout_height="36dp"
+            android:layout_marginHorizontal="2dp"
+            android:layout_marginVertical="3dp"
+            android:padding="7dp"
             android:scaleType="fitCenter"
             android:background="@drawable/ime_toggle_background"
             android:src="@drawable/ic_ime_cloud"
             android:tint="@color/ime_toolbar_icon_tint"
             android:contentDescription="@string/backend_toggle"/>
-
     </LinearLayout>
     <TextView
         android:id="@+id/tv_status"

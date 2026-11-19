@@ -43,6 +43,7 @@ public class WhisperInputMethodService extends InputMethodService {
     private ImageButton btnDot;
     private ImageButton btnSpace;
     private ImageButton btnDash;
+    private ImageButton btnBullet;
     private TextView tvStatus;
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
@@ -143,6 +144,7 @@ public class WhisperInputMethodService extends InputMethodService {
         btnDot = view.findViewById(R.id.btnDot);
         btnSpace = view.findViewById(R.id.btnSpace);
         btnDash = view.findViewById(R.id.btnDash);
+        btnBullet = view.findViewById(R.id.btnBullet);
         String backendType = sp.getString("backend_type", "local");
         btnBackend.setActivated(backendType.equals("openai"));
 
@@ -250,7 +252,7 @@ public class WhisperInputMethodService extends InputMethodService {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) HapticFeedback.tick(mContext);
             return false; // let the click listener handle the action
         };
-        for (View b : new View[]{btnKeyboard, btnEnter, btnDot, btnSpace, btnDash,
+        for (View b : new View[]{btnKeyboard, btnEnter, btnDot, btnSpace, btnDash, btnBullet,
                 btnModeAuto, btnToolbarToggle, btnBackend}) {
             b.setOnTouchListener(tickOnPress);
         }
@@ -267,6 +269,14 @@ public class WhisperInputMethodService extends InputMethodService {
         btnDot.setOnClickListener(v -> getCurrentInputConnection().commitText(".", 1));
         btnSpace.setOnClickListener(v -> getCurrentInputConnection().commitText(" ", 1));
         btnDash.setOnClickListener(v -> getCurrentInputConnection().commitText("-", 1));
+        // Bullet: start a new "- " list item on a new line (no leading newline on an empty line)
+        btnBullet.setOnClickListener(v -> {
+            InputConnection ic = getCurrentInputConnection();
+            if (ic == null) return;
+            CharSequence before = ic.getTextBeforeCursor(1, 0);
+            boolean atLineStart = before == null || before.length() == 0 || before.charAt(0) == '\n';
+            ic.commitText(atLineStart ? "- " : "\n- ", 1);
+        });
 
         btnModeAuto.setOnClickListener(v -> {
             // Switching modes mid-recording would leave the mic in the wrong state

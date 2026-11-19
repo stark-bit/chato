@@ -21,6 +21,7 @@
     <string name="dot_button">Dot</string>
     <string name="space_button">Space</string>
     <string name="dash_button">Dash</string>
+    <string name="bullet_button">New bullet point</string>
     <string name="model_output">Model output</string>
     <string name="processing_done">Processing done in\u2009</string>
     <string name="language">Language:</string>
