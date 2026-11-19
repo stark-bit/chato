@@ -64,6 +64,7 @@ public class Whisper {
     private OpenAITranscriber openaiTranscriber;
     private String mBackendType;
     private final String mLocalEngine;
+    private boolean needsSetup;
     private volatile ParakeetRecognizer parakeet;
     private final CountDownLatch parakeetReady = new CountDownLatch(1);
 
@@ -93,23 +94,14 @@ public class Whisper {
             return;
         }
 
-        // Existing local model check (unchanged)
-        File sdcardDataFolder = mContext.getExternalFilesDir(null);
-
+        File sdcardDataFolder = WhisperModel.dir(mContext);
         if (sdcardDataFolder != null && !sdcardDataFolder.exists() && !sdcardDataFolder.mkdirs()) {
             Log.e(TAG, "Failed to make directory: " + sdcardDataFolder);
             return;
         }
 
-        File[] files = sdcardDataFolder.listFiles();
-
-        int fileCount = 0;
-        for (File file : files) {
-            if (file.isFile()) {
-                fileCount++;
-            }
-        }
-        if (fileCount != 6) { //install model
+        if (!WhisperModel.isInstalled(mContext)) {  // ask which model to set up
+            needsSetup = true;
             Intent intent = new Intent(mContext, SetupActivity.class);
             intent.addFlags(FLAG_ACTIVITY_NEW_TASK);
             mContext.startActivity(intent);
@@ -118,6 +110,14 @@ public class Whisper {
             recordBufferThread.start();
         }
 
+    }
+
+    /**
+     * True if this instance started without a model (so the setup screen opened) and one has been
+     * installed since. The caller should then create a fresh instance.
+     */
+    public boolean modelInstalledSince() {
+        return needsSetup && (WhisperModel.isInstalled(mContext) || ParakeetRecognizer.isInstalled(mContext));
     }
 
     /** The local engine this instance was created with. */

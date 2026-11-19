@@ -51,7 +51,7 @@ Every key gives a short haptic tick.
 
 ### Transcription backends
 Choose one in Settings or on the test screen:
-- **Local (Whisper small):** Whisper small (int8 ONNX) runs entirely on the phone, offline. On first launch the app asks you to download the model (about 243 MB) and pick the zip.
+- **Local (Whisper small):** Whisper small (int8 ONNX) runs entirely on the phone, offline. The app downloads the model (243 MB) from Hugging Face, checks it and unpacks it.
 - **Local (Parakeet, experimental):** NVIDIA Parakeet TDT 0.6B v2 (int8 ONNX), also fully on the phone and offline. It is English-only, adds punctuation and capitals, and is much faster on short dictation. Choosing it offers to download the model (661 MB) from Hugging Face; each file is checked against a SHA-256 checksum, and an interrupted download resumes.
 - **OpenAI API:** any OpenAI-compatible `/v1/audio/transcriptions` server. Set its URL, API key and model in Settings. This works with self-hosted servers too, for example a Whisper or Parakeet server on your LAN.
 
@@ -108,14 +108,16 @@ The package name is `dev.starkbit.chato`, so it installs alongside the original 
 
 ## Setup
 
-1. Open **Chato** and allow the microphone. On first launch the Whisper model download screen opens; go back if you'd rather use Parakeet or a server.
-2. Pick a backend at the top of the screen:
-   - **Local (Whisper small):** the app asks you to download the model in your browser (about 243 MB), then pick the downloaded zip.
-   - **Local (Parakeet, experimental):** the app offers to download the model itself (661 MB, Wi-Fi recommended).
-   - **OpenAI API:** set the server URL, API key and model in **Settings**. Plain `http://` works for servers on your own network.
-3. Hold the mic and speak to check it works.
-4. Enable **Chato** as a keyboard in Android settings (*System › Keyboard › On-screen keyboard*, the name varies by phone).
-5. Optional: set up endpoints in **Settings** to send dictation to a URL instead of typing it.
+1. Open **Chato** and allow the microphone. The setup screen asks where your speech should be transcribed:
+   - **Parakeet (recommended):** downloads the model in the app (661 MB, Wi-Fi recommended).
+   - **Whisper small:** downloads the model in the app (243 MB).
+   - **OpenAI-compatible server:** opens Settings to set the server URL, API key and model. Plain `http://` works for servers on your own network.
+   - **Install Whisper from a zip file:** if you already have `whisper_small_int8.zip` on the phone.
+
+   Downloads are checked against a SHA-256 checksum and resume if interrupted.
+2. Hold the mic and speak to check it works. You can switch backends at the top of this screen or in Settings.
+3. Enable **Chato** as a keyboard in Android settings (*System › Keyboard › On-screen keyboard*, the name varies by phone).
+4. Optional: set up endpoints in **Settings** to send dictation to a URL instead of typing it.
 
 In any text field, switch to Chato with your keyboard's switch key. Its last key switches back. Some keyboards, e.g. HeliBoard, can open Chato from their mic key.
 

@@ -12,13 +12,11 @@
     <string name="mode_transcription">تفريغ صوتي</string>
     <string name="mode_translation">ترجمة</string>
     <string name="need_record_audio_permission">لم يتم منح إذن تسجيل الصوت</string>
-    <string name="download_model">تنزيل النموذج</string>
     <string name="status">الحالة:</string>
     <string name="append">إلحاق:</string>
     <string name="copy_to_clipboard">نسخ</string>
     <string name="info">معلومات</string>
     <string name="processing">جاري المعالجة…</string>
-    <string name="start">ابدأ</string>
     <string name="dialog_StarOnGitHub">هل أعجبك هذا التطبيق؟ الرجاء منح نجمة على GitHub أو شراء قهوة للمطور عبر PayPal.</string>
     <string name="instructions">اضغط مع الاستمرار على زر الميكروفون أثناء التحدث.</string>
     <string name="text_to_speech">تحويل النص إلى كلام:</string>

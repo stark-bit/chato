@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="need_record_audio_permission">RECORD_AUDIO engedély nincs megadva</string>
-    <string name="download_model">Modell letöltése</string>
     <string name="status">Állapot:</string>
     <string name="append">Hozzáfűzés:</string>
     <string name="copy_to_clipboard">Másolás</string>
     <string name="info">Információ</string>
     <string name="processing">Feldolgozás…</string>
-    <string name="start">INDÍTÁS</string>
     <string name="dialog_StarOnGitHub">Tetszik ez az alkalmazás? Adjon egy csillagot a GitHubon, vagy vegyen a fejlesztőnek egy kávét a PayPal-on keresztül.</string>
     <string name="dialog_Later_button">Talán később</string>
     <string name="please_wait">Várjon…</string>

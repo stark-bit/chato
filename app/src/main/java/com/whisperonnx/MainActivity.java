@@ -39,6 +39,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.whisperonnx.asr.Backends;
 import com.whisperonnx.asr.ParakeetRecognizer;
+import com.whisperonnx.asr.WhisperModel;
 import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
@@ -65,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvBackendInfo;
     /** Backend the loaded model was created for, so re-selecting it doesn't reload. */
     private int loadedBackend = -1;
-    private final ParakeetInstaller parakeetInstaller = new ParakeetInstaller(this);
+    private final ModelInstaller modelInstaller = new ModelInstaller(this);
     private ProgressBar processingBar;
     private ImageButton btnInfo;
     private GradientBorderDrawable gradientDrawable;
@@ -323,12 +324,19 @@ public class MainActivity extends AppCompatActivity {
                     spinnerBackend.setSelection(loadedBackend);
                     return;
                 }
-                Backends.select(sp, position);
-                loadBackend(position);
+                // A local model that isn't installed yet is downloaded first, then loaded
+                int previous = loadedBackend;
+                Runnable use = () -> {
+                    Backends.select(sp, position);
+                    loadBackend(position);
+                };
+                Runnable back = () -> spinnerBackend.setSelection(previous);
                 if (position == Backends.PARAKEET && !ParakeetRecognizer.isInstalled(mContext)) {
-                    parakeetInstaller.offer(
-                            () -> loadBackend(Backends.PARAKEET),  // reload now that the files exist
-                            () -> spinnerBackend.setSelection(Backends.WHISPER));
+                    modelInstaller.offerParakeet(use, back);
+                } else if (position == Backends.WHISPER && !WhisperModel.isInstalled(mContext)) {
+                    modelInstaller.offerWhisper(use, back);
+                } else {
+                    use.run();
                 }
             }
 
@@ -348,10 +356,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Settings may have changed the backend or server while we were away
+        // Settings may have changed the backend or server, or setup installed a model, while we were away
         if (spinnerBackend == null) return;
         int current = Backends.current(sp);
-        if (current != loadedBackend) {
+        if (current != loadedBackend || (mWhisper != null && mWhisper.modelInstalledSince())) {
             spinnerBackend.setSelection(current, false);
             loadBackend(current);
         } else {

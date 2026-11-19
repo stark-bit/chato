@@ -31,6 +31,7 @@ import androidx.preference.PreferenceManager;
 import com.google.android.material.slider.RangeSlider;
 import com.whisperonnx.asr.Backends;
 import com.whisperonnx.asr.ParakeetRecognizer;
+import com.whisperonnx.asr.WhisperModel;
 import com.whisperonnx.utils.EndpointSender;
 import com.whisperonnx.utils.ThemeUtils;
 
@@ -41,7 +42,7 @@ public class SettingsActivity extends AppCompatActivity {
     private static final String TAG = "SettingsActivity";
 
     private SharedPreferences sp = null;
-    private final ParakeetInstaller parakeetInstaller = new ParakeetInstaller(this);
+    private final ModelInstaller modelInstaller = new ModelInstaller(this);
     private CompoundButton modeBluetooth;
     private RangeSlider minSilence;
 
@@ -97,7 +98,9 @@ public class SettingsActivity extends AppCompatActivity {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 Backends.select(sp, position);
                 if (position == Backends.PARAKEET && !ParakeetRecognizer.isInstalled(SettingsActivity.this)) {
-                    parakeetInstaller.offer(() -> { }, () -> spinnerBackendType.setSelection(Backends.WHISPER));
+                    modelInstaller.offerParakeet(() -> { }, () -> spinnerBackendType.setSelection(Backends.WHISPER));
+                } else if (position == Backends.WHISPER && !WhisperModel.isInstalled(SettingsActivity.this)) {
+                    modelInstaller.offerWhisper(() -> { }, () -> { });
                 }
                 layoutOpenaiSettings.setVisibility(position == Backends.REMOTE ? View.VISIBLE : View.GONE);
             }

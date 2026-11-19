@@ -1,93 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- First-run setup: choose where speech is transcribed. Same rows and palette as Settings. -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:keepScreenOn="true"
+    android:background="@color/ime_bg"
     android:fitsSystemWindows="true"
+    android:keepScreenOn="true"
     tools:context=".SetupActivity">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="match_parent">
 
-        <ImageView
-            android:id="@+id/icon"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="2"
-            android:foregroundGravity="top"
-            android:focusableInTouchMode="true"
-            android:focusable="true"
-            android:src="@drawable/mic_dark_48dp" />
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="0dp"
+            android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_weight="4">
+            android:paddingBottom="24dp">
 
-            <LinearLayout
+            <ImageView
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="24dp"
+                android:importantForAccessibility="no"
+                android:src="@mipmap/ic_launcher" />
+
+            <TextView
+                style="@style/Settings.Summary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
-                android:orientation="vertical"
-                android:background="@drawable/rounded_button_frame"
-                android:gravity="center_horizontal">
+                android:layout_marginTop="16dp"
+                android:paddingHorizontal="20dp"
+                android:gravity="center_horizontal"
+                android:text="@string/setup_intro" />
 
-                <Button
-                    android:id="@+id/download_button"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginBottom="10dp"
-                    android:layout_width="wrap_content"
+            <!-- ===== On this phone ===== -->
+            <TextView
+                style="@style/Settings.Header"
+                android:text="@string/setup_on_phone" />
+
+            <LinearLayout
+                android:id="@+id/row_parakeet"
+                style="@style/Settings.Row"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:textSize="22dp"
-                    android:text="@string/download_model"
-                    android:onClick="downloadModel"/>
-
-                <Button
-                    android:id="@+id/install_button"
-                    android:layout_marginBottom="10dp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:textSize="22dp"
-                    android:text="@string/install_model"
-                    android:onClick="installModel"/>
-
-                <TextView
-                    android:id="@+id/extracted_file"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    android:gravity="center" />
-
-                <ProgressBar
-                    android:id="@+id/progress_bar"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:visibility="gone"
-                    android:layout_width="match_parent"
-                    android:layout_height="20dp"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginEnd="16dp"
-                    android:layout_marginBottom="16dp"
-                    android:progressTint="@color/colorAccent" />
-
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        style="@style/Settings.Title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/setup_parakeet_title" />
+                    <TextView
+                        android:id="@+id/summary_parakeet"
+                        style="@style/Settings.Summary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
             </LinearLayout>
-            <Button
-                android:id="@+id/button_start"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:layout_gravity="center_horizontal"
-                android:text="@string/start"
-                android:visibility="gone"
-                android:textSize="22dp"
-                android:textAllCaps="true"
-                android:onClick="startMain"/>
-        </LinearLayout>
 
-    </LinearLayout>
+            <LinearLayout
+                android:id="@+id/row_whisper"
+                style="@style/Settings.Row"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        style="@style/Settings.Title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/setup_whisper_title" />
+                    <TextView
+                        android:id="@+id/summary_whisper"
+                        style="@style/Settings.Summary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ===== On a server ===== -->
+            <TextView
+                style="@style/Settings.Header"
+                android:text="@string/setup_on_server" />
+
+            <LinearLayout
+                android:id="@+id/row_server"
+                style="@style/Settings.Row"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        style="@style/Settings.Title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/setup_server_title" />
+                    <TextView
+                        style="@style/Settings.Summary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/setup_server_summary" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ===== Offline install of the Whisper zip ===== -->
+            <TextView
+                style="@style/Settings.Header"
+                android:text="@string/setup_other" />
+
+            <LinearLayout
+                android:id="@+id/row_zip"
+                style="@style/Settings.Row"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        style="@style/Settings.Title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/setup_zip_title" />
+                    <TextView
+                        android:id="@+id/summary_zip"
+                        style="@style/Settings.Summary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/setup_zip_summary" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/progress_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="20dp"
+                android:indeterminate="true"
+                android:indeterminateTint="@color/ime_accent"
+                android:visibility="gone" />
+        </LinearLayout>
+    </ScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

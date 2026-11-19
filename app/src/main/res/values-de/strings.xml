@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="need_record_audio_permission">"RECORD_AUDIO Berechtigung fehlt"</string>
-    <string name="download_model">Modell herunterladen</string>
     <string name="status">Status:</string>
     <string name="append">Anhängen:</string>
     <string name="copy_to_clipboard">Kopieren</string>
     <string name="info">Info</string>
     <string name="processing">Verarbeitung…</string>
-    <string name="start">START</string>
     <string name="dialog_StarOnGitHub">Mögen Sie diese App? Bitte vergeben Sie einen Stern auf GitHub oder spendieren Sie dem Entwickler einen Kaffee über PayPal.</string>
     <string name="dialog_Later_button">Vielleicht später</string>
     <string name="please_wait">Bitte warten…</string>
@@ -26,7 +24,6 @@
     <string name="tts_initialization_failed">Sprachausgabe: Initialisierung fehlgeschlagen</string>
     <string name="auto_button">automatischer Modus</string>
     <string name="error_no_input">Keine Sprache detektiert</string>
-    <string name="install_model">Modell installieren</string>
     <string name="settings">Einstellungen</string>
     <string name="settings_general">Allgemein</string>
     <string name="settings_minimum_silence">Mindeststille im Automatikmodus (ms)</string>
