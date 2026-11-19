@@ -4,7 +4,6 @@
     <string name="download_model">Modell letöltése</string>
     <string name="status">Állapot:</string>
     <string name="append">Hozzáfűzés:</string>
-    <string name="translate">Fordítsa le angolra:</string>
     <string name="copy_to_clipboard">Másolás</string>
     <string name="info">Információ</string>
     <string name="processing">Feldolgozás…</string>

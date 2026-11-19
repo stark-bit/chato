@@ -6,7 +6,6 @@
     <string name="download_model">Download Model</string>
     <string name="status">Status:</string>
     <string name="append">Append:</string>
-    <string name="translate">Translate to English:</string>
     <string name="copy_to_clipboard">Copy</string>
     <string name="info">Info</string>
     <string name="processing">Processing…</string>

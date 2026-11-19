@@ -4,7 +4,6 @@
     <color name="lightGrey">#FF334155</color>
     <color name="darkGrey">#FF1E293B</color>
     <color name="colorAccent">#FF64748B</color>
-    <color name="colorAccentDark">#FF475569</color>
     <color name="windowBackground">#FF0F172A</color>
     <color name="textPrimary">#FFF8FAFC</color>
     <!-- IME keyboard palette (FUTO-like). Overridden by dynamic colours in values-v31 -->

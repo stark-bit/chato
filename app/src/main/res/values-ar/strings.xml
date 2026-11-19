@@ -15,7 +15,6 @@
     <string name="download_model">تنزيل النموذج</string>
     <string name="status">الحالة:</string>
     <string name="append">إلحاق:</string>
-    <string name="translate">ترجمة إلى الإنجليزية:</string>
     <string name="copy_to_clipboard">نسخ</string>
     <string name="info">معلومات</string>
     <string name="processing">جاري المعالجة…</string>

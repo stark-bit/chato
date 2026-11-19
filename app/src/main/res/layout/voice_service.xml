@@ -66,11 +66,19 @@
             android:src="@drawable/ic_ime_bullet_list"
             android:tint="@color/ime_on_key"
             android:contentDescription="@string/bullet_button"/>
-        <!-- Spacer: keys keep FUTO size, cloud toggle sits far right -->
-        <View
+        <!-- Spacer that doubles as the status line, so messages never change the keyboard height -->
+        <TextView
+            android:id="@+id/tv_status_inline"
             android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:paddingHorizontal="4dp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textSize="12sp"
+            android:lineSpacingMultiplier="0.9"
+            android:textColor="@color/ime_error" />
         <!-- Send target: cursor / endpoint 1 / endpoint 2 (badge shows the number) -->
         <FrameLayout
             android:layout_width="32dp"

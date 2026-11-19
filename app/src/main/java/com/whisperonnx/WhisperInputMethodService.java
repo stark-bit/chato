@@ -57,7 +57,9 @@ public class WhisperInputMethodService extends InputMethodService {
     private EndpointSender.Endpoint sessionEndpoint;
     private final StringBuilder sessionBuffer = new StringBuilder();
     private boolean sessionEnded = true;
-    private TextView tvStatus;
+    private TextView tvStatus;        // line above the main row, used while the top row is collapsed
+    private TextView tvStatusInline;  // gap in the top row, used while it is expanded
+    private String statusMessage = "";
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
     private SharedPreferences sp = null;
@@ -165,6 +167,7 @@ public class WhisperInputMethodService extends InputMethodService {
         btnBackend.setActivated(backendType.equals("openai"));
 
         tvStatus = view.findViewById(R.id.tv_status);
+        tvStatusInline = view.findViewById(R.id.tv_status_inline);
         modeAuto = sp.getBoolean("imeModeAuto",false);
         btnModeAuto.setActivated(modeAuto);
         layoutButtons = view.findViewById(R.id.layout_buttons);
@@ -193,8 +196,7 @@ public class WhisperInputMethodService extends InputMethodService {
                     handler.post(() -> onSessionEnded());
                     handler.post(() -> {
                         revertBackground();
-                        tvStatus.setText(getString(R.string.error_no_input));
-                        tvStatus.setVisibility(View.VISIBLE);
+                        showStatus(getString(R.string.error_no_input));
                     });
                 }
             }
@@ -366,13 +368,11 @@ public class WhisperInputMethodService extends InputMethodService {
             beginSession();
             startRecording();
             handler.post(() -> {
-                tvStatus.setText("");
-                tvStatus.setVisibility(View.GONE);
+                clearStatus();
             });
         } else {
             handler.post(() -> {
-                tvStatus.setText(getString(R.string.please_wait));
-                tvStatus.setVisibility(View.VISIBLE);
+                showStatus(getString(R.string.please_wait));
             });
         }
     }
@@ -403,8 +403,7 @@ public class WhisperInputMethodService extends InputMethodService {
                         && !message.equals(Whisper.MSG_PROCESSING_DONE)
                         && !message.equals(Whisper.MSG_QUEUE_EMPTY)) {  // status messages, not errors
                     handler.post(() -> {  // errors, e.g. network / API
-                        tvStatus.setText(message);
-                        tvStatus.setVisibility(View.VISIBLE);
+                        showStatus(message);
                     });
                 }
             }
@@ -412,8 +411,7 @@ public class WhisperInputMethodService extends InputMethodService {
             @Override
             public void onResultReceived(WhisperResult whisperResult) {
                 handler.post(() -> {
-                    tvStatus.setText("");
-                    tvStatus.setVisibility(View.GONE);
+                    clearStatus();
                 });
 
                 String text = whisperResult.getResult().trim();
@@ -480,16 +478,31 @@ public class WhisperInputMethodService extends InputMethodService {
                 getColor(active ? R.color.ime_accent : R.color.ime_on_key)));
     }
 
+    /** Shows a status/error message without moving the keys (see updateStatusViews). Main thread only. */
     private void showStatus(String message) {
         handler.removeCallbacks(hideStatus);
-        tvStatus.setText(message);
-        tvStatus.setVisibility(View.VISIBLE);
+        statusMessage = message;
+        updateStatusViews();
     }
 
-    private final Runnable hideStatus = () -> {
-        tvStatus.setText("");
-        tvStatus.setVisibility(View.GONE);
-    };
+    private void clearStatus() {
+        handler.removeCallbacks(hideStatus);
+        statusMessage = "";
+        updateStatusViews();
+    }
+
+    private final Runnable hideStatus = this::clearStatus;
+
+    /**
+     * With the top row expanded the message sits in its empty middle, so the keyboard height
+     * never changes. Collapsed, it falls back to a line above the main row.
+     */
+    private void updateStatusViews() {
+        boolean empty = statusMessage.isEmpty();
+        tvStatusInline.setText(toolbarExpanded ? statusMessage : "");
+        tvStatus.setText(toolbarExpanded ? "" : statusMessage);
+        tvStatus.setVisibility(!toolbarExpanded && !empty ? View.VISIBLE : View.GONE);
+    }
 
     private void showTransientStatus(String message) {
         showStatus(message);
@@ -504,8 +517,7 @@ public class WhisperInputMethodService extends InputMethodService {
     private boolean checkRecordPermission() {
         int permission = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO);
         if (permission != PackageManager.PERMISSION_GRANTED) {
-            tvStatus.setVisibility(View.VISIBLE);
-            tvStatus.setText(getString(R.string.need_record_audio_permission));
+            showStatus(getString(R.string.need_record_audio_permission));
         }
         return (permission == PackageManager.PERMISSION_GRANTED);
     }
@@ -520,6 +532,7 @@ public class WhisperInputMethodService extends InputMethodService {
     private void updateToolbarVisibility() {
         layoutToolbar.setVisibility(toolbarExpanded ? View.VISIBLE : View.GONE);
         btnToolbarToggle.setRotation(toolbarExpanded ? 180f : 0f);
+        updateStatusViews();
     }
 
     /** Deletes the word (plus trailing whitespace) before the cursor, or the selection if any. */

@@ -16,10 +16,8 @@
 
 package com.whisperonnx.voice_translation.neural_networks.voice;
 
-import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -59,7 +57,6 @@ public class CustomLocale implements Comparable<CustomLocale>, Serializable {
         }
         return locale;
     }
-
 
     public String getLanguage() {
         return locale.getLanguage();
@@ -111,16 +108,6 @@ public class CustomLocale implements Comparable<CustomLocale>, Serializable {
 
     public String getISO3Country() throws MissingResourceException {
         return locale.getISO3Country();
-    }
-
-    public String getCode() {
-        final StringBuilder language = new StringBuilder(locale.getLanguage());
-        final String country = locale.getCountry();
-        if (!TextUtils.isEmpty(country)) {
-            language.append("-");
-            language.append(country);
-        }
-        return language.toString();
     }
 
     public String getDisplayLanguage() {
@@ -218,29 +205,6 @@ public class CustomLocale implements Comparable<CustomLocale>, Serializable {
             }
         }
         return found;
-    }
-
-    public static int search(@Nullable ArrayList<CustomLocale> array, @Nullable CustomLocale locale) {
-        int index = -1;
-        if (array != null && locale != null) {
-            // look for a locale that matches perfectly
-            for (int i = 0; i < array.size() && index == -1; i++) {
-                if (locale.equals(array.get(i))) {
-                    index = i;
-                }
-            }
-            // if we don't find anything, we look for a locale for which at least the language matches
-            for (int i = 0; i < array.size() && index == -1; i++) {
-                if (locale.equalsLanguage(array.get(i))) {
-                    index = i;
-                }
-            }
-        }
-        return index;
-    }
-
-    public Locale getLocale() {
-        return locale;
     }
 
     public static CustomLocale getDefault() {
