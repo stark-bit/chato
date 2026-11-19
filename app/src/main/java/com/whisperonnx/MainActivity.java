@@ -1,7 +1,6 @@
 package com.whisperonnx;
 
 import static com.whisperonnx.voice_translation.neural_networks.voice.Recognizer.ACTION_TRANSCRIBE;
-import static com.whisperonnx.voice_translation.neural_networks.voice.Recognizer.ACTION_TRANSLATE;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -18,26 +17,28 @@ import android.os.CountDownTimer;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.preference.PreferenceManager;
 import android.provider.Settings;
-import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.CheckBox;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
 import android.widget.ImageButton;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.EditText;
-import androidx.activity.OnBackPressedCallback;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.materialswitch.MaterialSwitch;
+import com.whisperonnx.asr.Backends;
+import com.whisperonnx.asr.ParakeetRecognizer;
 import com.whisperonnx.asr.Recorder;
 import com.whisperonnx.asr.Whisper;
 import com.whisperonnx.asr.WhisperResult;
@@ -50,19 +51,21 @@ import org.woheller69.freeDroidWarn.FreeDroidWarn;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
     private Context mContext;
     private static final String TAG = "MainActivity";
 
     private TextView tvStatus;
-    private EditText tvResult;
+    private TextView tvResult;
     private FloatingActionButton fabCopy;
     private ImageButton btnRecord;
-    private LinearLayout layoutTTS;
-    private CheckBox append;
-    private CheckBox modeTTS;
+    private MaterialSwitch append;
+    private Spinner spinnerBackend;
+    private TextView tvBackendInfo;
+    /** Backend the loaded model was created for, so re-selecting it doesn't reload. */
+    private int loadedBackend = -1;
+    private final ParakeetInstaller parakeetInstaller = new ParakeetInstaller(this);
     private ProgressBar processingBar;
     private ImageButton btnInfo;
     private GradientBorderDrawable gradientDrawable;
@@ -93,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(() -> {
             if (gradientDrawable != null) gradientDrawable.stopAnimation();
             GradientBorderDrawable.restoreGlowClipping(btnRecord);
-            btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
+            btnRecord.setBackgroundResource(R.drawable.ime_mic_background);
         });
     }
 
@@ -104,12 +107,10 @@ public class MainActivity extends AppCompatActivity {
 
     private CountDownTimer countDownTimer;
     private long startTime = 0;
-    private TextToSpeech tts;
 
     @Override
     protected void onDestroy() {
         deinitModel();
-        deinitTTS();
         super.onDestroy();
     }
 
@@ -149,32 +150,10 @@ public class MainActivity extends AppCompatActivity {
         processingBar = findViewById(R.id.processing_bar);
         sp = PreferenceManager.getDefaultSharedPreferences(this);
         append = findViewById(R.id.mode_append);
-
-        layoutTTS = findViewById(R.id.layout_tts);
-        modeTTS = findViewById(R.id.mode_tts);
-        modeTTS.setOnCheckedChangeListener((compoundButton, isChecked) -> {
-            if (isChecked) {
-                tts = new TextToSpeech(mContext, status -> {
-                    if (status == TextToSpeech.SUCCESS) {
-                        int result = tts.setLanguage(Locale.US);
-                        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                            runOnUiThread(() -> {
-                                Toast.makeText(mContext, mContext.getString(R.string.tts_language_not_supported),Toast.LENGTH_SHORT).show();
-                                modeTTS.setChecked(false);
-                            });
-
-                        }
-                    } else {
-                        runOnUiThread(() -> Toast.makeText(mContext, mContext.getString(R.string.tts_initialization_failed),Toast.LENGTH_SHORT).show());
-                    }
-                });
-            } else {
-                deinitTTS();
-            }
-        });
-
-        // Initialize default model to use
-        initModel();
+        findViewById(R.id.row_append).setOnClickListener(v -> append.toggle());
+        tvStatus = findViewById(R.id.tvStatus);
+        tvStatus.setText(R.string.test_ready);
+        setupBackendPicker();
 
         btnInfo = findViewById(R.id.btnInfo);
         btnInfo.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/woheller69/whisperIMEplus#Donate"))));
@@ -215,16 +194,7 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        tvStatus = findViewById(R.id.tvStatus);
         tvResult = findViewById(R.id.tvResult);
-        tvResult.setOnClickListener(view -> tvResult.setCursorVisible(true));
-        getOnBackPressedDispatcher().addCallback(new OnBackPressedCallback(true) {
-            @Override
-            public void handleOnBackPressed() {
-                if (tvResult.isCursorVisible()) tvResult.setCursorVisible(false);
-                else finish();
-            }
-        });
         fabCopy = findViewById(R.id.fabCopy);
         fabCopy.setOnClickListener(v -> {
             // Get the text from tvResult
@@ -250,7 +220,7 @@ public class MainActivity extends AppCompatActivity {
                     HapticFeedback.vibrate(mContext);
                     revertBackground();
 
-                    startProcessing(ACTION_TRANSLATE);
+                    startProcessing(ACTION_TRANSCRIBE);
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
                     HapticFeedback.vibrate(mContext);
                     if (countDownTimer!=null) { countDownTimer.cancel();}
@@ -300,19 +270,29 @@ public class MainActivity extends AppCompatActivity {
                 if (message.equals(Whisper.MSG_PROCESSING)) {
                     runOnUiThread(() -> tvStatus.setText(getString(R.string.processing)));
                     startTime = System.currentTimeMillis();
+                } else if (!message.equals(Whisper.MSG_PROCESSING_DONE) && !message.equals(Whisper.MSG_QUEUE_EMPTY)) {
+                    // Errors (server, model loading, empty result): show them instead of spinning forever
+                    runOnUiThread(() -> {
+                        processingBar.setIndeterminate(false);
+                        tvStatus.setText(message);
+                    });
                 }
             }
 
             @Override
             public void onResultReceived(WhisperResult whisperResult) {
                 long timeTaken = System.currentTimeMillis() - startTime;
-                runOnUiThread(() -> tvStatus.setText(getString(R.string.processing_done) + timeTaken + "\u2009ms" + "\n"+ getString(R.string.language) + " " + new Locale(whisperResult.getLanguage()).getDisplayLanguage() + " " + (whisperResult.getTask() == ACTION_TRANSCRIBE ? getString(R.string.mode_transcription) : getString(R.string.mode_translation))));
-                runOnUiThread(() -> processingBar.setIndeterminate(false));
-                Log.d(TAG, "Result: " + whisperResult.getResult() + " " + whisperResult.getLanguage() + " " + (whisperResult.getTask() == ACTION_TRANSCRIBE ? "transcribing" : "translating"));
-                runOnUiThread(() -> tvResult.append(whisperResult.getResult()));
-                if (modeTTS.isChecked()){
-                    tts.speak(whisperResult.getResult(), TextToSpeech.QUEUE_FLUSH, null, null);
-                }
+                String text = whisperResult.getResult() == null ? "" : whisperResult.getResult().trim();
+                Log.d(TAG, "Result: " + text);
+                runOnUiThread(() -> {
+                    processingBar.setIndeterminate(false);
+                    tvStatus.setText(getString(R.string.test_done, timeTaken) + " · " + Backends.LABELS[loadedBackend]);
+                    if (text.isEmpty()) return;
+                    if (tvResult.length() > 0 && !Character.isWhitespace(tvResult.getText().charAt(tvResult.length() - 1))) {
+                        tvResult.append(" ");
+                    }
+                    tvResult.append(text);
+                });
             }
         });
     }
@@ -324,10 +304,58 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void deinitTTS(){
-        if (tts != null) {
-            tts.stop();
-            tts.shutdown();
+    /** Backend dropdown: switching reloads the model so the next recording uses it. */
+    private void setupBackendPicker() {
+        spinnerBackend = findViewById(R.id.spinner_backend);
+        tvBackendInfo = findViewById(R.id.tvBackendInfo);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, Backends.LABELS);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerBackend.setAdapter(adapter);
+        spinnerBackend.setSelection(Backends.current(sp), false);
+        loadBackend(Backends.current(sp));
+
+        spinnerBackend.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position == loadedBackend) return;
+                if ((mRecorder != null && mRecorder.isInProgress()) || (mWhisper != null && mWhisper.isInProgress())) {
+                    Toast.makeText(mContext, getString(R.string.please_wait), Toast.LENGTH_SHORT).show();
+                    spinnerBackend.setSelection(loadedBackend);
+                    return;
+                }
+                Backends.select(sp, position);
+                loadBackend(position);
+                if (position == Backends.PARAKEET && !ParakeetRecognizer.isInstalled(mContext)) {
+                    parakeetInstaller.offer(
+                            () -> loadBackend(Backends.PARAKEET),  // reload now that the files exist
+                            () -> spinnerBackend.setSelection(Backends.WHISPER));
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+    }
+
+    private void loadBackend(int backend) {
+        deinitModel();
+        initModel();
+        loadedBackend = backend;
+        tvBackendInfo.setText(Backends.describe(sp, backend, ParakeetRecognizer.isInstalled(this)));
+        tvStatus.setText(R.string.test_ready);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Settings may have changed the backend or server while we were away
+        if (spinnerBackend == null) return;
+        int current = Backends.current(sp);
+        if (current != loadedBackend) {
+            spinnerBackend.setSelection(current, false);
+            loadBackend(current);
+        } else {
+            tvBackendInfo.setText(Backends.describe(sp, current, ParakeetRecognizer.isInstalled(this)));
         }
     }
 

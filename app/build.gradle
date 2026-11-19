@@ -12,11 +12,12 @@ android {
     }
     
     defaultConfig {
-        applicationId "org.woheller69.whisperplus"
+        applicationId "dev.starkbit.chato"  // own ID: installs alongside upstream Whisper+
         minSdk 28
         targetSdk 35
-        versionCode 17
-        versionName "1.7"
+        versionCode 18
+        versionName "1.8"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
     }
 
@@ -25,8 +26,22 @@ android {
         viewBinding = true
     }
 
+    // Release signing comes from ~/.gradle/gradle.properties (never the repo). Without those
+    // properties the release APK is built unsigned, so anyone can still build.
+    signingConfigs {
+        release {
+            if (project.hasProperty('CHATO_KEYSTORE')) {
+                storeFile file(CHATO_KEYSTORE)
+                storePassword CHATO_KEYSTORE_PASSWORD
+                keyAlias CHATO_KEY_ALIAS
+                keyPassword CHATO_KEY_PASSWORD
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (project.hasProperty('CHATO_KEYSTORE')) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             ndk {
@@ -77,5 +92,8 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
     testImplementation 'org.json:json:20240303'  // real JSON parser (android.jar's is a stub)
+
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
 
 }

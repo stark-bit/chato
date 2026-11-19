@@ -6,5 +6,6 @@
         android:orderInCategory="80"
         android:icon="@drawable/ic_settings"
         app:showAsAction="always"
+        app:iconTint="@color/ime_on_key"
         android:title="Settings" />
 </menu>

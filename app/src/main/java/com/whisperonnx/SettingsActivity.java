@@ -2,6 +2,7 @@ package com.whisperonnx;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -28,6 +29,8 @@ import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.slider.RangeSlider;
+import com.whisperonnx.asr.Backends;
+import com.whisperonnx.asr.ParakeetRecognizer;
 import com.whisperonnx.utils.EndpointSender;
 import com.whisperonnx.utils.ThemeUtils;
 
@@ -38,6 +41,7 @@ public class SettingsActivity extends AppCompatActivity {
     private static final String TAG = "SettingsActivity";
 
     private SharedPreferences sp = null;
+    private final ParakeetInstaller parakeetInstaller = new ParakeetInstaller(this);
     private CompoundButton modeBluetooth;
     private RangeSlider minSilence;
 
@@ -63,6 +67,9 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
 
+        findViewById(R.id.row_test_transcription).setOnClickListener(v ->
+                startActivity(new Intent(this, MainActivity.class)));
+
         // ===== OPENAI REMOTE BACKEND SETTINGS =====
         Spinner spinnerBackendType = findViewById(R.id.spinner_backend_type);
         LinearLayout layoutOpenaiSettings = findViewById(R.id.layout_openai_settings);
@@ -70,14 +77,14 @@ public class SettingsActivity extends AppCompatActivity {
         EditText editApiKey = findViewById(R.id.edit_openai_api_key);
         EditText editModel = findViewById(R.id.edit_openai_model);
 
-        String[] backendOptions = {"Local (ONNX)", "OpenAI API"};
+        // "local" + an engine, or the remote API. The keyboard's cloud key switches local <-> remote.
         ArrayAdapter<String> backendAdapter = new ArrayAdapter<>(
-                this, android.R.layout.simple_spinner_item, backendOptions);
+                this, android.R.layout.simple_spinner_item, Backends.LABELS);
         backendAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerBackendType.setAdapter(backendAdapter);
 
         String backendType = sp.getString("backend_type", "local");
-        spinnerBackendType.setSelection(backendType.equals("openai") ? 1 : 0);
+        spinnerBackendType.setSelection(Backends.current(sp));
 
         editEndpoint.setText(sp.getString("openai_endpoint", "https://api.openai.com/v1/audio/transcriptions"));
         editApiKey.setText(sp.getString("openai_api_key", ""));
@@ -88,9 +95,11 @@ public class SettingsActivity extends AppCompatActivity {
         spinnerBackendType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String selected = position == 1 ? "openai" : "local";
-                sp.edit().putString("backend_type", selected).apply();
-                layoutOpenaiSettings.setVisibility(selected.equals("openai") ? View.VISIBLE : View.GONE);
+                Backends.select(sp, position);
+                if (position == Backends.PARAKEET && !ParakeetRecognizer.isInstalled(SettingsActivity.this)) {
+                    parakeetInstaller.offer(() -> { }, () -> spinnerBackendType.setSelection(Backends.WHISPER));
+                }
+                layoutOpenaiSettings.setVisibility(position == Backends.REMOTE ? View.VISIBLE : View.GONE);
             }
 
             @Override

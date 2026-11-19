@@ -15,6 +15,38 @@
             android:orientation="vertical"
             android:paddingBottom="24dp">
 
+            <!-- ===== Quick entry to the test screen (MainActivity) ===== -->
+            <LinearLayout
+                android:id="@+id/row_test_transcription"
+                style="@style/Settings.Row"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="20dp"
+                    android:src="@drawable/ic_mic_48dp"
+                    android:importantForAccessibility="no"
+                    app:tint="@color/ime_accent" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        style="@style/Settings.Title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_test_title" />
+                    <TextView
+                        style="@style/Settings.Summary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_test_summary" />
+                </LinearLayout>
+            </LinearLayout>
+
             <!-- ===== Transcription backend ===== -->
             <TextView
                 style="@style/Settings.Header"

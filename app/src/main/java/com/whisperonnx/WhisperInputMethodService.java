@@ -147,6 +147,11 @@ public class WhisperInputMethodService extends InputMethodService {
     @Override
     public void onStartInputView(EditorInfo attribute, boolean restarting){
 
+        // Reload if the local engine was changed in Settings while the model was loaded
+        if (mWhisper != null && !mWhisper.getLocalEngine().equals(Whisper.localEngine(sp))
+                && !(mRecorder != null && mRecorder.isInProgress())) {
+            deinitModel();
+        }
         if (mWhisper == null)  initModel();
 
     }

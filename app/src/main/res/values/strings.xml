@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Whisper+</string>
-    <string name="voice_input">Whisper+ Voice Input</string>
+    <string name="app_name" translatable="false">Chato</string>
+    <string name="voice_input" translatable="false">Chato</string>
     <string name="need_record_audio_permission">"RECORD_AUDIO permission is not granted"</string>
     <string name="download_model">Download Model</string>
     <string name="status">Status:</string>
@@ -54,7 +54,14 @@
     <string name="install_model">Install model</string>
     <string name="settings">Settings</string>
     <string name="settings_general">General</string>
-    <string name="whisper_test">Whisper+ Test</string>
+    <string name="whisper_test" translatable="false">Chato</string>
+    <string name="settings_test_title">Test transcription</string>
+    <string name="settings_test_summary">Record and see the text from the current backend</string>
+    <string name="test_append">Append</string>
+    <string name="append_summary">Keep earlier results and add new text after them</string>
+    <string name="test_result">Result</string>
+    <string name="test_ready">Ready</string>
+    <string name="test_done">Done in %1$d ms</string>
     <string name="settings_minimum_silence">Minimum silence in automatic mode (ms)</string>
     <string name="setting_bluetooth">Use Bluetooth devices</string>
 

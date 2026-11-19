@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Servers and endpoints are URLs the user types in Settings, often self-hosted on a LAN
+     without TLS (e.g. http://192.168.x.x:5092). Allow http everywhere; typing an http:// URL
+     is the user's explicit choice. -->
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">192.168.1.9</domain>
-        <domain includeSubdomains="true">10.0.0.0</domain>
-        <domain includeSubdomains="true">10.0.2.2</domain>  <!-- Android emulator host -->
-        <domain includeSubdomains="false">localhost</domain>  <!-- e.g. Termux or adb reverse -->
-        <domain includeSubdomains="false">127.0.0.1</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

@@ -1,13 +1,17 @@
-# Whisper+ (stark-bit fork)
+# Chato
+
+<img src="fastlane/metadata/android/en-US/images/icon.png" width="96"/>
 
 A voice keyboard for Android. Hold the mic, speak, and the text lands at the cursor
-or is POSTed to a URL you choose. Transcription runs on the phone (Whisper ONNX)
+or is POSTed to a URL you choose. Transcription runs on the phone (Whisper or NVIDIA Parakeet)
 or on any OpenAI-compatible server.
 
-This is a fork of [woheller69/whisperIMEplus](https://github.com/woheller69/whisperIMEplus).
+Chato is a fork of [Whisper+](https://github.com/woheller69/whisperIMEplus) by woheller69.
 It is English-only, and the keyboard was rebuilt around dictating notes.
 
-<img src="docs/screenshots/keyboard.jpg" height="500"/>
+<img src="docs/screenshots/test-screen.jpg" height="500"/> <img src="docs/screenshots/test-screen-long.jpg" height="500"/>
+
+Parakeet on the phone: a short sentence in 170 ms, and a longer dictation (counting to 30) in 2.3 s.
 
 ## The keyboard
 
@@ -46,9 +50,23 @@ Every key gives a short haptic tick.
 - Bluetooth headset microphone (optional).
 
 ### Transcription backends
-- **Local (ONNX):** Whisper runs entirely on the phone, offline. The model is downloaded from HuggingFace on first launch.
+Choose one in Settings or on the test screen:
+- **Local (Whisper small):** Whisper small (int8 ONNX) runs entirely on the phone, offline. On first launch the app asks you to download the model (about 243 MB) and pick the zip.
+- **Local (Parakeet, experimental):** NVIDIA Parakeet TDT 0.6B v2 (int8 ONNX), also fully on the phone and offline. It is English-only, adds punctuation and capitals, and is much faster on short dictation. Choosing it offers to download the model (661 MB) from Hugging Face; each file is checked against a SHA-256 checksum, and an interrupted download resumes.
 - **OpenAI API:** any OpenAI-compatible `/v1/audio/transcriptions` server. Set its URL, API key and model in Settings. This works with self-hosted servers too, for example a Whisper or Parakeet server on your LAN.
-- Switch between the two with the cloud key without leaving the keyboard.
+
+The cloud key on the keyboard switches between the remote server and your chosen local engine.
+
+Measured on a OnePlus phone with a Snapdragon SM8845 (`make bench`, second run):
+
+| Clip | Whisper small | Parakeet 0.6B |
+|---|---|---|
+| 3 s | 1.25 s | 0.14 s |
+| 11 s | 1.35 s | 0.56 s |
+| 30 s | 2.0 s | 2.1 s |
+| Peak memory | about 906 MB | about 664 MB |
+
+Whisper always processes a full 30 s window, so even short clips take over a second. Parakeet only processes the audio you recorded.
 
 ### Send to endpoint
 Up to two endpoints can be configured in Settings. Each has:
@@ -71,31 +89,78 @@ Example: append each dictation as a bullet to a note by replacing a marker in it
 {"edits":[{"oldText":"<!-- voice -->","newText":"- {{text}}\n<!-- voice -->"}]}
 ```
 
+### Test screen
+Pictured at the top. Open it from the top of Settings, or launch the app. Use it to try each backend:
+- pick a backend; the line underneath says what will actually run (on device, or which server and model);
+- hold the mic to record;
+- read the result and the time taken, or any error; copy the text with the button.
+
 ### Also included
-- **Standalone app:** record, then copy the transcript.
 - **System voice input** (`RecognitionService`) and `RecognizerIntent.ACTION_RECOGNIZE_SPEECH`, so other apps can use it.
+
+## Install
+
+**Download:** get the APK from [Releases](https://github.com/stark-bit/whisperIMEplus/releases) and open it on the phone (allow installing from your browser or file manager when asked). Arm64 phones only, Android 9 or newer.
+
+The package name is `dev.starkbit.chato`, so it installs alongside the original Whisper+ from F-Droid.
+
+**Or build it yourself** (see [Building](#building)).
 
 ## Setup
 
-1. Install the app, open it and download the Whisper model (needed for the local backend).
-2. Enable **Whisper+** as a keyboard in Android settings.
-3. Optional: in **Settings**, configure the OpenAI-compatible backend and endpoints.
-4. Use the keyboard's last key to switch back to your normal keyboard. Some keyboards, e.g. HeliBoard, can open Whisper+ from their mic key.
+1. Open **Chato** and allow the microphone. On first launch the Whisper model download screen opens; go back if you'd rather use Parakeet or a server.
+2. Pick a backend at the top of the screen:
+   - **Local (Whisper small):** the app asks you to download the model in your browser (about 243 MB), then pick the downloaded zip.
+   - **Local (Parakeet, experimental):** the app offers to download the model itself (661 MB, Wi-Fi recommended).
+   - **OpenAI API:** set the server URL, API key and model in **Settings**. Plain `http://` works for servers on your own network.
+3. Hold the mic and speak to check it works.
+4. Enable **Chato** as a keyboard in Android settings (*System › Keyboard › On-screen keyboard*, the name varies by phone).
+5. Optional: set up endpoints in **Settings** to send dictation to a URL instead of typing it.
+
+In any text field, switch to Chato with your keyboard's switch key. Its last key switches back. Some keyboards, e.g. HeliBoard, can open Chato from their mic key.
 
 To use it as system voice input: *System › Languages › Speech › Voice input*. If it does not appear in that list:
 
 ```
-adb shell settings put secure voice_recognition_service org.woheller69.whisperplus/com.whisperonnx.WhisperRecognitionService
+adb shell settings put secure voice_recognition_service dev.starkbit.chato/com.whisperonnx.WhisperRecognitionService
 ```
 
 ## Building
 
+You need:
+- **JDK 17**;
+- the **Android SDK** with platform 35. Android Studio installs both. Point the build at the SDK with `ANDROID_HOME`, or a `local.properties` file containing `sdk.dir=/path/to/Android/Sdk`;
+- `make` and `adb` for the shortcuts below. Plain `./gradlew assembleDebug` also works.
+
 ```
-make build     # debug APK
-make run       # build and install on a connected device
+git clone https://github.com/stark-bit/whisperIMEplus.git
+cd whisperIMEplus
+make run       # build the debug APK and install it on the connected phone (USB debugging on)
+```
+
+Other targets:
+
+```
+make build     # debug APK only: app/build/outputs/apk/debug/app-debug.apk
 make test      # JVM unit tests, no device needed
+make bench     # compare Whisper and Parakeet on the phone using the WAVs in bench/
+make push-parakeet PARAKEET_DIR=/path/to/models  # copy Parakeet files over USB instead of downloading
+make release   # signed release APK in dist/ (needs a signing key, see below)
 make help      # all targets
 ```
+
+A debug build and a release build are signed with different keys and can't replace each other. Uninstall one before installing the other; this deletes the app's settings and models.
+
+**Release signing.** `make release` signs with the key named in `~/.gradle/gradle.properties`:
+
+```
+CHATO_KEYSTORE=/path/to/release.jks
+CHATO_KEYSTORE_PASSWORD=…
+CHATO_KEY_ALIAS=…
+CHATO_KEY_PASSWORD=…
+```
+
+Without these properties the release APK is built unsigned. Android won't install an unsigned APK until you sign it yourself.
 
 ## License
 
@@ -105,7 +170,8 @@ GPLv3, © woheller69. Fork changes are under the same license.
 - Uses code from [Whisper-Android](https://github.com/vilassn/whisper_android) (MIT).
 - Uses [OpenAI Whisper](https://github.com/openai/whisper) (MIT). Details are in the [paper](https://arxiv.org/abs/2212.04356).
 - Uses [Android VAD](https://github.com/gkonovalov/android-vad) (MIT).
-- The model is downloaded from [HuggingFace](https://huggingface.co/DocWolle/whisperOnnx) (MIT).
+- The Whisper model is downloaded from [HuggingFace](https://huggingface.co/DocWolle/whisperOnnx) (MIT).
+- The optional Parakeet model is [NVIDIA Parakeet TDT 0.6B v2](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2) (CC-BY-4.0), in the ONNX export by [istupakov](https://huggingface.co/istupakov/parakeet-tdt-0.6b-v2-onnx).
 
 ---
 

@@ -1,156 +1,158 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Test screen, styled like Settings (FUTO-style rows on the IME palette) -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:background="@color/ime_bg"
+    android:fitsSystemWindows="true"
+    android:importantForAutofill="noExcludeDescendants">
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingBottom="16dp">
+
+        <!-- ===== Backend ===== -->
+        <TextView
+            style="@style/Settings.Header"
+            android:paddingTop="8dp"
+            android:text="@string/pref_backend" />
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/tvStatusTitle"
-                android:layout_width="wrap_content"
+            style="@style/Settings.Row"
+            android:orientation="vertical"
+            android:gravity="start"
+            android:minHeight="0dp">
+            <Spinner
+                android:id="@+id/spinner_backend"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="16sp"
-                android:textColor="@color/colorAccent"
-                android:text="@string/status"
-                android:layout_marginEnd="8dp" />
-
+                android:layout_marginStart="-8dp" />
             <TextView
-                android:id="@+id/tvStatus"
+                android:id="@+id/tvBackendInfo"
+                style="@style/Settings.Summary"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="16sp"
-                android:layout_marginStart="8dp" />
+                android:layout_height="wrap_content" />
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="start">
-
-            <TextView
-                android:layout_width="wrap_content"
+            android:id="@+id/row_append"
+            style="@style/Settings.Row"
+            android:background="?attr/selectableItemBackground">
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:textSize="16sp"
-                android:textColor="@color/colorAccent"
-                android:text="@string/append" />
-
-            <CheckBox
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <TextView
+                    style="@style/Settings.Title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/test_append" />
+                <TextView
+                    style="@style/Settings.Summary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/append_summary" />
+            </LinearLayout>
+            <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/mode_append"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:contentDescription="@string/append"/>
-
+                android:layout_marginStart="16dp"
+                android:contentDescription="@string/test_append" />
         </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/layout_tts"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone"
-            android:gravity="start">
+        <!-- ===== Result ===== -->
+        <TextView
+            style="@style/Settings.Header"
+            android:text="@string/test_result" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:textSize="16sp"
-                android:textColor="@color/colorAccent"
-                android:text="@string/text_to_speech" />
-
-            <CheckBox
-                android:id="@+id/mode_tts"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:contentDescription="@string/text_to_speech"/>
-
-        </LinearLayout>
-
-        <!-- Use ProgressBar as "Space" with same look -->
-        <ProgressBar
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:indeterminate="false"
-            android:indeterminateTint="@color/colorAccent"
-            style="?android:attr/progressBarStyleHorizontal"/>
-        <RelativeLayout
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1">
+            android:layout_weight="1"
+            android:layout_marginHorizontal="16dp"
+            android:background="@drawable/test_result_background">
             <ScrollView
                 android:id="@+id/scrollView"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
-
-                <EditText
+                android:layout_height="match_parent"
+                android:padding="16dp">
+                <!-- Read-only so no keyboard (a second mic) or password manager pops up;
+                     still selectable, and the copy button copies everything -->
+                <TextView
                     android:id="@+id/tvResult"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:cursorVisible="false"
-                    android:background="@null"
-                    android:text = "@string/instructions"
-                    android:textSize="16sp" />
+                    android:hint="@string/instructions"
+                    android:textColor="@color/ime_on_key"
+                    android:textColorHint="@color/ime_on_key_dim"
+                    android:textSize="18sp"
+                    android:textIsSelectable="true" />
             </ScrollView>
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fabCopy"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:layout_alignParentBottom="true"
-                android:layout_marginStart="10dp"
-                android:layout_marginTop="10dp"
-                android:layout_marginEnd="3dp"
-                android:layout_marginBottom="10dp"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="12dp"
                 android:contentDescription="@string/copy_to_clipboard"
-                android:src="@drawable/ic_copy" />
-        </RelativeLayout>
+                android:src="@drawable/ic_copy"
+                app:fabSize="mini"
+                app:backgroundTint="@color/ime_accent"
+                app:tint="@color/ime_on_accent" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/tvStatus"
+            style="@style/Settings.Summary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="20dp"
+            android:paddingTop="8dp"
+            android:minLines="1" />
 
         <ProgressBar
             android:id="@+id/processing_bar"
+            style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
             android:indeterminate="false"
-            android:progressTint="@color/colorAccent"
-            android:indeterminateTint="@color/colorAccent"
-            style="?android:attr/progressBarStyleHorizontal"/>
+            android:progressTint="@color/ime_accent"
+            android:progressBackgroundTint="@color/ime_key"
+            android:indeterminateTint="@color/ime_accent" />
 
-        <RelativeLayout
-            android:layout_width="wrap_content"
+        <!-- Mic key looks like the keyboard's; info sits at the end -->
+        <FrameLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal">
-
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="4dp">
             <ImageButton
                 android:id="@+id/btnRecord"
-                android:layout_width="96dp"
-                android:layout_height="wrap_content"
-                android:layout_margin="3dp"
-                android:layout_centerHorizontal="true"
-                android:background="@drawable/rounded_button_background"
+                android:layout_width="180dp"
+                android:layout_height="64dp"
+                android:layout_gravity="center"
+                android:background="@drawable/ime_mic_background"
                 android:contentDescription="@string/record_button"
-                android:src="@drawable/ic_mic_48dp" />
-
+                android:scaleType="center"
+                android:src="@drawable/ic_mic_48dp"
+                app:tint="@color/ime_on_key" />
             <ImageButton
                 android:id="@+id/btnInfo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:background="@null"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="end|center_vertical"
+                android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/info"
-                android:src="@drawable/ic_info_48dp" />
-        </RelativeLayout>
+                android:src="@drawable/ic_info_48dp"
+                android:scaleType="fitCenter"
+                android:padding="10dp"
+                app:tint="@color/ime_on_key_dim" />
+        </FrameLayout>
     </LinearLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

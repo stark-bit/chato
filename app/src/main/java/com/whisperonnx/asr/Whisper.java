@@ -38,6 +38,15 @@ public class Whisper {
     /** Sent when the chunk queue has been fully processed. */
     public static final String MSG_QUEUE_EMPTY = "Queue empty";
 
+    /** Which on-device engine "local" means: Whisper small, or the experimental Parakeet. */
+    public static final String PREF_LOCAL_ENGINE = "local_engine";
+    public static final String ENGINE_WHISPER = "whisper";
+    public static final String ENGINE_PARAKEET = "parakeet";
+
+    public static String localEngine(SharedPreferences sp) {
+        return sp.getString(PREF_LOCAL_ENGINE, ENGINE_WHISPER);
+    }
+
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
     private Recognizer.Action mAction;
@@ -54,11 +63,15 @@ public class Whisper {
     private long startTime;
     private OpenAITranscriber openaiTranscriber;
     private String mBackendType;
+    private final String mLocalEngine;
+    private volatile ParakeetRecognizer parakeet;
+    private final CountDownLatch parakeetReady = new CountDownLatch(1);
 
     // Chunked (streaming) transcription: processed strictly in order on one thread
     private final BlockingQueue<byte[]> chunkQueue = new LinkedBlockingQueue<>();
     private final AtomicInteger chunksPending = new AtomicInteger(0);
     private Thread chunkThread;
+    private Thread recordBufferThread;
     private volatile CountDownLatch localResultLatch;
 
     public Whisper(Context context) {
@@ -66,11 +79,17 @@ public class Whisper {
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
         mBackendType = sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL);
+        String engine = localEngine(sp);
+        if (engine.equals(ENGINE_PARAKEET) && !ParakeetRecognizer.isInstalled(context)) {
+            Log.w(TAG, "Parakeet selected but not installed in " + ParakeetRecognizer.dir(context) + ", using Whisper");
+            engine = ENGINE_WHISPER;
+        }
+        mLocalEngine = engine;
 
-        if (mBackendType.equals(OpenAITranscriber.BACKEND_OPENAI)) {
-            // Remote backend: no model files needed, just start process loop
-            Thread threadProcessRecordBuffer = new Thread(this::processRecordBufferLoop);
-            threadProcessRecordBuffer.start();
+        if (mBackendType.equals(OpenAITranscriber.BACKEND_OPENAI) || mLocalEngine.equals(ENGINE_PARAKEET)) {
+            // Remote backend or Parakeet: no Whisper model files needed, just start process loop
+            recordBufferThread = new Thread(this::processRecordBufferLoop, "whisper-record");
+            recordBufferThread.start();
             return;
         }
 
@@ -95,10 +114,15 @@ public class Whisper {
             intent.addFlags(FLAG_ACTIVITY_NEW_TASK);
             mContext.startActivity(intent);
         } else { // Start thread for RecordBuffer transcription
-            Thread threadProcessRecordBuffer = new Thread(this::processRecordBufferLoop);
-            threadProcessRecordBuffer.start();
+            recordBufferThread = new Thread(this::processRecordBufferLoop, "whisper-record");
+            recordBufferThread.start();
         }
 
+    }
+
+    /** The local engine this instance was created with. */
+    public String getLocalEngine() {
+        return mLocalEngine;
     }
 
     public void setListener(WhisperListener listener) {
@@ -108,6 +132,19 @@ public class Whisper {
     public void loadModel() {
         if (mBackendType.equals(OpenAITranscriber.BACKEND_OPENAI)) {
             // No model to load for remote backend
+            return;
+        }
+        if (mLocalEngine.equals(ENGINE_PARAKEET)) {
+            new Thread(() -> {
+                try {
+                    parakeet = new ParakeetRecognizer(ParakeetRecognizer.dir(mContext));
+                } catch (Throwable e) {
+                    Log.e(TAG, "Parakeet failed to load", e);
+                    sendUpdate("Parakeet failed to load: " + e.getMessage());
+                } finally {
+                    parakeetReady.countDown();
+                }
+            }, "parakeet-load").start();
             return;
         }
         recognizer = new Recognizer(mContext, false, new NeuralNetworkApi.InitListener() {
@@ -153,8 +190,16 @@ public class Whisper {
             chunkThread.interrupt();
             chunkThread = null;
         }
+        if (recordBufferThread != null) {
+            recordBufferThread.interrupt();  // otherwise it waits for work forever
+            recordBufferThread = null;
+        }
         if (recognizer != null) {
             recognizer.destroy();
+        }
+        if (parakeet != null) {
+            parakeet.close();
+            parakeet = null;
         }
         if (openaiTranscriber != null) {
             openaiTranscriber.shutdown();
@@ -257,6 +302,9 @@ public class Whisper {
                     latch.countDown();
                 }
             });
+        } else if (mLocalEngine.equals(ENGINE_PARAKEET)) {
+            transcribeParakeet(RecordBuffer.getSamples(pcm));
+            return;
         } else {
             if (recognizer == null) {
                 sendUpdate("Local model not loaded");
@@ -316,9 +364,14 @@ public class Whisper {
         }
     }
 
-    private void processRecordBufferLocal() {
+    private void processRecordBufferLocal() throws Exception {
         startTime = System.currentTimeMillis();
         sendUpdate(MSG_PROCESSING);
+        if (mLocalEngine.equals(ENGINE_PARAKEET)) {
+            transcribeParakeet(RecordBuffer.getSamples());
+            sendUpdate(MSG_PROCESSING_DONE);
+            return;
+        }
         recognizer.recognize(RecordBuffer.getSamples(), 1, mLangCode, mAction);
     }
 
@@ -353,6 +406,22 @@ public class Whisper {
                 sendUpdate(errorMessage);
             }
         });
+    }
+
+    /** Runs Parakeet synchronously on the calling (worker) thread, waiting for it to load first. */
+    private void transcribeParakeet(float[] samples) throws InterruptedException {
+        if (!parakeetReady.await(60, TimeUnit.SECONDS) || parakeet == null) {
+            sendUpdate("Parakeet model not loaded");
+            return;
+        }
+        try {
+            String text = parakeet.transcribe(samples);
+            Log.d(TAG, "Parakeet time taken: " + (System.currentTimeMillis() - startTime) + "ms");
+            sendResult(new WhisperResult(text, LANGUAGE, mAction));
+        } catch (Exception e) {
+            Log.e(TAG, "Parakeet transcription failed", e);
+            sendUpdate("Transcription failed: " + e.getMessage());
+        }
     }
 
     private void sendUpdate(String message) {
