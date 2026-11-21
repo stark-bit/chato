@@ -83,4 +83,5 @@
     <string name="setup_zip_title">Install Whisper from a zip file</string>
     <string name="setup_zip_summary">Already have whisper_small_int8.zip on the phone? Pick it here.</string>
     <string name="setup_unpacking">Unpacking %1$s…</string>
+    <string name="loading_model">Loading %1$s…</string>
 </resources>

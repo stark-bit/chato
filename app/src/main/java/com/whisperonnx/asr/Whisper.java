@@ -37,6 +37,8 @@ public class Whisper {
     public static final String MSG_PROCESSING_DONE = "Processing done...!";
     /** Sent when the chunk queue has been fully processed. */
     public static final String MSG_QUEUE_EMPTY = "Queue empty";
+    /** Sent once the local model has finished loading (not for the remote backend). */
+    public static final String MSG_MODEL_LOADED = "Model loaded";
 
     /** Which on-device engine "local" means: Whisper small, or the experimental Parakeet. */
     public static final String PREF_LOCAL_ENGINE = "local_engine";
@@ -65,6 +67,7 @@ public class Whisper {
     private String mBackendType;
     private final String mLocalEngine;
     private boolean needsSetup;
+    private volatile boolean localModelRequested;
     private volatile ParakeetRecognizer parakeet;
     private final CountDownLatch parakeetReady = new CountDownLatch(1);
 
@@ -120,6 +123,19 @@ public class Whisper {
         return needsSetup && (WhisperModel.isInstalled(mContext) || ParakeetRecognizer.isInstalled(mContext));
     }
 
+    /**
+     * True if this instance has loaded, or is loading, a local model. An instance created while
+     * the remote backend was selected has none, so switching to local needs a new instance.
+     */
+    public boolean hasLocalModel() {
+        return localModelRequested;
+    }
+
+    /** True if no Whisper model was found, so the setup screen was opened instead of loading. */
+    public boolean isModelMissing() {
+        return needsSetup;
+    }
+
     /** The local engine this instance was created with. */
     public String getLocalEngine() {
         return mLocalEngine;
@@ -134,10 +150,13 @@ public class Whisper {
             // No model to load for remote backend
             return;
         }
+        localModelRequested = true;
+        if (needsSetup) return;  // the setup screen is open; modelInstalledSince() triggers a reload
         if (mLocalEngine.equals(ENGINE_PARAKEET)) {
             new Thread(() -> {
                 try {
                     parakeet = new ParakeetRecognizer(ParakeetRecognizer.dir(mContext));
+                    sendUpdate(MSG_MODEL_LOADED);
                 } catch (Throwable e) {
                     Log.e(TAG, "Parakeet failed to load", e);
                     sendUpdate("Parakeet failed to load: " + e.getMessage());
@@ -151,11 +170,13 @@ public class Whisper {
             @Override
             public void onInitializationFinished() {
                 Log.d(TAG, "Recognizer initialized");
+                sendUpdate(MSG_MODEL_LOADED);
             }
 
             @Override
             public void onError(int[] reasons, long value) {
                 Log.d(TAG, "Recognizer init error");
+                sendUpdate("Whisper failed to load");
             }
         });
 

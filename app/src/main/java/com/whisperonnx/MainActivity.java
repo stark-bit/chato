@@ -38,6 +38,7 @@ import androidx.core.content.ContextCompat;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.whisperonnx.asr.Backends;
+import com.whisperonnx.asr.OpenAITranscriber;
 import com.whisperonnx.asr.ParakeetRecognizer;
 import com.whisperonnx.asr.WhisperModel;
 import com.whisperonnx.asr.Recorder;
@@ -262,13 +263,14 @@ public class MainActivity extends AppCompatActivity {
     // Model initialization
     private void initModel() {
         mWhisper = new Whisper(this);
-        mWhisper.loadModel();
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
                 Log.d(TAG, "Update is received, Message: " + message);
 
-                if (message.equals(Whisper.MSG_PROCESSING)) {
+                if (message.equals(Whisper.MSG_MODEL_LOADED)) {
+                    runOnUiThread(() -> tvStatus.setText(R.string.test_ready));
+                } else if (message.equals(Whisper.MSG_PROCESSING)) {
                     runOnUiThread(() -> tvStatus.setText(getString(R.string.processing)));
                     startTime = System.currentTimeMillis();
                 } else if (!message.equals(Whisper.MSG_PROCESSING_DONE) && !message.equals(Whisper.MSG_QUEUE_EMPTY)) {
@@ -296,6 +298,16 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+        // Local: "Loading …" until MSG_MODEL_LOADED. Server, or setup screen opened: nothing to wait for
+        boolean remote = OpenAITranscriber.BACKEND_OPENAI.equals(
+                sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL));
+        if (!remote && !mWhisper.isModelMissing()) {
+            tvStatus.setText(getString(R.string.loading_model,
+                    Whisper.ENGINE_PARAKEET.equals(mWhisper.getLocalEngine()) ? "Parakeet" : "Whisper"));
+        } else {
+            tvStatus.setText(R.string.test_ready);
+        }
+        mWhisper.loadModel();
     }
 
     private void deinitModel() {
@@ -350,7 +362,6 @@ public class MainActivity extends AppCompatActivity {
         initModel();
         loadedBackend = backend;
         tvBackendInfo.setText(Backends.describe(sp, backend, ParakeetRecognizer.isInstalled(this)));
-        tvStatus.setText(R.string.test_ready);
     }
 
     @Override

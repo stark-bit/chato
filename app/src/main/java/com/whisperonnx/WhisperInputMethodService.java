@@ -59,6 +59,7 @@ public class WhisperInputMethodService extends InputMethodService {
     private TextView tvStatus;        // line above the main row, used while the top row is collapsed
     private TextView tvStatusInline;  // gap in the top row, used while it is expanded
     private String statusMessage = "";
+    private String loadingStatus;     // "Loading Parakeet…" while a model loads after a switch
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
     private SharedPreferences sp = null;
@@ -162,7 +163,11 @@ public class WhisperInputMethodService extends InputMethodService {
                 && !(mRecorder != null && mRecorder.isInProgress())) {
             deinitModel();
         }
-        if (mWhisper == null)  initModel();
+        if (mWhisper == null) {
+            initModel();
+        } else if (needsLocalModel() && !isBusy()) {
+            reloadModel();  // switched to local in Settings while this keyboard used the server
+        }
 
     }
 
@@ -369,9 +374,16 @@ public class WhisperInputMethodService extends InputMethodService {
         btnBackend.setOnClickListener(v -> {
             String current = sp.getString("backend_type", "local");
             String next = current.equals("openai") ? "local" : "openai";
+            boolean toLocal = next.equals("local");
+            if (toLocal && isBusy()) {
+                // Loading a model would cancel the recording or the chunks still being transcribed
+                showTransientStatus(getString(R.string.please_wait));
+                return;
+            }
             Log.d(TAG, "btnBackend: " + current + " -> " + next);
             sp.edit().putString("backend_type", next).apply();
-            btnBackend.setActivated(next.equals("openai"));
+            btnBackend.setActivated(!toLocal);
+            if (toLocal && needsLocalModel()) reloadModel();
         });
 
         return view;
@@ -411,14 +423,46 @@ public class WhisperInputMethodService extends InputMethodService {
         }
     }
 
+    private boolean isBusy() {
+        return (mRecorder != null && mRecorder.isInProgress())
+                || (mWhisper != null && (mWhisper.isInProgress() || mWhisper.hasPendingChunks()));
+    }
+
+    /**
+     * True if the local backend is selected but this keyboard's model instance has no local model,
+     * because it was created while the server was selected.
+     */
+    private boolean needsLocalModel() {
+        return mWhisper != null && !mWhisper.hasLocalModel()
+                && !OpenAITranscriber.BACKEND_OPENAI.equals(
+                        sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL));
+    }
+
+    /** Creates a fresh model instance and shows "Loading <model>…" until it is ready. */
+    private void reloadModel() {
+        deinitModel();
+        initModel();
+        if (mWhisper.hasLocalModel() && !mWhisper.isModelMissing()) {
+            String name = Whisper.ENGINE_PARAKEET.equals(mWhisper.getLocalEngine()) ? "Parakeet" : "Whisper";
+            loadingStatus = getString(R.string.loading_model, name);
+            showStatus(loadingStatus);
+        }
+    }
+
     // Model initialization
     private void initModel() {
 
         mWhisper = new Whisper(this);
-        mWhisper.loadModel();
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
+                if (message.equals(Whisper.MSG_MODEL_LOADED)) {
+                    handler.post(() -> {
+                        if (loadingStatus != null && loadingStatus.equals(statusMessage)) clearStatus();
+                        loadingStatus = null;
+                    });
+                    return;
+                }
                 if (message.equals(Whisper.MSG_QUEUE_EMPTY)) {
                     // Posted after the last result, so a combined message is complete here
                     handler.post(() -> session.onQueueEmpty());
@@ -445,6 +489,7 @@ public class WhisperInputMethodService extends InputMethodService {
                 handler.post(() -> session.deliver(text));
             }
         });
+        mWhisper.loadModel();
     }
 
     /** Called when a recording starts: locks in the target for this recording. */
