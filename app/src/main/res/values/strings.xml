@@ -65,6 +65,9 @@
     <string name="settings_openai_endpoint">Server URL</string>
     <string name="settings_openai_api_key">API key</string>
     <string name="settings_openai_model">Model</string>
+    <string name="pause_audio_button">Pause other audio</string>
+    <string name="pause_audio_on">Other audio pauses while recording</string>
+    <string name="pause_audio_off">Other audio keeps playing while recording</string>
     <string name="backend_toggle">Switch backend</string>
 
     <string name="toolbar_toggle_button">Show or hide top row</string>

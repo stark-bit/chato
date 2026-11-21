@@ -36,6 +36,7 @@ import com.whisperonnx.utils.EndpointSender;
 import com.whisperonnx.utils.SendSession;
 import com.whisperonnx.utils.TextEdits;
 import com.whisperonnx.utils.HapticFeedback;
+import com.whisperonnx.utils.OtherAudioPauser;
 import com.whisperonnx.utils.GradientBorderDrawable;
 
 public class WhisperInputMethodService extends InputMethodService {
@@ -46,6 +47,9 @@ public class WhisperInputMethodService extends InputMethodService {
     private ImageButton btnEnter;
     private ImageButton btnDel;
     private ImageButton btnBackend;
+    private ImageButton btnPauseAudio;
+    private OtherAudioPauser otherAudio;
+    private boolean pauseOtherAudio;
     private ImageButton btnDot;
     private ImageButton btnSpace;
     private ImageButton btnDash;
@@ -126,11 +130,13 @@ public class WhisperInputMethodService extends InputMethodService {
     public void onCreate() {
         mContext = this;
         super.onCreate();
+        otherAudio = new OtherAudioPauser(this);
     }
 
     @Override
     public void onDestroy() {
         deinitModel();
+        otherAudio.release();
         if (mRecorder != null && mRecorder.isInProgress()) {
             mRecorder.stop();
         }
@@ -184,6 +190,7 @@ public class WhisperInputMethodService extends InputMethodService {
         btnEnter = view.findViewById(R.id.btnEnter);
         btnDel = view.findViewById(R.id.btnDel);
         btnBackend = view.findViewById(R.id.btnBackend);
+        btnPauseAudio = view.findViewById(R.id.btnPauseAudio);
         btnDot = view.findViewById(R.id.btnDot);
         btnSpace = view.findViewById(R.id.btnSpace);
         btnDash = view.findViewById(R.id.btnDash);
@@ -198,6 +205,8 @@ public class WhisperInputMethodService extends InputMethodService {
         tvStatusInline = view.findViewById(R.id.tv_status_inline);
         modeAuto = sp.getBoolean("imeModeAuto",false);
         btnModeAuto.setActivated(modeAuto);
+        pauseOtherAudio = sp.getBoolean("imePauseOtherAudio", false);
+        btnPauseAudio.setActivated(pauseOtherAudio);
         layoutButtons = view.findViewById(R.id.layout_buttons);
         layoutToolbar = view.findViewById(R.id.layout_toolbar);
         btnToolbarToggle = view.findViewById(R.id.btnToolbarToggle);
@@ -219,11 +228,13 @@ public class WhisperInputMethodService extends InputMethodService {
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
                     HapticFeedback.vibrate(mContext);
                     keepScreenOn(false);
+                    otherAudio.release();
                     revertBackground();
                     handler.post(() -> onSessionEnded());
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
                     HapticFeedback.vibrate(mContext);
                     keepScreenOn(false);
+                    otherAudio.release();
                     handler.post(() -> onSessionEnded());
                     handler.post(() -> {
                         revertBackground();
@@ -231,6 +242,7 @@ public class WhisperInputMethodService extends InputMethodService {
                     });
                 } else {
                     keepScreenOn(false);  // recorder failed (permission, device error)
+                    otherAudio.release();
                 }
             }
 
@@ -309,7 +321,7 @@ public class WhisperInputMethodService extends InputMethodService {
             return false; // let the click listener handle the action
         };
         for (View b : new View[]{btnKeyboard, btnEnter, btnDot, btnSpace, btnDash, btnBullet,
-                btnModeAuto, btnToolbarToggle, btnBackend, btnSendTarget, btnSettings}) {
+                btnModeAuto, btnToolbarToggle, btnPauseAudio, btnBackend, btnSendTarget, btnSettings}) {
             b.setOnTouchListener(tickOnPress);
         }
 
@@ -371,6 +383,16 @@ public class WhisperInputMethodService extends InputMethodService {
             updateToolbarVisibility();
         });
 
+        // Pause other audio key: takes effect at once, also mid-recording
+        btnPauseAudio.setOnClickListener(v -> {
+            pauseOtherAudio = !pauseOtherAudio;
+            sp.edit().putBoolean("imePauseOtherAudio", pauseOtherAudio).apply();
+            btnPauseAudio.setActivated(pauseOtherAudio);
+            if (!pauseOtherAudio) otherAudio.release();
+            else if (mRecorder != null && mRecorder.isInProgress()) otherAudio.pause();
+            showTransientStatus(getString(pauseOtherAudio ? R.string.pause_audio_on : R.string.pause_audio_off));
+        });
+
         btnBackend.setOnClickListener(v -> {
             String current = sp.getString("backend_type", "local");
             String next = current.equals("openai") ? "local" : "openai";
@@ -404,6 +426,8 @@ public class WhisperInputMethodService extends InputMethodService {
         if (mWhisper != null && !mWhisper.isInProgress()) {
             HapticFeedback.vibrate(this);
             beginSession();
+            // Before the mic opens, so the first words aren't mixed with the phone's audio
+            if (pauseOtherAudio) otherAudio.pause();
             startRecording();
             handler.post(() -> {
                 clearStatus();
@@ -418,6 +442,7 @@ public class WhisperInputMethodService extends InputMethodService {
     private void stopMicRecording() {
         revertBackground();
         keepScreenOn(false);
+        otherAudio.release();
         if (mRecorder != null && mRecorder.isInProgress()) {
             mRecorder.stop();
         }

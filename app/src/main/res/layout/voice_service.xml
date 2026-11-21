@@ -80,6 +80,18 @@
             android:lineSpacingMultiplier="0.9"
             android:textColor="@color/ime_error" />
         <ImageButton
+            android:id="@+id/btnPauseAudio"
+            android:layout_width="32dp"
+            android:layout_height="36dp"
+            android:layout_marginHorizontal="2dp"
+            android:layout_marginVertical="3dp"
+            android:padding="7dp"
+            android:scaleType="fitCenter"
+            android:background="@drawable/ime_toggle_background"
+            android:src="@drawable/ic_ime_music_off"
+            android:tint="@color/ime_toolbar_icon_tint"
+            android:contentDescription="@string/pause_audio_button"/>
+        <ImageButton
             android:id="@+id/btnBackend"
             android:layout_width="32dp"
             android:layout_height="36dp"

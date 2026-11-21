@@ -28,8 +28,9 @@ The keyboard has a **top row** and a **bottom row**.
 
 | Term | Meaning | UI label | Code | Stored as | Avoid |
 |---|---|---|---|---|---|
-| **Top row** | Punctuation, status text, cloud key, settings. Can be collapsed. | a11y "Show or hide top row" (collapse key) | `layout_toolbar`, `btnToolbarToggle` | `imeToolbarExpanded` | toolbar (in UI text) |
+| **Top row** | Punctuation, status text, pause other audio key, cloud key, settings. Can be collapsed. | a11y "Show or hide top row" (collapse key) | `layout_toolbar`, `btnToolbarToggle` | `imeToolbarExpanded` | toolbar (in UI text) |
 | **Status text** | Messages shown in the keyboard (target, "Loading Parakeet…", errors) without changing its height. | | `tv_status_inline`, `tv_status` | | |
+| **Pause other audio key** | When on, other apps' audio (music, videos) pauses while recording so the mic doesn't pick it up; most apps resume afterwards. Lit while on. Left of the cloud key. | a11y "Pause other audio" | `btnPauseAudio`, `OtherAudioPauser` | `imePauseOtherAudio` | mute key |
 | **Cloud key** | Switches between the server and the backend on the phone. Lit while the server is in use. | a11y "Switch backend" | `btnBackend` | `backend_type` | backend toggle, remote toggle |
 | **Mic** | Hold to record (hold mode), or tap to start and stop (auto mode). | a11y "Record" | `btnRecord` | | record button |
 | **Send target key** | Cycles the send target: cursor → endpoint 1 → endpoint 2. Lit, with a 1/2 badge, while an endpoint is selected. | a11y "Send target" | `btnSendTarget`, `tvSendTargetBadge` | `imeSendTarget` (0 = cursor) | send button, POST button |
