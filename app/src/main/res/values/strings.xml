@@ -22,10 +22,10 @@
     <string name="settings_button">Settings</string>
     <string name="pref_backend">Transcription backend</string>
     <string name="pref_bluetooth_summary">Record from a connected Bluetooth headset</string>
-    <string name="pref_min_silence_summary">How long a pause ends a recording in automatic mode</string>
-    <string name="send_target_button">Send text to endpoint</string>
+    <string name="pref_min_silence_summary">How long a pause ends a recording in auto mode</string>
+    <string name="send_target_button">Send target</string>
     <string name="settings_endpoints">Send to endpoint</string>
-    <string name="settings_endpoints_help">Tap the send key on the keyboard to cycle: type at cursor → endpoint 1 → endpoint 2. While an endpoint is selected, dictated text is POSTed there instead of typed.</string>
+    <string name="settings_endpoints_help">Tap the send target key on the keyboard to cycle: type at cursor → endpoint 1 → endpoint 2. While an endpoint is selected, dictated text is POSTed there instead of typed.</string>
     <string name="endpoint_title">Endpoint %d</string>
     <string name="endpoint_name">Name</string>
     <string name="endpoint_url">URL (empty = disabled)</string>
@@ -47,7 +47,7 @@
     <string name="text_to_speech">Text-to-speech:</string>
     <string name="tts_language_not_supported">TTS: Language not supported</string>
     <string name="tts_initialization_failed">TTS: Initialization failed</string>
-    <string name="auto_button">automatic mode</string>
+    <string name="auto_button">Auto mode</string>
     <string name="error_no_input">No voice input received</string>
     <string name="settings">Settings</string>
     <string name="settings_general">General</string>
@@ -59,13 +59,13 @@
     <string name="test_result">Result</string>
     <string name="test_ready">Ready</string>
     <string name="test_done">Done in %1$d ms</string>
-    <string name="settings_minimum_silence">Minimum silence in automatic mode (ms)</string>
+    <string name="settings_minimum_silence">Minimum silence in auto mode (ms)</string>
     <string name="setting_bluetooth">Use Bluetooth devices</string>
 
-    <string name="settings_openai_endpoint">Endpoint URL</string>
-    <string name="settings_openai_api_key">API Key</string>
+    <string name="settings_openai_endpoint">Server URL</string>
+    <string name="settings_openai_api_key">API key</string>
     <string name="settings_openai_model">Model</string>
-    <string name="backend_toggle">Toggle local/remote backend</string>
+    <string name="backend_toggle">Switch backend</string>
 
     <string name="toolbar_toggle_button">Show or hide top row</string>
     <string name="setup_title">Set up Chato</string>
@@ -84,4 +84,14 @@
     <string name="setup_zip_summary">Already have whisper_small_int8.zip on the phone? Pick it here.</string>
     <string name="setup_unpacking">Unpacking %1$s…</string>
     <string name="loading_model">Loading %1$s…</string>
+    <!-- Names below follow docs/GLOSSARY.md -->
+    <string name="switch_keyboard_button">Switch keyboard</string>
+    <string name="model_parakeet">Parakeet</string>
+    <string name="model_whisper">Whisper small</string>
+    <!-- Order matches Backends.WHISPER, PARAKEET, REMOTE -->
+    <string-array name="backend_labels">
+        <item>Whisper small</item>
+        <item>Parakeet (recommended)</item>
+        <item>OpenAI-compatible server</item>
+    </string-array>
 </resources>

@@ -10,8 +10,8 @@ import java.net.URI;
  */
 public final class Backends {
 
+    /** Positions in the dropdowns; labels are R.array.backend_labels in the same order. */
     public static final int WHISPER = 0, PARAKEET = 1, REMOTE = 2;
-    public static final String[] LABELS = {"Local (Whisper small)", "Local (Parakeet, experimental)", "OpenAI API"};
 
     private Backends() {}
 
@@ -47,10 +47,10 @@ public final class Backends {
                 return "Server " + host + (model.isEmpty() ? "" : " · model " + model);
             case PARAKEET:
                 return parakeetInstalled
-                        ? "On device · NVIDIA Parakeet TDT 0.6B"
+                        ? "On this phone · NVIDIA Parakeet TDT 0.6B"
                         : "Not downloaded yet. Whisper small is used until it is";
             default:
-                return "On device · Whisper small (int8)";
+                return "On this phone · Whisper small (int8)";
         }
     }
 }

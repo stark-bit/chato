@@ -79,7 +79,7 @@ public class BackendsTest {
     }
 
     @Test public void describeParakeetDependsOnInstall() {
-        assertEquals("On device · NVIDIA Parakeet TDT 0.6B", Backends.describe(sp, Backends.PARAKEET, true));
+        assertEquals("On this phone · NVIDIA Parakeet TDT 0.6B", Backends.describe(sp, Backends.PARAKEET, true));
         assertEquals("Not downloaded yet. Whisper small is used until it is",
                 Backends.describe(sp, Backends.PARAKEET, false));
     }

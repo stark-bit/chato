@@ -58,7 +58,7 @@ public class ModelInstaller implements DefaultLifecycleObserver {
      * @param onAborted   runs on the main thread if the user declines, cancels, or it fails
      */
     public void offerParakeet(Runnable onInstalled, Runnable onAborted) {
-        offer("Parakeet", ParakeetRecognizer.FILES, ParakeetRecognizer.SOURCE,
+        offer(activity.getString(R.string.model_parakeet), ParakeetRecognizer.FILES, ParakeetRecognizer.SOURCE,
                 "Until it is installed, Whisper is used.",
                 ParakeetRecognizer.dir(activity), null, onInstalled, onAborted);
     }
@@ -66,7 +66,7 @@ public class ModelInstaller implements DefaultLifecycleObserver {
     /** Downloads the Whisper zip, extracts it into place and deletes the zip. */
     public void offerWhisper(Runnable onInstalled, Runnable onAborted) {
         File zipDir = WhisperModel.downloadDir(activity);
-        offer("Whisper small", WhisperModel.FILES, WhisperModel.SOURCE, null, zipDir,
+        offer(activity.getString(R.string.model_whisper), WhisperModel.FILES, WhisperModel.SOURCE, null, zipDir,
                 (bar, label) -> {
                     activity.runOnUiThread(() -> {
                         bar.setIndeterminate(true);

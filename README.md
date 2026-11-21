@@ -18,7 +18,7 @@ Parakeet on the phone: a short sentence in 170 ms, and a longer dictation (count
 | | |
 |---|---|
 | <img src="docs/screenshots/strip-cursor.jpg" width="380"/> | **Default.** Text is typed at the cursor. |
-| <img src="docs/screenshots/strip-endpoint.jpg" width="380"/> | **Send to endpoint.** The send key is lit with a badge showing which endpoint (1 or 2) is active. Dictated text is POSTed there instead of typed. |
+| <img src="docs/screenshots/strip-endpoint.jpg" width="380"/> | **Send to endpoint.** The send target key is lit with a badge showing which endpoint (1 or 2) is active. Dictated text is POSTed there instead of typed. |
 | <img src="docs/screenshots/strip-auto.jpg" width="380"/> | **Auto mode** (`A` lit). Tap the mic to start, tap again to stop. |
 | <img src="docs/screenshots/strip-collapsed.jpg" width="380"/> | **Collapsed.** The top row is hidden, leaving only the essentials. |
 
@@ -26,13 +26,13 @@ Parakeet on the phone: a short sentence in 170 ms, and a longer dictation (count
 - `-`, `.` and space.
 - Bullet: starts a new `- ` line, or adds `- ` if the cursor is already at the start of a line.
 - Status text: shows the current target, upload results and errors inline, so the keyboard doesn't change height.
-- Backend toggle: the cloud key is lit while the remote backend is in use.
+- Cloud key: switches between the server and the backend on the phone; lit while the server is in use.
 - Settings.
 
 **Bottom row**, left to right:
 - Collapse/expand the top row.
 - Auto mode.
-- Send target: cycles through cursor → endpoint 1 → endpoint 2 and skips endpoints that have no URL. Stays visible when the top row is collapsed.
+- Send target key: cycles through cursor → endpoint 1 → endpoint 2 and skips endpoints that have no URL. Stays visible when the top row is collapsed.
 - Mic.
 - Switch back to your normal keyboard.
 - Backspace: tap deletes one character; hold deletes whole words and speeds up the longer you hold.
@@ -43,7 +43,7 @@ Every key gives a short haptic tick.
 ## Features
 
 ### Recording
-- **Hold-to-talk:** the mic records while held and audio is sent in 30 s chunks, which gives the model more context.
+- **Hold mode:** the mic records while held and audio is sent in 30 s chunks, which gives the model more context.
 - **Auto mode:** audio is sent in 8 s chunks so text appears while you are still speaking. A pause ends the recording; the minimum silence length is set in Settings.
 - Chunks are split at the quietest point near the boundary, so words are not cut in half.
 - You can keep talking while earlier chunks are still being transcribed.
@@ -51,11 +51,11 @@ Every key gives a short haptic tick.
 
 ### Transcription backends
 Choose one in Settings or on the test screen:
-- **Local (Whisper small):** Whisper small (int8 ONNX) runs entirely on the phone, offline. The app downloads the model (243 MB) from Hugging Face, checks it and unpacks it.
-- **Local (Parakeet, experimental):** NVIDIA Parakeet TDT 0.6B v2 (int8 ONNX), also fully on the phone and offline. It is English-only, adds punctuation and capitals, and is much faster on short dictation. Choosing it offers to download the model (661 MB) from Hugging Face; each file is checked against a SHA-256 checksum, and an interrupted download resumes.
-- **OpenAI API:** any OpenAI-compatible `/v1/audio/transcriptions` server. Set its URL, API key and model in Settings. This works with self-hosted servers too, for example a Whisper or Parakeet server on your LAN.
+- **Parakeet (recommended):** NVIDIA Parakeet TDT 0.6B v2 (int8 ONNX), runs entirely on the phone, offline. It is English-only, adds punctuation and capitals, and is much faster on short dictation. Choosing it offers to download the model (661 MB) from Hugging Face; each file is checked against a SHA-256 checksum, and an interrupted download resumes.
+- **Whisper small:** Whisper small (int8 ONNX), also on the phone and offline. The app downloads the model (243 MB) from Hugging Face, checks it and unpacks it.
+- **OpenAI-compatible server:** any OpenAI-compatible `/v1/audio/transcriptions` server. Set its URL, API key and model in Settings. This works with self-hosted servers too, for example a Whisper or Parakeet server on your LAN.
 
-The cloud key on the keyboard switches between the remote server and your chosen local engine.
+The cloud key on the keyboard switches between the server and whichever backend on the phone you chose last.
 
 Measured on a OnePlus phone with a Snapdragon SM8845 (`make bench`, second run):
 
@@ -91,12 +91,14 @@ Example: append each dictation as a bullet to a note by replacing a marker in it
 
 ### Test screen
 Pictured at the top. Open it from the top of Settings, or launch the app. Use it to try each backend:
-- pick a backend; the line underneath says what will actually run (on device, or which server and model);
+- pick a backend; the line underneath says what will actually run (on this phone, or which server and model);
 - hold the mic to record;
 - read the result and the time taken, or any error; copy the text with the button.
 
 ### Also included
 - **System voice input** (`RecognitionService`) and `RecognizerIntent.ACTION_RECOGNIZE_SPEECH`, so other apps can use it.
+
+The names used for keys, modes and screens are listed in the [glossary](docs/GLOSSARY.md).
 
 ## Install
 

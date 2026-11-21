@@ -289,7 +289,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, "Result: " + text);
                 runOnUiThread(() -> {
                     processingBar.setIndeterminate(false);
-                    tvStatus.setText(getString(R.string.test_done, timeTaken) + " · " + Backends.LABELS[loadedBackend]);
+                    tvStatus.setText(getString(R.string.test_done, timeTaken) + " · " + getResources().getStringArray(R.array.backend_labels)[loadedBackend]);
                     if (text.isEmpty()) return;
                     if (tvResult.length() > 0 && !Character.isWhitespace(tvResult.getText().charAt(tvResult.length() - 1))) {
                         tvResult.append(" ");
@@ -302,8 +302,8 @@ public class MainActivity extends AppCompatActivity {
         boolean remote = OpenAITranscriber.BACKEND_OPENAI.equals(
                 sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL));
         if (!remote && !mWhisper.isModelMissing()) {
-            tvStatus.setText(getString(R.string.loading_model,
-                    Whisper.ENGINE_PARAKEET.equals(mWhisper.getLocalEngine()) ? "Parakeet" : "Whisper"));
+            tvStatus.setText(getString(R.string.loading_model, getString(
+                    Whisper.ENGINE_PARAKEET.equals(mWhisper.getLocalEngine()) ? R.string.model_parakeet : R.string.model_whisper)));
         } else {
             tvStatus.setText(R.string.test_ready);
         }
@@ -321,7 +321,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupBackendPicker() {
         spinnerBackend = findViewById(R.id.spinner_backend);
         tvBackendInfo = findViewById(R.id.tvBackendInfo);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, Backends.LABELS);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, getResources().getStringArray(R.array.backend_labels));
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerBackend.setAdapter(adapter);
         spinnerBackend.setSelection(Backends.current(sp), false);

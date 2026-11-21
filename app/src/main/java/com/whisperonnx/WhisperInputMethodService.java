@@ -443,8 +443,8 @@ public class WhisperInputMethodService extends InputMethodService {
         deinitModel();
         initModel();
         if (mWhisper.hasLocalModel() && !mWhisper.isModelMissing()) {
-            String name = Whisper.ENGINE_PARAKEET.equals(mWhisper.getLocalEngine()) ? "Parakeet" : "Whisper";
-            loadingStatus = getString(R.string.loading_model, name);
+            loadingStatus = getString(R.string.loading_model, getString(
+                    Whisper.ENGINE_PARAKEET.equals(mWhisper.getLocalEngine()) ? R.string.model_parakeet : R.string.model_whisper));
             showStatus(loadingStatus);
         }
     }

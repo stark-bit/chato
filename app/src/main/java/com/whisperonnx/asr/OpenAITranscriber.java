@@ -70,7 +70,7 @@ public class OpenAITranscriber {
                     return;
                 }
                 if (apiKey.isEmpty()) {
-                    callback.onError("OpenAI API key not configured — set in Settings");
+                    callback.onError("Server API key not set. Add it in Settings");
                     return;
                 }
 

@@ -80,7 +80,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         // "local" + an engine, or the remote API. The keyboard's cloud key switches local <-> remote.
         ArrayAdapter<String> backendAdapter = new ArrayAdapter<>(
-                this, android.R.layout.simple_spinner_item, Backends.LABELS);
+                this, android.R.layout.simple_spinner_item, getResources().getStringArray(R.array.backend_labels));
         backendAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerBackendType.setAdapter(backendAdapter);
 
