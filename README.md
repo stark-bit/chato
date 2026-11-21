@@ -34,9 +34,9 @@ Parakeet on the phone: a short sentence in 170 ms, and a longer dictation (count
 - Collapse/expand the top row.
 - Auto mode.
 - Mic.
+- Switch back to your normal keyboard.
 - Backspace: tap deletes one character; hold deletes whole words and speeds up the longer you hold.
 - Enter.
-- Switch back to your normal keyboard.
 
 Every key gives a short haptic tick.
 
@@ -119,7 +119,7 @@ The package name is `dev.starkbit.chato`, so it installs alongside the original 
 3. Enable **Chato** as a keyboard in Android settings (*System › Keyboard › On-screen keyboard*, the name varies by phone).
 4. Optional: set up endpoints in **Settings** to send dictation to a URL instead of typing it.
 
-In any text field, switch to Chato with your keyboard's switch key. Its last key switches back. Some keyboards, e.g. HeliBoard, can open Chato from their mic key.
+In any text field, switch to Chato with your keyboard's switch key. The keyboard key next to the mic switches back. Some keyboards, e.g. HeliBoard, can open Chato from their mic key.
 
 To use it as system voice input: *System › Languages › Speech › Voice input*. If it does not appear in that list:
 
