@@ -103,6 +103,16 @@ public class WhisperInputMethodService extends InputMethodService {
         });
     }
 
+    /**
+     * Keeps the screen awake while recording. Auto mode runs hands-free, so without this the
+     * screen times out mid-dictation. Applies only while the keyboard is showing.
+     */
+    private void keepScreenOn(boolean on) {
+        handler.post(() -> {
+            if (layoutButtons != null) layoutButtons.setKeepScreenOn(on);
+        });
+    }
+
     private void revertBackground() {
         handler.post(() -> {
             if (gradientDrawable != null) gradientDrawable.stopAnimation();
@@ -200,17 +210,22 @@ public class WhisperInputMethodService extends InputMethodService {
             public void onUpdateReceived(String message) {
                 if (message.equals(Recorder.MSG_RECORDING)) {
                     applyGradientBackground();
+                    keepScreenOn(true);
                 } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
                     HapticFeedback.vibrate(mContext);
+                    keepScreenOn(false);
                     revertBackground();
                     handler.post(() -> onSessionEnded());
                 } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
                     HapticFeedback.vibrate(mContext);
+                    keepScreenOn(false);
                     handler.post(() -> onSessionEnded());
                     handler.post(() -> {
                         revertBackground();
                         showStatus(getString(R.string.error_no_input));
                     });
+                } else {
+                    keepScreenOn(false);  // recorder failed (permission, device error)
                 }
             }
 
@@ -390,6 +405,7 @@ public class WhisperInputMethodService extends InputMethodService {
 
     private void stopMicRecording() {
         revertBackground();
+        keepScreenOn(false);
         if (mRecorder != null && mRecorder.isInProgress()) {
             mRecorder.stop();
         }
