@@ -79,35 +79,6 @@
             android:textSize="12sp"
             android:lineSpacingMultiplier="0.9"
             android:textColor="@color/ime_error" />
-        <!-- Send target: cursor / endpoint 1 / endpoint 2 (badge shows the number) -->
-        <FrameLayout
-            android:layout_width="32dp"
-            android:layout_height="36dp"
-            android:layout_marginHorizontal="2dp"
-            android:layout_marginVertical="3dp">
-            <ImageButton
-                android:id="@+id/btnSendTarget"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="9dp"
-                android:scaleType="fitCenter"
-                android:background="@drawable/ime_toggle_background"
-                android:src="@drawable/ic_ime_send"
-                android:tint="@color/ime_toolbar_icon_tint"
-                android:contentDescription="@string/send_target_button"/>
-            <TextView
-                android:id="@+id/tvSendTargetBadge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|end"
-                android:layout_marginEnd="3dp"
-                android:layout_marginBottom="1dp"
-                android:visibility="gone"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:textColor="@color/ime_on_accent"
-                android:importantForAccessibility="no" />
-        </FrameLayout>
         <ImageButton
             android:id="@+id/btnBackend"
             android:layout_width="32dp"
@@ -143,7 +114,7 @@
         android:paddingVertical="2dp"
         android:textSize="14sp"
         android:textColor="@color/ime_error" />
-    <!-- Main row: toggle | auto | mic | keyboard switch | delete | enter -->
+    <!-- Main row: toggle | auto | send target | mic | keyboard switch | delete | enter -->
     <LinearLayout
         android:id="@+id/layout_buttons"
         android:layout_width="match_parent"
@@ -179,6 +150,37 @@
             android:src="@drawable/ic_ime_auto"
             android:tint="@color/ime_toolbar_icon_tint"
             android:contentDescription="@string/auto_button"/>
+        <!-- Send target: cursor / endpoint 1 / endpoint 2 (badge shows the number) -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="2dp"
+            android:layout_marginVertical="3dp">
+            <ImageButton
+                android:id="@+id/btnSendTarget"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="9dp"
+                android:scaleType="fitCenter"
+                android:background="@drawable/ime_toggle_background"
+                android:src="@drawable/ic_ime_send"
+                android:tint="@color/ime_toolbar_icon_tint"
+                android:contentDescription="@string/send_target_button"/>
+            <TextView
+                android:id="@+id/tvSendTargetBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:layout_marginEnd="3dp"
+                android:layout_marginBottom="1dp"
+                android:visibility="gone"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="@color/ime_on_accent"
+                android:importantForAccessibility="no" />
+        </FrameLayout>
         <ImageButton
             android:id="@+id/btnRecord"
             android:layout_width="0dp"

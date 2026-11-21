@@ -26,13 +26,13 @@ Parakeet on the phone: a short sentence in 170 ms, and a longer dictation (count
 - `-`, `.` and space.
 - Bullet: starts a new `- ` line, or adds `- ` if the cursor is already at the start of a line.
 - Status text: shows the current target, upload results and errors inline, so the keyboard doesn't change height.
-- Send target: cycles through cursor → endpoint 1 → endpoint 2 and skips endpoints that have no URL.
 - Backend toggle: the cloud key is lit while the remote backend is in use.
 - Settings.
 
 **Bottom row**, left to right:
 - Collapse/expand the top row.
 - Auto mode.
+- Send target: cycles through cursor → endpoint 1 → endpoint 2 and skips endpoints that have no URL. Stays visible when the top row is collapsed.
 - Mic.
 - Switch back to your normal keyboard.
 - Backspace: tap deletes one character; hold deletes whole words and speeds up the longer you hold.
