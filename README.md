@@ -23,7 +23,7 @@ Parakeet on the phone: a short sentence in 170 ms, and a longer dictation (count
 | <img src="docs/screenshots/strip-collapsed.jpg" width="380"/> | **Collapsed.** The top row is hidden, leaving only the essentials. |
 
 **Top row**, left to right:
-- `-`, `.` and space.
+- `-`, `.` and space. Drag on the space key to move the cursor: sideways by characters, up and down by lines.
 - Bullet: starts a new `- ` line, or adds `- ` if the cursor is already at the start of a line.
 - Status text: shows the current target, upload results and errors inline, so the keyboard doesn't change height.
 - Pause other audio key: when lit, music and videos pause while you record, so the mic only hears you. Most apps resume when recording stops; apps that ignore Android's audio focus keep playing.

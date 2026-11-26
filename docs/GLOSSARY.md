@@ -36,6 +36,7 @@ The keyboard has a **top row** and a **bottom row**.
 | **Send target key** | Cycles the send target: cursor → endpoint 1 → endpoint 2. Lit, with a 1/2 badge, while an endpoint is selected. | a11y "Send target" | `btnSendTarget`, `tvSendTargetBadge` | `imeSendTarget` (0 = cursor) | send button, POST button |
 | **Auto key** | Turns auto mode on and off. Shows `A`. | a11y "Auto mode" | `btnModeAuto` | `imeModeAuto` | |
 | **Switch keyboard key** | Returns to your other keyboard. | a11y "Switch keyboard" | `btnKeyboard` | | exit |
+| **Cursor drag** | Drag on the space key to move the cursor: sideways by characters, up and down by lines. A tap still types a space. | a11y "Space" | `btnSpace`, `CursorDrag` | | trackpad, swipe space |
 | **Bullet key** | Starts a `- ` line. | a11y "New bullet point" | `btnBullet` | | |
 
 ## Recording and sending

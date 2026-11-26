@@ -20,6 +20,7 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.widget.ImageButton;
@@ -35,6 +36,7 @@ import com.whisperonnx.asr.WhisperResult;
 import com.whisperonnx.utils.EndpointSender;
 import com.whisperonnx.utils.SendSession;
 import com.whisperonnx.utils.TextEdits;
+import com.whisperonnx.utils.CursorDrag;
 import com.whisperonnx.utils.HapticFeedback;
 import com.whisperonnx.utils.OtherAudioPauser;
 import com.whisperonnx.utils.GradientBorderDrawable;
@@ -320,7 +322,7 @@ public class WhisperInputMethodService extends InputMethodService {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) HapticFeedback.tick(mContext);
             return false; // let the click listener handle the action
         };
-        for (View b : new View[]{btnKeyboard, btnEnter, btnDot, btnSpace, btnDash, btnBullet,
+        for (View b : new View[]{btnKeyboard, btnEnter, btnDot, btnDash, btnBullet,
                 btnModeAuto, btnToolbarToggle, btnPauseAudio, btnBackend, btnSendTarget, btnSettings}) {
             b.setOnTouchListener(tickOnPress);
         }
@@ -343,6 +345,32 @@ public class WhisperInputMethodService extends InputMethodService {
 
         btnDot.setOnClickListener(v -> getCurrentInputConnection().commitText(".", 1));
         btnSpace.setOnClickListener(v -> getCurrentInputConnection().commitText(" ", 1));
+        // Cursor drag: tap types a space; drag sideways moves by characters, up and down by lines
+        float dp = getResources().getDisplayMetrics().density;
+        CursorDrag cursorDrag = new CursorDrag(
+                ViewConfiguration.get(mContext).getScaledTouchSlop(), 12 * dp, 24 * dp);
+        btnSpace.setOnTouchListener((v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    HapticFeedback.tick(mContext);
+                    cursorDrag.start(event.getRawX(), event.getRawY());
+                    v.setPressed(true);
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    int[] steps = cursorDrag.move(event.getRawX(), event.getRawY());
+                    moveCursor(steps[0], KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT);
+                    moveCursor(steps[1], KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN);
+                    break;
+                case MotionEvent.ACTION_UP:
+                    v.setPressed(false);
+                    if (!cursorDrag.isDragging()) v.performClick();
+                    break;
+                case MotionEvent.ACTION_CANCEL:
+                    v.setPressed(false);
+                    break;
+            }
+            return true;
+        });
         btnDash.setOnClickListener(v -> getCurrentInputConnection().commitText("-", 1));
         // Bullet: start a new "- " list item on a new line (no leading newline on an empty line)
         btnBullet.setOnClickListener(v -> {
@@ -613,6 +641,14 @@ public class WhisperInputMethodService extends InputMethodService {
     }
 
     /** Deletes the word (plus trailing whitespace) before the cursor, or the selection if any. */
+    /** Moves the cursor {@code steps} times with arrow keys: negative uses {@code back}, positive {@code forward}. */
+    private void moveCursor(int steps, int back, int forward) {
+        if (steps == 0) return;
+        int key = steps < 0 ? back : forward;
+        for (int i = Math.abs(steps); i > 0; i--) sendDownUpKeyEvents(key);
+        HapticFeedback.tick(mContext);
+    }
+
     private void deleteWordBeforeCursor() {
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
