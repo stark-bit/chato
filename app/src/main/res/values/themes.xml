@@ -36,4 +36,18 @@
         <item name="android:backgroundDimEnabled">false</item>
     </style>
 
+    <!-- Quick record's toggle screen: nothing is drawn, it closes at once -->
+    <style name="Theme.Chato.Invisible" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowNoDisplay">false</item>
+    </style>
+    <!-- Shows only a dialog over whatever is behind it (quick record widget setup) -->
+    <style name="Theme.Chato.Dialog" parent="Theme.Whisper.Settings">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
 </resources>

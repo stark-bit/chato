@@ -137,6 +137,11 @@ public class Recorder {
         }
     }
 
+    /** Ends the worker thread once the current recording, if any, is done. */
+    public void release() {
+        workerThread.interrupt();
+    }
+
     public boolean isInProgress() {
         return mInProgress.get();
     }

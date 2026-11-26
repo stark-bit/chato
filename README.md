@@ -90,6 +90,13 @@ Example: append each dictation as a bullet to a note by replacing a marker in it
 {"edits":[{"oldText":"<!-- voice -->","newText":"- {{text}}\n<!-- voice -->"}]}
 ```
 
+### Quick record
+Record without opening the keyboard: up to 30 s, then the text is sent to an endpoint.
+- **Widget:** add the Chato *Quick record* widget to the home screen and pick its endpoint. Place one for each endpoint; each shows its endpoint's number and name. Tap to start, tap again to stop early. It's lit while recording. To change a widget's endpoint, long-press it and choose its settings (Android 12+, if your launcher supports it).
+- **Assistant gesture:** in Settings, tap **Use as digital assistant** and choose Chato as the default digital assistant app. The phone's assistant gesture (for example holding the power button, or swiping up from a bottom corner) then starts and stops quick record, sending to the endpoint chosen under **Quick record** in Settings. This replaces your current assistant.
+
+A notification shows while it records and sends, with a Stop button. The result ("Sent to …" or the error) appears as a toast; if sending fails, the text is copied to the clipboard.
+
 ### Test screen
 Pictured at the top. Open it from the top of Settings, or launch the app. Use it to try each backend:
 - pick a backend; the line underneath says what will actually run (on this phone, or which server and model);

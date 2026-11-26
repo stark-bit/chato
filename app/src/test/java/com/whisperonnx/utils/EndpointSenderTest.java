@@ -186,4 +186,12 @@ public class EndpointSenderTest {
         String error = EndpointSender.execute(client, req);
         assertTrue(error, error.startsWith("Network error"));
     }
+
+    @Test public void quickRecordUsesThePreferredEndpointOrTheFirstWithAUrl() {
+        assertEquals(2, EndpointSender.pickQuickRecord(2, new boolean[]{true, true}));
+        assertEquals(1, EndpointSender.pickQuickRecord(2, new boolean[]{true, false}));
+        assertEquals(2, EndpointSender.pickQuickRecord(1, new boolean[]{false, true}));
+        assertEquals(2, EndpointSender.pickQuickRecord(7, new boolean[]{false, true}));
+        assertEquals(0, EndpointSender.pickQuickRecord(1, new boolean[]{false, false}));
+    }
 }

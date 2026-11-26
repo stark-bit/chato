@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_quick_record_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="2dp">
+    <FrameLayout
+        android:layout_width="52dp"
+        android:layout_height="52dp">
+        <ImageView
+            android:id="@+id/widget_quick_record"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="13dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_mic_48dp"
+            android:background="@drawable/widget_quick_record_off"
+            android:contentDescription="@string/quick_record" />
+        <TextView
+            android:id="@+id/widget_quick_record_badge"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_gravity="bottom|end"
+            android:gravity="center"
+            android:background="@drawable/widget_quick_record_on"
+            android:textColor="@color/ime_on_accent"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            android:importantForAccessibility="no" />
+    </FrameLayout>
+    <TextView
+        android:id="@+id/widget_quick_record_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="#FFFFFFFF"
+        android:textSize="12sp"
+        android:shadowColor="#99000000"
+        android:shadowRadius="3"
+        android:text="@string/quick_record"
+        android:importantForAccessibility="no" />
+</LinearLayout>

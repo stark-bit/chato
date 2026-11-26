@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -132,6 +133,7 @@ public class SettingsActivity extends AppCompatActivity {
         });
 
         setupEndpointSettings();
+        setupQuickRecordSettings();
 
         // Tapping anywhere on a switch row toggles it, as in FUTO settings
         findViewById(R.id.layout_mode_bluetooth).setOnClickListener(v -> modeBluetooth.toggle());
@@ -158,6 +160,38 @@ public class SettingsActivity extends AppCompatActivity {
                     sp.edit().putBoolean(EndpointSender.key(index, "combine"), checked).apply());
             container.addView(item);
         }
+    }
+
+    private void setupQuickRecordSettings() {
+        Spinner spinner = findViewById(R.id.spinner_quick_record_endpoint);
+        List<String> labels = new ArrayList<>();
+        for (int i = 1; i <= EndpointSender.COUNT; i++) labels.add(getString(R.string.endpoint_title, i));
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, labels);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        spinner.setSelection(Math.max(0, Math.min(EndpointSender.COUNT, sp.getInt(QuickRecordService.PREF_ENDPOINT, 1)) - 1));
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                sp.edit().putInt(QuickRecordService.PREF_ENDPOINT, position + 1).apply();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+        // Opens the default apps screen; phones differ in which settings page lists the assistant
+        findViewById(R.id.row_assistant).setOnClickListener(v -> {
+            for (String action : new String[]{Settings.ACTION_VOICE_INPUT_SETTINGS,
+                    Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS, Settings.ACTION_SETTINGS}) {
+                try {
+                    startActivity(new Intent(action));
+                    return;
+                } catch (android.content.ActivityNotFoundException ignored) {
+                    // try the next one
+                }
+            }
+        });
     }
 
     /** Shows the current value and saves every edit to the given preference key. */

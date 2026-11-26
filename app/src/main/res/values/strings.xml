@@ -97,4 +97,20 @@
         <item>Parakeet (recommended)</item>
         <item>OpenAI-compatible server</item>
     </string-array>
+    <!-- Quick record (widget and digital assistant) -->
+    <string name="quick_record">Quick record</string>
+    <string name="quick_record_widget_description">Tap to record up to 30 s and send it to an endpoint. Place one for each endpoint</string>
+    <string name="quick_record_starting">Starting…</string>
+    <string name="quick_record_recording">Recording… tap to stop</string>
+    <string name="quick_record_stop">Stop</string>
+    <string name="quick_record_to">Quick record to %s</string>
+    <string name="quick_record_stop_to">Stop recording to %s</string>
+    <string name="quick_record_no_url">%s has no URL. Set it in Settings</string>
+    <string name="quick_record_widget_pick">Send this widget\'s recordings to</string>
+    <string name="quick_record_widget_no_url">(no URL yet)</string>
+    <string name="quick_record_busy">Still sending the last recording</string>
+    <string name="settings_quick_record_help">Records up to 30 s without the keyboard and sends the text to an endpoint. Start and stop it from the Chato home screen widget, or with your phone\'s assistant gesture once Chato is the digital assistant.</string>
+    <string name="settings_quick_record_endpoint">Send to</string>
+    <string name="settings_assistant_title">Use as digital assistant</string>
+    <string name="settings_assistant_summary">Choose Chato under Default digital assistant app. The assistant gesture (e.g. holding the power button) then starts and stops quick record.</string>
 </resources>

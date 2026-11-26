@@ -102,5 +102,43 @@
             </intent-filter>
         </activity>
 
+        <!-- Quick record: the widget and the digital assistant gesture open QuickRecordActivity -->
+        <activity android:name=".QuickRecordActivity"
+            android:theme="@style/Theme.Chato.Invisible"
+            android:label="@string/quick_record"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".QuickRecordService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <activity android:name=".QuickRecordWidgetConfigActivity"
+            android:theme="@style/Theme.Chato.Dialog"
+            android:excludeFromRecents="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <receiver android:name=".QuickRecordWidget"
+            android:label="@string/quick_record"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/quick_record_widget_info" />
+        </receiver>
+
     </application>
 </manifest>

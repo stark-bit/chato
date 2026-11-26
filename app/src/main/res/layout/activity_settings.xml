@@ -121,6 +121,49 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical" />
 
+            <!-- ===== Quick record ===== -->
+            <TextView
+                style="@style/Settings.Header"
+                android:text="@string/quick_record" />
+            <TextView
+                style="@style/Settings.Summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="20dp"
+                android:text="@string/settings_quick_record_help" />
+            <LinearLayout style="@style/Settings.Row">
+                <TextView
+                    style="@style/Settings.Title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="16dp"
+                    android:text="@string/settings_quick_record_endpoint" />
+                <Spinner
+                    android:id="@+id/spinner_quick_record_endpoint"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/row_assistant"
+                style="@style/Settings.Row"
+                android:orientation="vertical"
+                android:gravity="start|center_vertical"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+                <TextView
+                    style="@style/Settings.Title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_assistant_title" />
+                <TextView
+                    style="@style/Settings.Summary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_assistant_summary" />
+            </LinearLayout>
+
             <!-- ===== General ===== -->
             <TextView
                 style="@style/Settings.Header"

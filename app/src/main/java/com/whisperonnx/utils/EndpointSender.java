@@ -73,6 +73,16 @@ public class EndpointSender {
                 sp.getBoolean(key(index, "combine"), true));
     }
 
+    /**
+     * The endpoint quick record sends to: {@code preferred} if it has a URL, otherwise the first
+     * endpoint that has one, or 0 if none does. {@code configured[i]} is endpoint i + 1.
+     */
+    public static int pickQuickRecord(int preferred, boolean[] configured) {
+        if (preferred >= 1 && preferred <= configured.length && configured[preferred - 1]) return preferred;
+        for (int i = 0; i < configured.length; i++) if (configured[i]) return i + 1;
+        return 0;
+    }
+
     private static final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
