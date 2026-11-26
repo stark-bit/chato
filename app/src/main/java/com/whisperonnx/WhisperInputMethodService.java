@@ -330,8 +330,15 @@ public class WhisperInputMethodService extends InputMethodService {
             switchToPreviousInputMethod();
         });
 
+        // Run the field's action (Search, Go, Send…) like other keyboards; otherwise a new line
         btnEnter.setOnClickListener(v -> {
-            getCurrentInputConnection().sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER));
+            InputConnection ic = getCurrentInputConnection();
+            if (ic == null) return;
+            EditorInfo info = getCurrentInputEditorInfo();
+            int action = TextEdits.enterAction(info == null ? 0 : info.imeOptions);
+            if (action != EditorInfo.IME_ACTION_NONE && ic.performEditorAction(action)) return;
+            ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER));
+            ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER));
         });
 
         btnDot.setOnClickListener(v -> getCurrentInputConnection().commitText(".", 1));

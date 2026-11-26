@@ -2,6 +2,8 @@ package com.whisperonnx.utils;
 
 import static org.junit.Assert.assertEquals;
 
+import android.view.inputmethod.EditorInfo;
+
 import org.junit.Test;
 
 public class TextEditsTest {
@@ -56,5 +58,18 @@ public class TextEditsTest {
     @Test public void bullet_midLineStartsNewLine() {
         assertEquals("\n- ", TextEdits.bulletInsert("a"));
         assertEquals("\n- ", TextEdits.bulletInsert(" "));
+    }
+
+    @Test public void enterRunsTheFieldsAction() {
+        assertEquals(EditorInfo.IME_ACTION_SEARCH, TextEdits.enterAction(EditorInfo.IME_ACTION_SEARCH));
+        assertEquals(EditorInfo.IME_ACTION_GO,
+                TextEdits.enterAction(EditorInfo.IME_ACTION_GO | EditorInfo.IME_FLAG_NO_EXTRACT_UI));
+    }
+
+    @Test public void enterIsANewLineWhenTheFieldSaysSo() {
+        assertEquals(EditorInfo.IME_ACTION_NONE, TextEdits.enterAction(0));
+        assertEquals(EditorInfo.IME_ACTION_NONE, TextEdits.enterAction(EditorInfo.IME_ACTION_NONE));
+        assertEquals(EditorInfo.IME_ACTION_NONE,
+                TextEdits.enterAction(EditorInfo.IME_ACTION_SEND | EditorInfo.IME_FLAG_NO_ENTER_ACTION));
     }
 }
