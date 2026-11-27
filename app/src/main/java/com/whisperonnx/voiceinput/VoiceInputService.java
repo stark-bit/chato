@@ -44,40 +44,41 @@ public class VoiceInputService extends RecognitionService {
         initModel(callback);
 
         mRecorder = new Recorder(this);
-        mRecorder.setListener(message -> {
-            if (message.equals(Recorder.MSG_RECORDING)){
-                try {
-                    callback.rmsChanged(10);
-                } catch (RemoteException e) {
-                    throw new RuntimeException(e);
-                }
-            } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
-                HapticFeedback.vibrate(this);
-                try {
-                    callback.rmsChanged(-20.0f);
-                } catch (RemoteException e) {
-                    throw new RuntimeException(e);
-                }
-                startTranscription();
-            } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                try {
-                    callback.error(ERROR_CLIENT);
-                } catch (RemoteException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
+        mRecorder.setListener(message -> onRecorderUpdate(message, callback));
 
         if (!mWhisper.isInProgress()) {
             HapticFeedback.vibrate(this);
             startRecording();
-            try {
-                callback.beginningOfSpeech();
-            } catch (RemoteException e) {
-                throw new RuntimeException(e);
-            }
+            call(callback::beginningOfSpeech);
         }
+    }
 
+    private void onRecorderUpdate(String message, Callback callback) {
+        switch (message) {
+            case Recorder.MSG_RECORDING:
+                call(() -> callback.rmsChanged(10));
+                break;
+            case Recorder.MSG_RECORDING_DONE:
+                HapticFeedback.vibrate(this);
+                call(() -> callback.rmsChanged(-20.0f));
+                startTranscription();
+                break;
+            case Recorder.MSG_RECORDING_ERROR:
+                call(() -> callback.error(ERROR_CLIENT));
+                break;
+        }
+    }
+
+    private interface RemoteCall {
+        void run() throws RemoteException;
+    }
+
+    private static void call(RemoteCall remoteCall) {
+        try {
+            remoteCall.run();
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void stopRecording() {
@@ -110,24 +111,22 @@ public class VoiceInputService extends RecognitionService {
 
             @Override
             public void onResultReceived(WhisperResult whisperResult) {
-                if (whisperResult.getResult().trim().length() > 0){
-                    Log.d(TAG, whisperResult.getResult().trim());
-                    try {
-                        callback.endOfSpeech();
-                        deinitModel();
-                        Bundle results = new Bundle();
-                        ArrayList<String> resultList = new ArrayList<>();
-
-                        String result = whisperResult.getResult();
-                        resultList.add(result.trim());
-                        results.putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, resultList);
-                        callback.results(results);
-                    } catch (RemoteException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
+                String result = whisperResult.getResult().trim();
+                if (result.isEmpty()) return;
+                Log.d(TAG, result);
+                call(() -> deliver(callback, result));
             }
         });
+    }
+
+    private void deliver(Callback callback, String result) throws RemoteException {
+        callback.endOfSpeech();
+        deinitModel();
+        Bundle results = new Bundle();
+        ArrayList<String> resultList = new ArrayList<>();
+        resultList.add(result);
+        results.putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, resultList);
+        callback.results(results);
     }
 
     private void startRecording() {
@@ -137,27 +136,27 @@ public class VoiceInputService extends RecognitionService {
     }
 
     private void startTranscription() {
-        if (!recognitionCancelled){
-            Handler handler = new Handler(Looper.getMainLooper());
-            handler.post(()-> {
-                Toast toast = new Toast(this);
-                toast.setDuration(Toast.LENGTH_SHORT);
-                toast.setText(R.string.processing);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    toast.addCallback(new Toast.Callback() {
-                        @Override
-                        public void onToastHidden() {
-                            super.onToastHidden();
-                            if (mWhisper!=null) toast.show();
-                        }
-                    });
+        if (recognitionCancelled) return;
+        new Handler(Looper.getMainLooper()).post(this::showProcessingToast);
+        mWhisper.setTranslate(false);
+        mWhisper.start();
+        Log.d(TAG,"Start Transcription");
+    }
+
+    private void showProcessingToast() {
+        Toast toast = new Toast(this);
+        toast.setDuration(Toast.LENGTH_SHORT);
+        toast.setText(R.string.processing);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            toast.addCallback(new Toast.Callback() {
+                @Override
+                public void onToastHidden() {
+                    super.onToastHidden();
+                    if (mWhisper != null) toast.show();
                 }
-                toast.show();
             });
-            mWhisper.setTranslate(false);
-            mWhisper.start();
-            Log.d(TAG,"Start Transcription");
         }
+        toast.show();
     }
 
     @Override

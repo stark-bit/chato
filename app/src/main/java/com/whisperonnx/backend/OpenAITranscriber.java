@@ -49,63 +49,7 @@ public class OpenAITranscriber {
     public void transcribe(Context context, byte[] pcmData, Callback callback) {
         executor.execute(() -> {
             try {
-                SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
-
-                String endpoint = sp.getString(PREF_OPENAI_ENDPOINT, DEFAULT_ENDPOINT);
-                String apiKey = sp.getString(PREF_OPENAI_API_KEY, "");
-                String model = sp.getString(PREF_OPENAI_MODEL, DEFAULT_MODEL);
-
-                if (endpoint.isEmpty()) {
-                    callback.onError("OpenAI endpoint not configured");
-                    return;
-                }
-                if (apiKey.isEmpty()) {
-                    callback.onError("Server API key not set. Add it in Settings");
-                    return;
-                }
-
-                byte[] wavData = WavUtils.pcmToWav(pcmData, 16000, 1, 16);
-
-                RequestBody fileBody = RequestBody.create(
-                        wavData,
-                        MediaType.parse("audio/wav")
-                );
-
-                MultipartBody.Builder builder = new MultipartBody.Builder()
-                        .setType(MultipartBody.FORM)
-                        .addFormDataPart("file", "audio.wav", fileBody)
-                        .addFormDataPart("model", model)
-                        .addFormDataPart("response_format", "text")
-                        .addFormDataPart("language", Whisper.LANGUAGE);
-
-                Request request = new Request.Builder()
-                        .url(endpoint)
-                        .addHeader("Authorization", "Bearer " + apiKey)
-                        .post(builder.build())
-                        .build();
-
-                Response response = client.newCall(request).execute();
-
-                if (!response.isSuccessful()) {
-                    String errorBody = response.body() != null
-                            ? response.body().string()
-                            : "HTTP " + response.code();
-                    Log.e(TAG, "OpenAI error: " + errorBody);
-                    callback.onError("OpenAI error " + response.code() + ": " + errorBody);
-                    return;
-                }
-
-                String transcription = response.body() != null
-                        ? response.body().string().trim()
-                        : "";
-
-                if (transcription.isEmpty()) {
-                    callback.onError(MSG_EMPTY_TRANSCRIPTION);
-                    return;
-                }
-
-                callback.onSuccess(transcription);
-
+                transcribeNow(PreferenceManager.getDefaultSharedPreferences(context), pcmData, callback);
             } catch (IOException e) {
                 Log.e(TAG, "Network error", e);
                 callback.onError("Network error: " + e.getMessage());
@@ -114,6 +58,57 @@ public class OpenAITranscriber {
                 callback.onError("Error: " + e.getMessage());
             }
         });
+    }
+
+    private void transcribeNow(SharedPreferences sp, byte[] pcmData, Callback callback) throws IOException {
+        String endpoint = sp.getString(PREF_OPENAI_ENDPOINT, DEFAULT_ENDPOINT);
+        String apiKey = sp.getString(PREF_OPENAI_API_KEY, "");
+        if (endpoint.isEmpty()) {
+            callback.onError("OpenAI endpoint not configured");
+            return;
+        }
+        if (apiKey.isEmpty()) {
+            callback.onError("Server API key not set. Add it in Settings");
+            return;
+        }
+
+        Response response = client.newCall(request(endpoint, apiKey, sp.getString(PREF_OPENAI_MODEL, DEFAULT_MODEL), pcmData)).execute();
+        if (!response.isSuccessful()) {
+            String errorBody = response.body() != null
+                    ? response.body().string()
+                    : "HTTP " + response.code();
+            Log.e(TAG, "OpenAI error: " + errorBody);
+            callback.onError("OpenAI error " + response.code() + ": " + errorBody);
+            return;
+        }
+
+        String transcription = response.body() != null
+                ? response.body().string().trim()
+                : "";
+        if (transcription.isEmpty()) {
+            callback.onError(MSG_EMPTY_TRANSCRIPTION);
+            return;
+        }
+        callback.onSuccess(transcription);
+    }
+
+    private static Request request(String endpoint, String apiKey, String model, byte[] pcmData) {
+        RequestBody fileBody = RequestBody.create(
+                WavUtils.pcmToWav(pcmData, 16000, 1, 16),
+                MediaType.parse("audio/wav")
+        );
+        MultipartBody body = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("file", "audio.wav", fileBody)
+                .addFormDataPart("model", model)
+                .addFormDataPart("response_format", "text")
+                .addFormDataPart("language", Whisper.LANGUAGE)
+                .build();
+        return new Request.Builder()
+                .url(endpoint)
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .post(body)
+                .build();
     }
 
     public void shutdown() {

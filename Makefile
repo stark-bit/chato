@@ -80,8 +80,9 @@ clean: ## Remove build artifacts
 test: ## Run unit tests (JVM, no device needed)
 	$(GRADLEW) testDebugUnitTest
 
-check: ## Package boundaries, lint and unit tests, fastest first (no device needed)
+check: ## Package boundaries, comments, complexity, lint and unit tests, fastest first (no device needed)
 	$(GRADLEW) checkstyle
+	$(GRADLEW) pmd
 	$(GRADLEW) lintDebug
 	$(GRADLEW) testDebugUnitTest
 

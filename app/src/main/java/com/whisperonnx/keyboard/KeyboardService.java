@@ -172,8 +172,16 @@ public class KeyboardService extends InputMethodService {
     @Override
     public View onCreateInputView() {  // External: Android calls this before onStartInputView
         sp = PreferenceManager.getDefaultSharedPreferences(this);
-
         View view = getLayoutInflater().inflate(R.layout.voice_service, null);
+        bindViews(view);
+        restoreState();
+        checkRecordPermission();
+        createRecorder();
+        setUpKeys();
+        return view;
+    }
+
+    private void bindViews(View view) {
         btnRecord = view.findViewById(R.id.btnRecord);
         btnKeyboard = view.findViewById(R.id.btnKeyboard);
         btnModeAuto = view.findViewById(R.id.btnModeAuto);
@@ -188,114 +196,71 @@ public class KeyboardService extends InputMethodService {
         btnSendTarget = view.findViewById(R.id.btnSendTarget);
         btnSettings = view.findViewById(R.id.btnSettings);
         tvSendTargetBadge = view.findViewById(R.id.tvSendTargetBadge);
-        String backendType = sp.getString("backend_type", "local");
-        btnBackend.setActivated(backendType.equals("openai"));
-
         tvStatus = view.findViewById(R.id.tv_status);
         tvStatusInline = view.findViewById(R.id.tv_status_inline);
+        layoutButtons = view.findViewById(R.id.layout_buttons);
+        layoutToolbar = view.findViewById(R.id.layout_toolbar);
+        btnToolbarToggle = view.findViewById(R.id.btnToolbarToggle);
+    }
+
+    private void restoreState() {
+        btnBackend.setActivated(sp.getString("backend_type", "local").equals("openai"));
         modeAuto = sp.getBoolean("imeModeAuto",false);
         btnModeAuto.setActivated(modeAuto);
         pauseOtherAudio = sp.getBoolean("imePauseOtherAudio", false);
         btnPauseAudio.setActivated(pauseOtherAudio);
-        layoutButtons = view.findViewById(R.id.layout_buttons);
-        layoutToolbar = view.findViewById(R.id.layout_toolbar);
-        btnToolbarToggle = view.findViewById(R.id.btnToolbarToggle);
         toolbarExpanded = sp.getBoolean("imeToolbarExpanded", true);
         updateToolbarVisibility();
         sendTarget = sp.getInt("imeSendTarget", 0);
         if (sendTarget != 0 && !EndpointSender.load(sp, sendTarget).isConfigured()) sendTarget = 0;
         updateSendTargetUi();
-        checkRecordPermission();
+    }
 
+    private void createRecorder() {
         mRecorder = new Recorder(this);
-        mRecorder.setListener(new Recorder.RecorderListener() {
-            @Override
-            public void onUpdateReceived(String message) {
-                if (message.equals(Recorder.MSG_RECORDING)) {
-                    applyGradientBackground();
-                    keepScreenOn(true);
-                } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
-                    HapticFeedback.vibrate(mContext);
-                    keepScreenOn(false);
-                    otherAudio.release();
-                    revertBackground();
-                    handler.post(() -> onSessionEnded());
-                } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                    HapticFeedback.vibrate(mContext);
-                    keepScreenOn(false);
-                    otherAudio.release();
-                    handler.post(() -> onSessionEnded());
-                    handler.post(() -> {
-                        revertBackground();
-                        showStatus(getString(R.string.error_no_input));
-                    });
-                } else {
-                    keepScreenOn(false);
-                    otherAudio.release();
-                }
-            }
-
-        });
+        mRecorder.setListener(this::onRecorderUpdate);
         mRecorder.setChunkListener(pcm -> {
             Whisper whisper = mWhisper;
-            if (whisper != null) {
-                whisper.enqueueChunk(pcm);
-            }
+            if (whisper != null) whisper.enqueueChunk(pcm);
         });
+    }
 
-        btnDel.setOnTouchListener(new View.OnTouchListener() {
-            private static final long HOLD_DELAY_MS = 400;
-            private static final long START_INTERVAL_MS = 350;
-            private static final long MIN_INTERVAL_MS = 40;
-            private static final float ACCELERATION = 0.93f;
+    private void onRecorderUpdate(String message) {
+        switch (message) {
+            case Recorder.MSG_RECORDING:
+                applyGradientBackground();
+                keepScreenOn(true);
+                break;
+            case Recorder.MSG_RECORDING_DONE:
+                endRecording();
+                revertBackground();
+                handler.post(this::onSessionEnded);
+                break;
+            case Recorder.MSG_RECORDING_ERROR:
+                endRecording();
+                handler.post(this::onSessionEnded);
+                handler.post(() -> {
+                    revertBackground();
+                    showStatus(getString(R.string.error_no_input));
+                });
+                break;
+            default:
+                keepScreenOn(false);
+                otherAudio.release();
+        }
+    }
 
-            private long interval;
+    private void endRecording() {
+        HapticFeedback.vibrate(mContext);
+        keepScreenOn(false);
+        otherAudio.release();
+    }
 
-            private final Runnable repeatWordDelete = new Runnable() {
-                @Override
-                public void run() {
-                    deleteWordBeforeCursor();
-                    HapticFeedback.tick(mContext);
-                    interval = Math.max(MIN_INTERVAL_MS, (long) (interval * ACCELERATION));
-                    handler.postDelayed(this, interval);
-                }
-            };
-
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                switch (event.getActionMasked()) {
-                    case MotionEvent.ACTION_DOWN:
-                        InputConnection ic = getCurrentInputConnection();
-                        if (ic != null) {
-                            ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
-                            ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL));
-                        }
-                        HapticFeedback.tick(mContext);
-                        interval = START_INTERVAL_MS;
-                        handler.postDelayed(repeatWordDelete, HOLD_DELAY_MS);
-                        break;
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        handler.removeCallbacks(repeatWordDelete);
-                        break;
-                }
-                return true;
-            }
-        });
-
+    @SuppressLint("ClickableViewAccessibility")
+    private void setUpKeys() {
+        btnDel.setOnTouchListener(new DeleteKeyTouch());
         btnRecord.setOnTouchListener((v, event) -> {
-            int action = event.getActionMasked();
-            boolean recording = mRecorder != null && mRecorder.isInProgress();
-            if (modeAuto) {
-                if (action == MotionEvent.ACTION_DOWN) {
-                    if (recording) stopMicRecording();
-                    else startMicRecording();
-                }
-            } else if (action == MotionEvent.ACTION_DOWN) {
-                startMicRecording();
-            } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-                stopMicRecording();
-            }
+            onRecordTouch(event.getActionMasked());
             return true;
         });
 
@@ -312,112 +277,183 @@ public class KeyboardService extends InputMethodService {
             if (mWhisper != null) stopTranscription();
             switchToPreviousInputMethod();
         });
-
-        btnEnter.setOnClickListener(v -> {
-            InputConnection ic = getCurrentInputConnection();
-            if (ic == null) return;
-            EditorInfo info = getCurrentInputEditorInfo();
-            int action = TextEdits.enterAction(info == null ? 0 : info.imeOptions);
-            if (action != EditorInfo.IME_ACTION_NONE && ic.performEditorAction(action)) return;
-            ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER));
-            ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER));
-        });
-
+        btnEnter.setOnClickListener(v -> pressEnter());
         btnDot.setOnClickListener(v -> getCurrentInputConnection().commitText(".", 1));
         btnSpace.setOnClickListener(v -> getCurrentInputConnection().commitText(" ", 1));
         float dp = getResources().getDisplayMetrics().density;
         CursorDrag cursorDrag = new CursorDrag(
                 ViewConfiguration.get(mContext).getScaledTouchSlop(), 12 * dp, 24 * dp);
         btnSpace.setOnTouchListener((v, event) -> {
-            switch (event.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    HapticFeedback.tick(mContext);
-                    cursorDrag.start(event.getRawX(), event.getRawY());
-                    v.setPressed(true);
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    int[] steps = cursorDrag.move(event.getRawX(), event.getRawY());
-                    moveCursor(steps[0], KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT);
-                    moveCursor(steps[1], KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN);
-                    break;
-                case MotionEvent.ACTION_UP:
-                    v.setPressed(false);
-                    if (!cursorDrag.isDragging()) v.performClick();
-                    break;
-                case MotionEvent.ACTION_CANCEL:
-                    v.setPressed(false);
-                    break;
-            }
+            onSpaceTouch(v, event, cursorDrag);
             return true;
         });
         btnDash.setOnClickListener(v -> getCurrentInputConnection().commitText("-", 1));
-        btnBullet.setOnClickListener(v -> {
-            InputConnection ic = getCurrentInputConnection();
-            if (ic == null) return;
-            ic.commitText(TextEdits.bulletInsert(ic.getTextBeforeCursor(1, 0)), 1);
-        });
-
-        btnModeAuto.setOnClickListener(v -> {
-            if (mRecorder != null && mRecorder.isInProgress()) stopMicRecording();
-            modeAuto = !modeAuto;
-            sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
-            btnModeAuto.setActivated(modeAuto);
-        });
-
-        btnSendTarget.setOnClickListener(v -> {
-            if (mRecorder != null && mRecorder.isInProgress()) stopMicRecording();
-            int next = 0;
-            for (int i = sendTarget + 1; i <= EndpointSender.COUNT; i++) {
-                if (EndpointSender.load(sp, i).isConfigured()) { next = i; break; }
-            }
-            if (next == 0 && sendTarget == 0) {
-                showStatus(getString(R.string.endpoint_none_configured));
-                return;
-            }
-            sendTarget = next;
-            sp.edit().putInt("imeSendTarget", sendTarget).apply();
-            updateSendTargetUi();
-            showTransientStatus(sendTarget == 0
-                    ? getString(R.string.endpoint_target_cursor)
-                    : getString(R.string.endpoint_target, EndpointSender.load(sp, sendTarget).displayName()));
-        });
-
+        btnBullet.setOnClickListener(v -> insertBullet());
+        btnModeAuto.setOnClickListener(v -> toggleModeAuto());
+        btnSendTarget.setOnClickListener(v -> cycleSendTarget());
         btnSettings.setOnClickListener(v -> {
             requestHideSelf(0);
             startActivity(Components.intent(this, Components.SETTINGS)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
         });
-
         btnToolbarToggle.setOnClickListener(v -> {
             toolbarExpanded = !toolbarExpanded;
             sp.edit().putBoolean("imeToolbarExpanded", toolbarExpanded).apply();
             updateToolbarVisibility();
         });
+        btnPauseAudio.setOnClickListener(v -> togglePauseAudio());
+        btnBackend.setOnClickListener(v -> toggleBackend());
+    }
 
-        btnPauseAudio.setOnClickListener(v -> {
-            pauseOtherAudio = !pauseOtherAudio;
-            sp.edit().putBoolean("imePauseOtherAudio", pauseOtherAudio).apply();
-            btnPauseAudio.setActivated(pauseOtherAudio);
-            if (!pauseOtherAudio) otherAudio.release();
-            else if (mRecorder != null && mRecorder.isInProgress()) otherAudio.pause();
-            showTransientStatus(getString(pauseOtherAudio ? R.string.pause_audio_on : R.string.pause_audio_off));
-        });
+    private final class DeleteKeyTouch implements View.OnTouchListener {
+        private static final long HOLD_DELAY_MS = 400;
+        private static final long START_INTERVAL_MS = 350;
+        private static final long MIN_INTERVAL_MS = 40;
+        private static final float ACCELERATION = 0.93f;
 
-        btnBackend.setOnClickListener(v -> {
-            String current = sp.getString("backend_type", "local");
-            String next = current.equals("openai") ? "local" : "openai";
-            boolean toLocal = next.equals("local");
-            if (toLocal && isBusy()) {
-                showTransientStatus(getString(R.string.please_wait));
-                return;
+        private long interval;
+
+        private final Runnable repeatWordDelete = new Runnable() {
+            @Override
+            public void run() {
+                deleteWordBeforeCursor();
+                HapticFeedback.tick(mContext);
+                interval = Math.max(MIN_INTERVAL_MS, (long) (interval * ACCELERATION));
+                handler.postDelayed(this, interval);
             }
-            Log.d(TAG, "btnBackend: " + current + " -> " + next);
-            sp.edit().putString("backend_type", next).apply();
-            btnBackend.setActivated(!toLocal);
-            if (toLocal && needsLocalModel()) reloadModel();
-        });
+        };
 
-        return view;
+        @SuppressLint("ClickableViewAccessibility")
+        @Override
+        public boolean onTouch(View v, MotionEvent event) {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    sendKey(KeyEvent.KEYCODE_DEL);
+                    HapticFeedback.tick(mContext);
+                    interval = START_INTERVAL_MS;
+                    handler.postDelayed(repeatWordDelete, HOLD_DELAY_MS);
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    handler.removeCallbacks(repeatWordDelete);
+                    break;
+            }
+            return true;
+        }
+    }
+
+    private void sendKey(int keyCode) {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return;
+        ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, keyCode));
+        ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, keyCode));
+    }
+
+    private void onRecordTouch(int action) {
+        if (modeAuto) {
+            if (action == MotionEvent.ACTION_DOWN) toggleRecording();
+            return;
+        }
+        if (action == MotionEvent.ACTION_DOWN) startMicRecording();
+        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) stopMicRecording();
+    }
+
+    private void toggleRecording() {
+        if (mRecorder != null && mRecorder.isInProgress()) stopMicRecording();
+        else startMicRecording();
+    }
+
+    private void onSpaceTouch(View v, MotionEvent event, CursorDrag cursorDrag) {
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                HapticFeedback.tick(mContext);
+                cursorDrag.start(event.getRawX(), event.getRawY());
+                v.setPressed(true);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                int[] steps = cursorDrag.move(event.getRawX(), event.getRawY());
+                moveCursor(steps[0], KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT);
+                moveCursor(steps[1], KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN);
+                break;
+            case MotionEvent.ACTION_UP:
+                releaseSpace(v, cursorDrag);
+                break;
+            case MotionEvent.ACTION_CANCEL:
+                v.setPressed(false);
+                break;
+        }
+    }
+
+    private void releaseSpace(View v, CursorDrag cursorDrag) {
+        v.setPressed(false);
+        if (!cursorDrag.isDragging()) v.performClick();
+    }
+
+    private void pressEnter() {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return;
+        EditorInfo info = getCurrentInputEditorInfo();
+        int action = TextEdits.enterAction(info == null ? 0 : info.imeOptions);
+        if (action != EditorInfo.IME_ACTION_NONE && ic.performEditorAction(action)) return;
+        sendKey(KeyEvent.KEYCODE_ENTER);
+    }
+
+    private void insertBullet() {
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return;
+        ic.commitText(TextEdits.bulletInsert(ic.getTextBeforeCursor(1, 0)), 1);
+    }
+
+    private void toggleModeAuto() {
+        if (mRecorder != null && mRecorder.isInProgress()) stopMicRecording();
+        modeAuto = !modeAuto;
+        sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
+        btnModeAuto.setActivated(modeAuto);
+    }
+
+    private void cycleSendTarget() {
+        if (mRecorder != null && mRecorder.isInProgress()) stopMicRecording();
+        int next = nextConfiguredEndpoint();
+        if (next == 0 && sendTarget == 0) {
+            showStatus(getString(R.string.endpoint_none_configured));
+            return;
+        }
+        sendTarget = next;
+        sp.edit().putInt("imeSendTarget", sendTarget).apply();
+        updateSendTargetUi();
+        showTransientStatus(sendTarget == 0
+                ? getString(R.string.endpoint_target_cursor)
+                : getString(R.string.endpoint_target, EndpointSender.load(sp, sendTarget).displayName()));
+    }
+
+    private int nextConfiguredEndpoint() {
+        for (int i = sendTarget + 1; i <= EndpointSender.COUNT; i++) {
+            if (EndpointSender.load(sp, i).isConfigured()) return i;
+        }
+        return 0;
+    }
+
+    private void togglePauseAudio() {
+        pauseOtherAudio = !pauseOtherAudio;
+        sp.edit().putBoolean("imePauseOtherAudio", pauseOtherAudio).apply();
+        btnPauseAudio.setActivated(pauseOtherAudio);
+        if (!pauseOtherAudio) otherAudio.release();
+        else if (mRecorder != null && mRecorder.isInProgress()) otherAudio.pause();
+        showTransientStatus(getString(pauseOtherAudio ? R.string.pause_audio_on : R.string.pause_audio_off));
+    }
+
+    private void toggleBackend() {
+        String current = sp.getString("backend_type", "local");
+        String next = current.equals("openai") ? "local" : "openai";
+        boolean toLocal = next.equals("local");
+        if (toLocal && isBusy()) {
+            showTransientStatus(getString(R.string.please_wait));
+            return;
+        }
+        Log.d(TAG, "btnBackend: " + current + " -> " + next);
+        sp.edit().putString("backend_type", next).apply();
+        btnBackend.setActivated(!toLocal);
+        if (toLocal && needsLocalModel()) reloadModel();
     }
 
     private void startRecording() {
@@ -483,25 +519,7 @@ public class KeyboardService extends InputMethodService {
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
-                if (message.equals(Whisper.MSG_MODEL_LOADED)) {
-                    handler.post(() -> {
-                        if (loadingStatus != null && loadingStatus.equals(statusMessage)) clearStatus();
-                        loadingStatus = null;
-                    });
-                    return;
-                }
-                if (message.equals(Whisper.MSG_QUEUE_EMPTY)) {
-                    handler.post(() -> session.onQueueEmpty());
-                }
-                if (modeAuto && message.equals(OpenAITranscriber.MSG_EMPTY_TRANSCRIPTION)) {
-                    Log.d(TAG, "Ignoring empty transcription in auto mode");
-                } else if (!message.equals(Whisper.MSG_PROCESSING)
-                        && !message.equals(Whisper.MSG_PROCESSING_DONE)
-                        && !message.equals(Whisper.MSG_QUEUE_EMPTY)) {
-                    handler.post(() -> {
-                        showStatus(message);
-                    });
-                }
+                onWhisperUpdate(message);
             }
 
             @Override
@@ -515,6 +533,31 @@ public class KeyboardService extends InputMethodService {
             }
         });
         mWhisper.loadModel();
+    }
+
+    private void onWhisperUpdate(String message) {
+        if (modeAuto && message.equals(OpenAITranscriber.MSG_EMPTY_TRANSCRIPTION)) {
+            Log.d(TAG, "Ignoring empty transcription in auto mode");
+            return;
+        }
+        switch (message) {
+            case Whisper.MSG_MODEL_LOADED:
+                handler.post(this::onModelLoaded);
+                break;
+            case Whisper.MSG_QUEUE_EMPTY:
+                handler.post(() -> session.onQueueEmpty());
+                break;
+            case Whisper.MSG_PROCESSING:
+            case Whisper.MSG_PROCESSING_DONE:
+                break;
+            default:
+                handler.post(() -> showStatus(message));
+        }
+    }
+
+    private void onModelLoaded() {
+        if (loadingStatus != null && loadingStatus.equals(statusMessage)) clearStatus();
+        loadingStatus = null;
     }
 
     private void beginSession() {

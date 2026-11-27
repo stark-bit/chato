@@ -29,21 +29,30 @@ public final class Backends {
     public static String describe(SharedPreferences sp, int choice, boolean parakeetInstalled) {
         switch (choice) {
             case REMOTE:
-                String url = sp.getString(OpenAITranscriber.PREF_OPENAI_ENDPOINT, "");
-                String model = sp.getString(OpenAITranscriber.PREF_OPENAI_MODEL, "");
-                String host = url;
-                try {
-                    URI u = new URI(url.trim());
-                    if (u.getHost() != null) host = u.getHost() + (u.getPort() > 0 ? ":" + u.getPort() : "");
-                } catch (Exception ignored) { }
-                if (host == null || host.isEmpty()) return "Server not set up. Add it in Settings";
-                return "Server " + host + (model.isEmpty() ? "" : " · model " + model);
+                return describeServer(sp);
             case PARAKEET:
                 return parakeetInstalled
                         ? "On this phone · NVIDIA Parakeet TDT 0.6B"
                         : "Not downloaded yet. Whisper small is used until it is";
             default:
                 return "On this phone · Whisper small (int8)";
+        }
+    }
+
+    private static String describeServer(SharedPreferences sp) {
+        String host = hostOf(sp.getString(OpenAITranscriber.PREF_OPENAI_ENDPOINT, ""));
+        if (host == null || host.isEmpty()) return "Server not set up. Add it in Settings";
+        String model = sp.getString(OpenAITranscriber.PREF_OPENAI_MODEL, "");
+        return "Server " + host + (model.isEmpty() ? "" : " · model " + model);
+    }
+
+    private static String hostOf(String url) {
+        try {
+            URI u = new URI(url.trim());
+            if (u.getHost() == null) return url;
+            return u.getHost() + (u.getPort() > 0 ? ":" + u.getPort() : "");
+        } catch (Exception ignored) {
+            return url;
         }
     }
 }

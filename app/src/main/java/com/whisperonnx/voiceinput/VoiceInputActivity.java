@@ -76,6 +76,78 @@ public class VoiceInputActivity extends AppCompatActivity {
         });
     }
 
+    private void onRecorderUpdate(String message) {
+        switch (message) {
+            case Recorder.MSG_RECORDING:
+                applyGradientBackground();
+                break;
+            case Recorder.MSG_RECORDING_DONE:
+                HapticFeedback.vibrate(mContext);
+                revertBackground();
+                startTranscription();
+                break;
+            case Recorder.MSG_RECORDING_ERROR:
+                HapticFeedback.vibrate(mContext);
+                cancelCountDown();
+                runOnUiThread(() -> {
+                    revertBackground();
+                    processingBar.setProgress(0);
+                    Toast.makeText(mContext, R.string.error_no_input, Toast.LENGTH_SHORT).show();
+                });
+                break;
+        }
+    }
+
+    private void cancelCountDown() {
+        if (countDownTimer != null) countDownTimer.cancel();
+    }
+
+    private void startCountedRecording() {
+        HapticFeedback.vibrate(this);
+        startRecording();
+        runOnUiThread(() -> processingBar.setProgress(100));
+        countDownTimer = new CountDownTimer(30000, 1000) {
+            @Override
+            public void onTick(long l) {
+                runOnUiThread(() -> processingBar.setProgress((int) (l / 300)));
+            }
+            @Override
+            public void onFinish() {}
+        };
+        countDownTimer.start();
+    }
+
+    private void onRecordPressed() {
+        applyGradientBackground();
+        if (!checkRecordPermission()) return;
+        if (mWhisper.isInProgress()) {
+            runOnUiThread(() -> Toast.makeText(this, getString(R.string.please_wait), Toast.LENGTH_SHORT).show());
+            return;
+        }
+        startCountedRecording();
+    }
+
+    private void onRecordReleased() {
+        revertBackground();
+        if (mRecorder != null && mRecorder.isInProgress()) mRecorder.stop();
+    }
+
+    private void toggleModeAuto() {
+        modeAuto = !modeAuto;
+        sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
+        btnRecord.setVisibility(modeAuto ? View.GONE : View.VISIBLE);
+        btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
+        if (mWhisper != null) stopTranscription();
+        setResult(RESULT_CANCELED, null);
+        finish();
+    }
+
+    private void toggleBackend() {
+        String next = sp.getString("backend_type", "local").equals("openai") ? "local" : "openai";
+        sp.edit().putString("backend_type", next).apply();
+        btnBackend.setImageResource(next.equals("openai") ? R.drawable.ic_cloud_on_36dp : R.drawable.ic_cloud_off_36dp);
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,90 +176,18 @@ public class VoiceInputActivity extends AppCompatActivity {
         btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
 
         mRecorder = new Recorder(this);
-        mRecorder.setListener(new Recorder.RecorderListener() {
-            @Override
-            public void onUpdateReceived(String message) {
-                if (message.equals(Recorder.MSG_RECORDING)) {
-                    applyGradientBackground();
-                } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
-                    HapticFeedback.vibrate(mContext);
-                    revertBackground();
-                    startTranscription();
-                } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                    HapticFeedback.vibrate(mContext);
-                    if (countDownTimer!=null) { countDownTimer.cancel();}
-                    runOnUiThread(() -> {
-                        revertBackground();
-                        processingBar.setProgress(0);
-                        Toast.makeText(mContext,R.string.error_no_input,Toast.LENGTH_SHORT).show();
-                    });
-                }
-            }
-
-        });
+        mRecorder.setListener(this::onRecorderUpdate);
 
         if (modeAuto) {
             btnRecord.setVisibility(View.GONE);
-            HapticFeedback.vibrate(this);
-            startRecording();
-            runOnUiThread(() -> processingBar.setProgress(100));
-            countDownTimer = new CountDownTimer(30000, 1000) {
-                @Override
-                public void onTick(long l) {
-                    runOnUiThread(() -> processingBar.setProgress((int) (l / 300)));
-                }
-                @Override
-                public void onFinish() {}
-            };
-            countDownTimer.start();
+            startCountedRecording();
         }
 
-        btnModeAuto.setOnClickListener(v -> {
-            modeAuto = !modeAuto;
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putBoolean("imeModeAuto", modeAuto);
-            editor.apply();
-            btnRecord.setVisibility(modeAuto ? View.GONE : View.VISIBLE);
-            btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
-            if (mWhisper != null) stopTranscription();
-            setResult(RESULT_CANCELED, null);
-            finish();
-        });
-
-        btnBackend.setOnClickListener(v -> {
-            String current = sp.getString("backend_type", "local");
-            String next = current.equals("openai") ? "local" : "openai";
-            sp.edit().putString("backend_type", next).apply();
-            btnBackend.setImageResource(next.equals("openai") ? R.drawable.ic_cloud_on_36dp : R.drawable.ic_cloud_off_36dp);
-        });
-
+        btnModeAuto.setOnClickListener(v -> toggleModeAuto());
+        btnBackend.setOnClickListener(v -> toggleBackend());
         btnRecord.setOnTouchListener((v, event) -> {
-            if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                applyGradientBackground();
-                if (checkRecordPermission()){
-                    if (!mWhisper.isInProgress()) {
-                        HapticFeedback.vibrate(this);
-                        startRecording();
-                        runOnUiThread(() -> processingBar.setProgress(100));
-                        countDownTimer = new CountDownTimer(30000, 1000) {
-                            @Override
-                            public void onTick(long l) {
-                                runOnUiThread(() -> processingBar.setProgress((int) (l / 300)));
-                            }
-                            @Override
-                            public void onFinish() {}
-                        };
-                        countDownTimer.start();
-                    } else {
-                        runOnUiThread(() -> Toast.makeText(this, getString(R.string.please_wait),Toast.LENGTH_SHORT).show());
-                    }
-                }
-            } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                revertBackground();
-                if (mRecorder != null && mRecorder.isInProgress()) {
-                    mRecorder.stop();
-                }
-            }
+            if (event.getAction() == MotionEvent.ACTION_DOWN) onRecordPressed();
+            if (event.getAction() == MotionEvent.ACTION_UP) onRecordReleased();
             return true;
         });
 

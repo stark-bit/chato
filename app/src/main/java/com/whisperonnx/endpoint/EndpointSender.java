@@ -150,9 +150,7 @@ public class EndpointSender {
                 case '\n': sb.append("\\n"); break;
                 case '\r': sb.append("\\r"); break;
                 case '\t': sb.append("\\t"); break;
-                default:
-                    if (c < 0x20) sb.append(String.format(Locale.US, "\\u%04x", (int) c));
-                    else sb.append(c);
+                default: sb.append(c < 0x20 ? String.format(Locale.US, "\\u%04x", (int) c) : String.valueOf(c));
             }
         }
         return sb.toString();

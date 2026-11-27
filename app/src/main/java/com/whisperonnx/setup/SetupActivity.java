@@ -46,32 +46,39 @@ public class SetupActivity extends AppCompatActivity {
         ((TextView) findViewById(R.id.summary_whisper)).setText(summary(
                 WhisperModel.isInstalled(this), R.string.setup_whisper_summary, WhisperModel.FILES));
 
-        findViewById(R.id.row_parakeet).setOnClickListener(v -> {
-            if (busy()) return;
-            if (ParakeetRecognizer.isInstalled(this)) done(Backends.PARAKEET);
-            else installer.offerParakeet(() -> done(Backends.PARAKEET), () -> { });
-        });
-        findViewById(R.id.row_whisper).setOnClickListener(v -> {
-            if (busy()) return;
-            if (WhisperModel.isInstalled(this)) done(Backends.WHISPER);
-            else installer.offerWhisper(() -> done(Backends.WHISPER), () -> { });
-        });
-        findViewById(R.id.row_server).setOnClickListener(v -> {
-            if (busy()) return;
-            Backends.select(sp, Backends.REMOTE);
-            Components.open(this, Components.SETTINGS);
-            finish();
-        });
-
         pickZip = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             if (result.getData() != null && result.getData().getData() != null) installZip(result.getData().getData());
         });
-        findViewById(R.id.row_zip).setOnClickListener(v -> {
-            if (busy()) return;
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.setType("application/zip");
-            pickZip.launch(intent);
-        });
+        findViewById(R.id.row_parakeet).setOnClickListener(v -> chooseParakeet());
+        findViewById(R.id.row_whisper).setOnClickListener(v -> chooseWhisper());
+        findViewById(R.id.row_server).setOnClickListener(v -> chooseServer());
+        findViewById(R.id.row_zip).setOnClickListener(v -> chooseZip());
+    }
+
+    private void chooseParakeet() {
+        if (busy()) return;
+        if (ParakeetRecognizer.isInstalled(this)) done(Backends.PARAKEET);
+        else installer.offerParakeet(() -> done(Backends.PARAKEET), () -> { });
+    }
+
+    private void chooseWhisper() {
+        if (busy()) return;
+        if (WhisperModel.isInstalled(this)) done(Backends.WHISPER);
+        else installer.offerWhisper(() -> done(Backends.WHISPER), () -> { });
+    }
+
+    private void chooseServer() {
+        if (busy()) return;
+        Backends.select(sp, Backends.REMOTE);
+        Components.open(this, Components.SETTINGS);
+        finish();
+    }
+
+    private void chooseZip() {
+        if (busy()) return;
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.setType("application/zip");
+        pickZip.launch(intent);
     }
 
     private String summary(boolean installed, int textRes, java.util.List<ModelDownloader.FileSpec> files) {

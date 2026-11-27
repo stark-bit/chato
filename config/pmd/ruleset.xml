@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<ruleset name="Chato"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+    <description>Branching that takes nuance to read is banned; each message names the fix.</description>
+
+    <rule ref="category/java/design.xml/CognitiveComplexity"
+          message="{0} {1} is too hard to follow (cognitive complexity {2}, limit {3}). Split it into named methods, return early instead of nesting, or replace a branch chain with a lookup map or a switch on an enum. Do not suppress.">
+        <properties>
+            <property name="reportLevel" value="15"/>
+        </properties>
+    </rule>
+
+    <rule ref="category/java/design.xml/AvoidDeeplyNestedIfStmts"
+          message="If statements nest too deep. Return early, or move the inner branch into a named method.">
+        <properties>
+            <property name="problemDepth" value="3"/>
+        </properties>
+    </rule>
+
+    <rule ref="category/java/design.xml/CollapsibleIfStatements"
+          message="Merge the nested if into one condition with &amp;&amp;, or name the condition with a method."/>
+
+    <rule name="IfInsideSwitch"
+          language="java"
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+          message="An if inside a switch case hides a second decision. Move the case body into a named method, or make the condition part of what you switch on.">
+        <description>No if statements inside switch cases.</description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+//IfStatement[ancestor::SwitchStatement or ancestor::SwitchExpression]
+  [not(ancestor::LambdaExpression[ancestor::SwitchStatement or ancestor::SwitchExpression])]
+  [not(ancestor::ClassBody[ancestor::SwitchStatement or ancestor::SwitchExpression])]
+]]></value>
+            </property>
+        </properties>
+    </rule>
+
+    <rule name="ElseIfChain"
+          language="java"
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+          message="This if has two or more else-if branches. Use a switch, a lookup map, or one method per case with early returns.">
+        <description>No if / else if / else if chains.</description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+//IfStatement[not(parent::IfStatement)][IfStatement[IfStatement]]
+]]></value>
+            </property>
+        </properties>
+    </rule>
+</ruleset>

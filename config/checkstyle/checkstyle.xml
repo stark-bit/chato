@@ -29,8 +29,22 @@
         <property name="format" value="(^|\s|@)#(?!\s*External:|#|!)"/>
         <property name="message" value="Comments are banned (CLAUDE.md): they cannot be enforced and go stale. Say it with a name, a test or a check instead. Only a fact about the outside world (Android, a server, a file format, hardware) may stay, written as External: on one line."/>
     </module>
+    <module name="SuppressionSingleFilter">
+        <property name="files" value="[\\/]thirdparty[\\/]"/>
+        <property name="id" value="complexity"/>
+    </module>
     <module name="TreeWalker">
         <module name="UnusedImports"/>
+        <module name="NestedIfDepth">
+            <property name="id" value="complexity"/>
+            <property name="max" value="1"/>
+            <message key="nested.if.depth" value="If statements nest {0} deep (max {1}). Return early, or move the inner branch into a named method."/>
+        </module>
+        <module name="NPathComplexity">
+            <property name="id" value="complexity"/>
+            <property name="max" value="200"/>
+            <message key="npathComplexity" value="This method has {0} paths through it (max {1}). Split it into named methods, or replace branches with a lookup map or a switch on an enum."/>
+        </module>
         <module name="TodoComment">
             <property name="id" value="comment"/>
             <property name="format" value="^(?!\s*External:)"/>

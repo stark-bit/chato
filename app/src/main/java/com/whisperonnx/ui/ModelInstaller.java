@@ -111,37 +111,42 @@ public class ModelInstaller implements DefaultLifecycleObserver {
         cancelled.set(false);
         OkHttpClient client = new OkHttpClient.Builder().readTimeout(60, TimeUnit.SECONDS).build();
         thread = new Thread(() -> {
-            String error = null;
-            try {
-                ModelDownloader.download(client, files, dir, (done, total) -> activity.runOnUiThread(() -> {
-                    bar.setProgress((int) (done * 1000 / total));
-                    label.setText(activity.getString(R.string.model_download_progress,
-                            (int) (done / 1_000_000), (int) (total / 1_000_000)));
-                }), cancelled);
-                if (after != null) {
-                    activity.runOnUiThread(() -> dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(false));
-                    after.run(bar, label);
-                }
-            } catch (InterruptedIOException e) {
-                error = activity.getString(R.string.model_download_cancelled);
-            } catch (IOException e) {
-                Log.e("ModelInstaller", name + " download failed", e);
-                error = activity.getString(R.string.model_download_failed, e.getMessage());
-            }
-            String err = error;
-            activity.runOnUiThread(() -> {
-                if (activity.isFinishing() || activity.isDestroyed()) return;
-                dialog.dismiss();
-                if (err == null) {
-                    Toast.makeText(activity, activity.getString(R.string.model_installed, name), Toast.LENGTH_SHORT).show();
-                    onInstalled.run();
-                } else {
-                    Toast.makeText(activity, err, Toast.LENGTH_LONG).show();
-                    onAborted.run();
-                }
-            });
+            String error = fetch(client, name, files, dir, after, dialog, bar, label);
+            activity.runOnUiThread(() -> finish(dialog, name, error, onInstalled, onAborted));
         }, "model-download");
         thread.start();
+    }
+
+    private String fetch(OkHttpClient client, String name, List<ModelDownloader.FileSpec> files, File dir,
+                         AfterDownload after, AlertDialog dialog, ProgressBar bar, TextView label) {
+        try {
+            ModelDownloader.download(client, files, dir, (done, total) -> activity.runOnUiThread(() -> {
+                bar.setProgress((int) (done * 1000 / total));
+                label.setText(activity.getString(R.string.model_download_progress,
+                        (int) (done / 1_000_000), (int) (total / 1_000_000)));
+            }), cancelled);
+            if (after == null) return null;
+            activity.runOnUiThread(() -> dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(false));
+            after.run(bar, label);
+            return null;
+        } catch (InterruptedIOException e) {
+            return activity.getString(R.string.model_download_cancelled);
+        } catch (IOException e) {
+            Log.e("ModelInstaller", name + " download failed", e);
+            return activity.getString(R.string.model_download_failed, e.getMessage());
+        }
+    }
+
+    private void finish(AlertDialog dialog, String name, String error, Runnable onInstalled, Runnable onAborted) {
+        if (activity.isFinishing() || activity.isDestroyed()) return;
+        dialog.dismiss();
+        if (error != null) {
+            Toast.makeText(activity, error, Toast.LENGTH_LONG).show();
+            onAborted.run();
+            return;
+        }
+        Toast.makeText(activity, activity.getString(R.string.model_installed, name), Toast.LENGTH_SHORT).show();
+        onInstalled.run();
     }
 
     @Override

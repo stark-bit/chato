@@ -10,6 +10,7 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.util.Log;
 
+import androidx.annotation.RequiresPermission;
 import androidx.core.app.ActivityCompat;
 import androidx.preference.PreferenceManager;
 
@@ -37,6 +38,8 @@ public class Recorder {
 
     public static final int CHUNK_MS = 8000;
     private static final int CUT_SEARCH_MS = 1000;
+    private static final int SAMPLE_RATE = 16000;
+    private static final int BYTES_PER_SECOND = SAMPLE_RATE * 2;
 
     private static final String TAG = "Recorder";
     public static final String ACTION_STOP = "Stop";
@@ -171,121 +174,110 @@ public class Recorder {
             return;
         }
 
-        int channels = 1;
-        int bytesPerSample = 2;
-        int sampleRateInHz = 16000;
-        int channelConfig = AudioFormat.CHANNEL_IN_MONO;
-        int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-        int audioSource = MediaRecorder.AudioSource.MIC;
-
-        int bufferSize = AudioRecord.getMinBufferSize(sampleRateInHz, channelConfig, audioFormat);
-        if (bufferSize < VAD_FRAME_SIZE * 2) bufferSize = VAD_FRAME_SIZE * 2;
-        bufferSize *= 4;  // External: a larger buffer prevents dropped frames
-
+        int bufferSize = bufferSize();
         AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
         if (sp.getBoolean("bluetooth", false)){
             audioManager.startBluetoothSco();
             audioManager.setBluetoothScoOn(true);
         }
-
-        AudioRecord.Builder builder = new AudioRecord.Builder()
-                .setAudioSource(audioSource)
-                .setAudioFormat(new AudioFormat.Builder()
-                        .setChannelMask(channelConfig)
-                        .setEncoding(audioFormat)
-                        .setSampleRate(sampleRateInHz)
-                        .build())
-                .setBufferSizeInBytes(bufferSize);
-
-        AudioRecord audioRecord = builder.build();
+        AudioRecord audioRecord = openAudioRecord(bufferSize);
         audioRecord.startRecording();
-
-        int bytesForThirtySeconds = sampleRateInHz * bytesPerSample * channels * 30;
-
-        ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream();
 
         ChunkListener chunkListener = mChunkListener;
         boolean chunked = chunkListener != null;
-        int bytesPerChunk = sampleRateInHz * bytesPerSample * channels * mChunkMs / 1000;
-        int bytesCutSearch = sampleRateInHz * bytesPerSample * channels * CUT_SEARCH_MS / 1000;
-
+        int bytesPerChunk = BYTES_PER_SECOND * mChunkMs / 1000;
+        ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream();
         byte[] audioData = new byte[bufferSize];
-        int totalBytesRead = 0;
-
-        boolean isSpeech;
-        boolean isRecording = false;
         byte[] vadAudioBuffer = new byte[VAD_FRAME_SIZE * 2];  // External: the VAD needs 16-bit samples
+        int totalBytesRead = 0;
+        boolean isRecording = false;
 
-        while (mInProgress.get() && (chunked || totalBytesRead < bytesForThirtySeconds)) {
+        while (mInProgress.get() && (chunked || totalBytesRead < BYTES_PER_SECOND * 30)) {
             int bytesRead = audioRecord.read(audioData, 0, VAD_FRAME_SIZE * 2);
-            if (bytesRead > 0) {
-                outputBuffer.write(audioData, 0, bytesRead);
-                totalBytesRead += bytesRead;
-            } else {
+            if (bytesRead <= 0) {
                 Log.d(TAG, "AudioRecord error, bytes read: " + bytesRead);
                 break;
             }
-
-            if (chunked && outputBuffer.size() >= bytesPerChunk) {
-                byte[] pcm = outputBuffer.toByteArray();
-                int cut = findQuietCut(pcm, bytesPerChunk - bytesCutSearch, bytesPerChunk);
-                chunkListener.onChunk(java.util.Arrays.copyOfRange(pcm, 0, cut));
-                outputBuffer.reset();
-                outputBuffer.write(pcm, cut, pcm.length - cut);
-                Log.d(TAG, "Chunk emitted: " + cut + " bytes, carried over " + (pcm.length - cut));
-            }
-
-            if (useVAD){
-                if (bytesRead == VAD_FRAME_SIZE * 2) {
-                    System.arraycopy(audioData, 0, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
-
-                    isSpeech = vad.isSpeech(vadAudioBuffer);
-                    if (isSpeech) {
-                        if (!isRecording) {
-                            Log.d(TAG, "VAD Speech detected: recording starts");
-                            sendUpdate(MSG_RECORDING);
-                        }
-                        isRecording = true;
-                    } else {
-                        if (isRecording) {
-                            isRecording = false;
-                            mInProgress.set(false);
-                        }
-                    }
-                }
-            } else {
-                if (!isRecording) sendUpdate(MSG_RECORDING);
-                isRecording = true;
-            }
+            outputBuffer.write(audioData, 0, bytesRead);
+            totalBytesRead += bytesRead;
+            if (chunked) emitChunkIfFull(outputBuffer, chunkListener, bytesPerChunk);
+            isRecording = trackSpeech(audioData, bytesRead, isRecording, vadAudioBuffer);
         }
         Log.d(TAG, "Total bytes recorded: " + totalBytesRead);
 
-        if (useVAD){
-            useVAD = false;
-            vad.close();
-            vad = null;
-            Log.d(TAG, "Closing VAD");
-        }
+        closeVad();
         audioRecord.stop();
         audioRecord.release();
         audioManager.stopBluetoothSco();
         audioManager.setBluetoothScoOn(false);
 
-        if (chunked) {
-            if (outputBuffer.size() > 6400) chunkListener.onChunk(outputBuffer.toByteArray());
-        } else {
-            RecordBuffer.setOutputBuffer(outputBuffer.toByteArray());
-        }
-        if (totalBytesRead > 6400){
-            sendUpdate(MSG_RECORDING_DONE);
-        } else {
-            sendUpdate(MSG_RECORDING_ERROR);
-        }
+        deliver(outputBuffer, chunkListener);
+        sendUpdate(totalBytesRead > 6400 ? MSG_RECORDING_DONE : MSG_RECORDING_ERROR);
 
         synchronized (fileSavedLock) {
             fileSavedLock.notify();
         }
+    }
 
+    private static int bufferSize() {
+        int min = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        // External: a larger buffer prevents dropped frames
+        return Math.max(min, VAD_FRAME_SIZE * 2) * 4;
+    }
+
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
+    private static AudioRecord openAudioRecord(int bufferSize) {
+        return new AudioRecord.Builder()
+                .setAudioSource(MediaRecorder.AudioSource.MIC)
+                .setAudioFormat(new AudioFormat.Builder()
+                        .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(SAMPLE_RATE)
+                        .build())
+                .setBufferSizeInBytes(bufferSize)
+                .build();
+    }
+
+    private static void emitChunkIfFull(ByteArrayOutputStream outputBuffer, ChunkListener chunkListener, int bytesPerChunk) {
+        if (outputBuffer.size() < bytesPerChunk) return;
+        byte[] pcm = outputBuffer.toByteArray();
+        int cut = findQuietCut(pcm, bytesPerChunk - BYTES_PER_SECOND * CUT_SEARCH_MS / 1000, bytesPerChunk);
+        chunkListener.onChunk(java.util.Arrays.copyOfRange(pcm, 0, cut));
+        outputBuffer.reset();
+        outputBuffer.write(pcm, cut, pcm.length - cut);
+        Log.d(TAG, "Chunk emitted: " + cut + " bytes, carried over " + (pcm.length - cut));
+    }
+
+    private boolean trackSpeech(byte[] audioData, int bytesRead, boolean isRecording, byte[] vadAudioBuffer) {
+        if (!useVAD) {
+            if (!isRecording) sendUpdate(MSG_RECORDING);
+            return true;
+        }
+        if (bytesRead != VAD_FRAME_SIZE * 2) return isRecording;
+        System.arraycopy(audioData, 0, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
+        boolean isSpeech = vad.isSpeech(vadAudioBuffer);
+        if (isSpeech && !isRecording) {
+            Log.d(TAG, "VAD Speech detected: recording starts");
+            sendUpdate(MSG_RECORDING);
+        }
+        if (!isSpeech && isRecording) mInProgress.set(false);
+        return isSpeech;
+    }
+
+    private void closeVad() {
+        if (!useVAD) return;
+        useVAD = false;
+        vad.close();
+        vad = null;
+        Log.d(TAG, "Closing VAD");
+    }
+
+    private static void deliver(ByteArrayOutputStream outputBuffer, ChunkListener chunkListener) {
+        if (chunkListener == null) {
+            RecordBuffer.setOutputBuffer(outputBuffer.toByteArray());
+            return;
+        }
+        if (outputBuffer.size() > 6400) chunkListener.onChunk(outputBuffer.toByteArray());
     }
 
     static int findQuietCut(byte[] pcm, int from, int to) {

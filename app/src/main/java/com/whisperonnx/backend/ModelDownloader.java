@@ -65,60 +65,86 @@ public final class ModelDownloader {
             File part = new File(dir, f.name + ".part");
             fetch(client, f, part, doneBefore, total, progress, cancelled);
 
-            String actual = sha256(part);
-            if (!actual.equalsIgnoreCase(f.sha256)) {
-                if (!part.delete()) throw new IOException(f.name + ": checksum mismatch, and cannot delete " + part);
-                throw new IOException(f.name + ": checksum mismatch");
-            }
-            if ((target.exists() && !target.delete()) || !part.renameTo(target)) {
-                throw new IOException("Cannot save " + target);
-            }
+            save(f, part, target);
             doneBefore += f.size;
         }
         progress.onProgress(total, total);
     }
 
+    private static void save(FileSpec f, File part, File target) throws IOException {
+        if (!sha256(part).equalsIgnoreCase(f.sha256)) {
+            if (!part.delete()) throw new IOException(f.name + ": checksum mismatch, and cannot delete " + part);
+            throw new IOException(f.name + ": checksum mismatch");
+        }
+        if ((target.exists() && !target.delete()) || !part.renameTo(target)) {
+            throw new IOException("Cannot save " + target);
+        }
+    }
+
     private static void fetch(OkHttpClient client, FileSpec f, File part, long doneBefore, long total,
                               Progress progress, AtomicBoolean cancelled) throws IOException {
-        long have = part.isFile() ? part.length() : 0;
-        if (have > f.size) {
-            if (!part.delete()) throw new IOException("Cannot delete " + part);
-            have = 0;
-        }
+        long have = resumeFrom(f, part);
         if (have == f.size) return;
-
-        Request.Builder rb = new Request.Builder().url(f.url);
-        if (have > 0) rb.header("Range", "bytes=" + have + "-");
-        try (Response resp = client.newCall(rb.build()).execute()) {
-            boolean append;
-            if (resp.code() == 206 && have > 0) {
-                append = true;
-            } else if (resp.isSuccessful()) {
-                append = false;  // External: the server ignored the range, so start over
-                have = 0;
-            } else {
-                throw new IOException(f.name + ": HTTP " + resp.code());
-            }
-            ResponseBody body = resp.body();
-            if (body == null) throw new IOException(f.name + ": empty response");
-
-            byte[] buf = new byte[64 * 1024];
-            long lastReport = 0;
-            try (InputStream in = body.byteStream(); OutputStream out = new FileOutputStream(part, append)) {
-                int n;
-                while ((n = in.read(buf)) != -1) {
-                    if (cancelled.get()) throw new InterruptedIOException("Cancelled");
-                    out.write(buf, 0, n);
-                    have += n;
-                    if (have > f.size) throw new IOException(f.name + ": larger than expected");
-                    if (have - lastReport >= 512 * 1024) {
-                        lastReport = have;
-                        progress.onProgress(doneBefore + have, total);
-                    }
-                }
-            }
+        Copy copy = new Copy(f, doneBefore, total, progress, cancelled);
+        try (Response resp = client.newCall(rangeRequest(f, have)).execute()) {
+            have = receive(resp, f, part, have, copy);
         }
         if (have != f.size) throw new IOException(f.name + ": incomplete download, try again");
+    }
+
+    private static long resumeFrom(FileSpec f, File part) throws IOException {
+        long have = part.isFile() ? part.length() : 0;
+        if (have <= f.size) return have;
+        if (!part.delete()) throw new IOException("Cannot delete " + part);
+        return 0;
+    }
+
+    private static Request rangeRequest(FileSpec f, long have) {
+        Request.Builder rb = new Request.Builder().url(f.url);
+        if (have > 0) rb.header("Range", "bytes=" + have + "-");
+        return rb.build();
+    }
+
+    private static long receive(Response resp, FileSpec f, File part, long have, Copy copy) throws IOException {
+        if (!resp.isSuccessful()) throw new IOException(f.name + ": HTTP " + resp.code());
+        ResponseBody body = resp.body();
+        if (body == null) throw new IOException(f.name + ": empty response");
+        // External: a 200 means the server ignored the range, so start over
+        boolean append = resp.code() == 206 && have > 0;
+        try (InputStream in = body.byteStream(); OutputStream out = new FileOutputStream(part, append)) {
+            return copy.run(in, out, append ? have : 0);
+        }
+    }
+
+    private static final class Copy {
+        private final FileSpec f;
+        private final long doneBefore, total;
+        private final Progress progress;
+        private final AtomicBoolean cancelled;
+
+        Copy(FileSpec f, long doneBefore, long total, Progress progress, AtomicBoolean cancelled) {
+            this.f = f;
+            this.doneBefore = doneBefore;
+            this.total = total;
+            this.progress = progress;
+            this.cancelled = cancelled;
+        }
+
+        long run(InputStream in, OutputStream out, long have) throws IOException {
+            byte[] buf = new byte[64 * 1024];
+            long lastReport = 0;
+            int n;
+            while ((n = in.read(buf)) != -1) {
+                if (cancelled.get()) throw new InterruptedIOException("Cancelled");
+                out.write(buf, 0, n);
+                have += n;
+                if (have > f.size) throw new IOException(f.name + ": larger than expected");
+                if (have - lastReport < 512 * 1024) continue;
+                lastReport = have;
+                progress.onProgress(doneBefore + have, total);
+            }
+            return have;
+        }
     }
 
     static String sha256(File file) throws IOException {

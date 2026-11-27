@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'checkstyle'
+    id 'pmd'
 }
 
 android {
@@ -109,4 +110,19 @@ tasks.register('checkstyle', Checkstyle) {
     classpath = files()
     ignoreFailures = false
     maxWarnings = 0
+}
+
+pmd {
+    toolVersion = '7.7.0'
+}
+tasks.register('pmd', Pmd) {
+    description = 'Checks the Java sources for branching that is hard to follow'
+    ruleSetFiles = rootProject.files('config/pmd/ruleset.xml')
+    ruleSets = []
+    source 'src/main/java', 'src/test/java', 'src/androidTest/java'
+    include '**/*.java'
+    exclude '**/thirdparty/**'
+    classpath = files()
+    consoleOutput = true
+    ignoreFailures = false
 }

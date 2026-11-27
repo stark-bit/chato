@@ -163,31 +163,8 @@ public class TestScreenActivity extends AppCompatActivity {
         btnRecord = findViewById(R.id.btnRecord);
 
         btnRecord.setOnTouchListener((v, event) -> {
-            if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                applyGradientBackground();
-                Log.d(TAG, "Start recording...");
-                if (!mWhisper.isInProgress()) {
-                    HapticFeedback.vibrate(this);
-                    startRecording();
-                    runOnUiThread(() -> processingBar.setProgress(100));
-                    countDownTimer = new CountDownTimer(30000, 1000) {
-                        @Override
-                        public void onTick(long l) {
-                            runOnUiThread(() -> processingBar.setProgress((int) (l / 300)));
-                        }
-                        @Override
-                        public void onFinish() {}
-                    };
-                    countDownTimer.start();
-                } else (Toast.makeText(this,getString(R.string.please_wait),Toast.LENGTH_SHORT)).show();
-
-            } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                revertBackground();
-                if (mRecorder != null && mRecorder.isInProgress()) {
-                    Log.d(TAG, "Recording is in progress... stopping...");
-                    stopRecording();
-                }
-            }
+            if (event.getAction() == MotionEvent.ACTION_DOWN) onRecordPressed();
+            if (event.getAction() == MotionEvent.ACTION_UP) onRecordReleased();
             return true;
         });
 
@@ -202,35 +179,104 @@ public class TestScreenActivity extends AppCompatActivity {
         });
 
         mRecorder = new Recorder(this);
-        mRecorder.setListener(new Recorder.RecorderListener() {
-            @Override
-            public void onUpdateReceived(String message) {
-                Log.d(TAG, "Update is received, Message: " + message);
-                if (message.equals(Recorder.MSG_RECORDING)) {
-                    runOnUiThread(() -> tvStatus.setText(getString(R.string.test_recording, getString(R.string.record_button))));
-                    if (!append.isChecked()) runOnUiThread(() -> tvResult.setText(""));
-                    applyGradientBackground();
-                } else if (message.equals(Recorder.MSG_RECORDING_DONE)) {
-                    HapticFeedback.vibrate(mContext);
-                    revertBackground();
-
-                    startProcessing();
-                } else if (message.equals(Recorder.MSG_RECORDING_ERROR)) {
-                    HapticFeedback.vibrate(mContext);
-                    if (countDownTimer!=null) { countDownTimer.cancel();}
-                    runOnUiThread(() -> {
-                        revertBackground();
-                        processingBar.setProgress(0);
-                        tvStatus.setText(getString(R.string.error_no_input));
-                    });
-                }
-            }
-
-        });
+        mRecorder.setListener(this::onRecorderUpdate);
         FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
         if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this, "https://github.com/woheller69/whisperIMEplus");
         checkPermissions();
 
+    }
+
+    private void onRecordPressed() {
+        applyGradientBackground();
+        Log.d(TAG, "Start recording...");
+        if (mWhisper.isInProgress()) {
+            Toast.makeText(this, getString(R.string.please_wait), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        HapticFeedback.vibrate(this);
+        startRecording();
+        runOnUiThread(() -> processingBar.setProgress(100));
+        countDownTimer = new CountDownTimer(30000, 1000) {
+            @Override
+            public void onTick(long l) {
+                runOnUiThread(() -> processingBar.setProgress((int) (l / 300)));
+            }
+            @Override
+            public void onFinish() {}
+        };
+        countDownTimer.start();
+    }
+
+    private void onRecordReleased() {
+        revertBackground();
+        if (mRecorder == null || !mRecorder.isInProgress()) return;
+        Log.d(TAG, "Recording is in progress... stopping...");
+        stopRecording();
+    }
+
+    private void onRecorderUpdate(String message) {
+        Log.d(TAG, "Update is received, Message: " + message);
+        switch (message) {
+            case Recorder.MSG_RECORDING:
+                runOnUiThread(() -> tvStatus.setText(getString(R.string.test_recording, getString(R.string.record_button))));
+                runOnUiThread(this::clearResultUnlessAppending);
+                applyGradientBackground();
+                break;
+            case Recorder.MSG_RECORDING_DONE:
+                HapticFeedback.vibrate(mContext);
+                revertBackground();
+                startProcessing();
+                break;
+            case Recorder.MSG_RECORDING_ERROR:
+                HapticFeedback.vibrate(mContext);
+                cancelCountDown();
+                runOnUiThread(() -> {
+                    revertBackground();
+                    processingBar.setProgress(0);
+                    tvStatus.setText(getString(R.string.error_no_input));
+                });
+                break;
+        }
+    }
+
+    private void clearResultUnlessAppending() {
+        if (!append.isChecked()) tvResult.setText("");
+    }
+
+    private void cancelCountDown() {
+        if (countDownTimer != null) countDownTimer.cancel();
+    }
+
+    private void onWhisperUpdate(String message) {
+        Log.d(TAG, "Update is received, Message: " + message);
+        switch (message) {
+            case Whisper.MSG_MODEL_LOADED:
+                runOnUiThread(() -> tvStatus.setText(R.string.test_ready));
+                break;
+            case Whisper.MSG_PROCESSING:
+                runOnUiThread(() -> tvStatus.setText(getString(R.string.processing)));
+                startTime = System.currentTimeMillis();
+                break;
+            case Whisper.MSG_PROCESSING_DONE:
+            case Whisper.MSG_QUEUE_EMPTY:
+                break;
+            default:
+                runOnUiThread(() -> {
+                    processingBar.setIndeterminate(false);
+                    tvStatus.setText(message);
+                });
+        }
+    }
+
+    private void showResult(String text, long timeTaken) {
+        processingBar.setIndeterminate(false);
+        tvStatus.setText(getString(R.string.test_done_with_backend, getString(R.string.test_done, timeTaken),
+                getResources().getStringArray(R.array.backend_labels)[loadedBackend]));
+        if (text.isEmpty()) return;
+        if (tvResult.length() > 0 && !Character.isWhitespace(tvResult.getText().charAt(tvResult.length() - 1))) {
+            tvResult.append(" ");
+        }
+        tvResult.append(text);
     }
 
     private void checkInputMethodEnabled() {
@@ -257,19 +303,7 @@ public class TestScreenActivity extends AppCompatActivity {
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
-                Log.d(TAG, "Update is received, Message: " + message);
-
-                if (message.equals(Whisper.MSG_MODEL_LOADED)) {
-                    runOnUiThread(() -> tvStatus.setText(R.string.test_ready));
-                } else if (message.equals(Whisper.MSG_PROCESSING)) {
-                    runOnUiThread(() -> tvStatus.setText(getString(R.string.processing)));
-                    startTime = System.currentTimeMillis();
-                } else if (!message.equals(Whisper.MSG_PROCESSING_DONE) && !message.equals(Whisper.MSG_QUEUE_EMPTY)) {
-                    runOnUiThread(() -> {
-                        processingBar.setIndeterminate(false);
-                        tvStatus.setText(message);
-                    });
-                }
+                onWhisperUpdate(message);
             }
 
             @Override
@@ -277,16 +311,7 @@ public class TestScreenActivity extends AppCompatActivity {
                 long timeTaken = System.currentTimeMillis() - startTime;
                 String text = whisperResult.getResult() == null ? "" : whisperResult.getResult().trim();
                 Log.d(TAG, "Result: " + text);
-                runOnUiThread(() -> {
-                    processingBar.setIndeterminate(false);
-                    tvStatus.setText(getString(R.string.test_done_with_backend, getString(R.string.test_done, timeTaken),
-                            getResources().getStringArray(R.array.backend_labels)[loadedBackend]));
-                    if (text.isEmpty()) return;
-                    if (tvResult.length() > 0 && !Character.isWhitespace(tvResult.getText().charAt(tvResult.length() - 1))) {
-                        tvResult.append(" ");
-                    }
-                    tvResult.append(text);
-                });
+                runOnUiThread(() -> showResult(text, timeTaken));
             }
         });
         boolean remote = OpenAITranscriber.BACKEND_OPENAI.equals(

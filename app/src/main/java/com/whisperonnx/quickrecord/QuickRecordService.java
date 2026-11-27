@@ -93,23 +93,10 @@ public class QuickRecordService extends Service {
 
     private void begin(int wanted) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
-        if (wanted >= 1 && wanted <= EndpointSender.COUNT) {
-            EndpointSender.Endpoint ep = EndpointSender.load(sp, wanted);
-            if (!ep.isConfigured()) {
-                finish(getString(R.string.quick_record_no_url, ep.displayName()));
-                return;
-            }
-        } else {
-            boolean[] configured = new boolean[EndpointSender.COUNT];
-            for (int i = 1; i <= EndpointSender.COUNT; i++) configured[i - 1] = EndpointSender.load(sp, i).isConfigured();
-            wanted = EndpointSender.pickQuickRecord(sp.getInt(EndpointSender.PREF_QUICK_RECORD, 1), configured);
-            if (wanted == 0) {
-                finish(getString(R.string.endpoint_none_configured));
-                return;
-            }
-        }
-        endpoint = EndpointSender.load(sp, wanted);
-        activeEndpoint = wanted;
+        int chosen = chooseEndpoint(sp, wanted);
+        if (chosen == 0) return;
+        endpoint = EndpointSender.load(sp, chosen);
+        activeEndpoint = chosen;
 
         whisper = new Whisper(this);
         if (whisper.isModelMissing()) {
@@ -120,16 +107,7 @@ public class QuickRecordService extends Service {
         whisper.setListener(new Whisper.WhisperListener() {
             @Override
             public void onUpdateReceived(String message) {
-                if (message.equals(Whisper.MSG_QUEUE_EMPTY)) {
-                    handler.post(() -> {
-                        session.onQueueEmpty();
-                        if (recordingEnded) onTranscriptionFinished();
-                    });
-                } else if (!message.equals(Whisper.MSG_PROCESSING) && !message.equals(Whisper.MSG_PROCESSING_DONE)
-                        && !message.equals(Whisper.MSG_MODEL_LOADED)
-                        && !message.equals(OpenAITranscriber.MSG_EMPTY_TRANSCRIPTION)) {
-                    handler.post(() -> lastError = message);
-                }
+                onWhisperUpdate(message);
             }
 
             @Override
@@ -154,13 +132,7 @@ public class QuickRecordService extends Service {
         recorder.setChunkListener(pcm -> whisper.enqueueChunk(pcm));
         recorder.setListener(message -> {
             if (message.equals(Recorder.MSG_RECORDING)) return;
-            handler.post(() -> {
-                if (recorder == null) return;
-                if (message.equals(Recorder.MSG_RECORDING_DONE)) onRecordingEnded();
-                else if (message.equals(Recorder.MSG_RECORDING_ERROR)) finish(getString(R.string.error_no_input));
-                else if (message.equals(Recorder.MSG_NO_PERMISSION)) finish(getString(R.string.need_record_audio_permission));
-                else finish(message);
-            });
+            handler.post(() -> onRecorderUpdate(message));
         });
 
         otherAudio = new OtherAudioPauser(this);
@@ -169,6 +141,57 @@ public class QuickRecordService extends Service {
         handler.postDelayed(stopAtLimit, MAX_MS);
         setState(State.RECORDING);
         HapticFeedback.vibrate(this);
+    }
+
+    private int chooseEndpoint(SharedPreferences sp, int wanted) {
+        if (wanted >= 1 && wanted <= EndpointSender.COUNT) {
+            EndpointSender.Endpoint ep = EndpointSender.load(sp, wanted);
+            if (ep.isConfigured()) return wanted;
+            finish(getString(R.string.quick_record_no_url, ep.displayName()));
+            return 0;
+        }
+        boolean[] configured = new boolean[EndpointSender.COUNT];
+        for (int i = 1; i <= EndpointSender.COUNT; i++) configured[i - 1] = EndpointSender.load(sp, i).isConfigured();
+        int picked = EndpointSender.pickQuickRecord(sp.getInt(EndpointSender.PREF_QUICK_RECORD, 1), configured);
+        if (picked == 0) finish(getString(R.string.endpoint_none_configured));
+        return picked;
+    }
+
+    private void onWhisperUpdate(String message) {
+        switch (message) {
+            case Whisper.MSG_QUEUE_EMPTY:
+                handler.post(this::onQueueEmpty);
+                break;
+            case Whisper.MSG_PROCESSING:
+            case Whisper.MSG_PROCESSING_DONE:
+            case Whisper.MSG_MODEL_LOADED:
+            case OpenAITranscriber.MSG_EMPTY_TRANSCRIPTION:
+                break;
+            default:
+                handler.post(() -> lastError = message);
+        }
+    }
+
+    private void onQueueEmpty() {
+        session.onQueueEmpty();
+        if (recordingEnded) onTranscriptionFinished();
+    }
+
+    private void onRecorderUpdate(String message) {
+        if (recorder == null) return;
+        switch (message) {
+            case Recorder.MSG_RECORDING_DONE:
+                onRecordingEnded();
+                break;
+            case Recorder.MSG_RECORDING_ERROR:
+                finish(getString(R.string.error_no_input));
+                break;
+            case Recorder.MSG_NO_PERMISSION:
+                finish(getString(R.string.need_record_audio_permission));
+                break;
+            default:
+                finish(message);
+        }
     }
 
     private void stopRecording() {
