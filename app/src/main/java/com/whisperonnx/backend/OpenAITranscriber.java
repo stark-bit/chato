@@ -1,17 +1,13 @@
 package com.whisperonnx.backend;
 
-import com.whisperonnx.recording.WavUtils;
-
 import android.content.Context;
 import android.util.Log;
-
 import com.whisperonnx.prefs.Prefs;
-
+import com.whisperonnx.recording.WavUtils;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
@@ -22,6 +18,7 @@ import okhttp3.Response;
 public class OpenAITranscriber {
     public interface Callback {
         void onSuccess(String transcription);
+
         void onError(TranscriptionStatus status, String detail);
     }
 
@@ -55,18 +52,20 @@ public class OpenAITranscriber {
             return;
         }
 
-        Response response = client.newCall(request(endpoint, apiKey, prefs.serverModel(), pcmData)).execute();
+        Response response = client.newCall(request(endpoint, apiKey, prefs.serverModel(), pcmData))
+                .execute();
         if (!response.isSuccessful()) {
-            String errorBody = response.body() != null ? response.body().string().trim() : "";
+            String errorBody =
+                    response.body() != null ? response.body().string().trim() : "";
             Log.e(TAG, "OpenAI error: " + errorBody);
-            callback.onError(TranscriptionStatus.SERVER_REJECTED,
+            callback.onError(
+                    TranscriptionStatus.SERVER_REJECTED,
                     errorBody.isEmpty() ? String.valueOf(response.code()) : response.code() + ": " + errorBody);
             return;
         }
 
-        String transcription = response.body() != null
-                ? response.body().string().trim()
-                : "";
+        String transcription =
+                response.body() != null ? response.body().string().trim() : "";
         if (transcription.isEmpty()) {
             callback.onError(TranscriptionStatus.EMPTY_TRANSCRIPTION, null);
             return;
@@ -75,10 +74,8 @@ public class OpenAITranscriber {
     }
 
     private static Request request(String endpoint, String apiKey, String model, byte[] pcmData) {
-        RequestBody fileBody = RequestBody.create(
-                WavUtils.pcmToWav(pcmData, 16000, 1, 16),
-                MediaType.parse("audio/wav")
-        );
+        RequestBody fileBody =
+                RequestBody.create(WavUtils.pcmToWav(pcmData, 16000, 1, 16), MediaType.parse("audio/wav"));
         MultipartBody body = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("file", "audio.wav", fileBody)

@@ -11,7 +11,7 @@ public final class Components {
     public static final String KEYBOARD = "com.whisperonnx.WhisperInputMethodService";
     public static final String QUICK_RECORD_WIDGET = "com.whisperonnx.QuickRecordWidget";
 
-    private Components() { }
+    private Components() {}
 
     public static Intent intent(Context context, String name) {
         return new Intent().setComponent(new ComponentName(context.getPackageName(), name));

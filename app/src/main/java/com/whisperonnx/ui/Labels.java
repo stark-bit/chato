@@ -1,12 +1,11 @@
 package com.whisperonnx.ui;
 
+import android.content.Context;
 import com.whisperonnx.R;
 import com.whisperonnx.backend.Backends;
 import com.whisperonnx.backend.TranscriptionStatus;
 import com.whisperonnx.endpoint.EndpointSender;
 import com.whisperonnx.endpoint.SendFailure;
-
-import android.content.Context;
 
 public final class Labels {
     private Labels() {}
@@ -53,15 +52,24 @@ public final class Labels {
 
     private static int problemText(TranscriptionStatus status) {
         switch (status) {
-            case MODEL_FAILED: return R.string.status_model_failed;
-            case MODEL_NOT_LOADED: return R.string.status_model_not_loaded;
-            case NO_AUDIO: return R.string.status_no_audio;
-            case TOO_SHORT: return R.string.status_too_short;
-            case TIMED_OUT: return R.string.status_timed_out;
-            case SERVER_NOT_SET_UP: return R.string.status_server_not_set_up;
-            case SERVER_REJECTED: return R.string.status_server_rejected;
-            case NETWORK_ERROR: return R.string.status_network_error;
-            default: return R.string.status_failed;
+            case MODEL_FAILED:
+                return R.string.status_model_failed;
+            case MODEL_NOT_LOADED:
+                return R.string.status_model_not_loaded;
+            case NO_AUDIO:
+                return R.string.status_no_audio;
+            case TOO_SHORT:
+                return R.string.status_too_short;
+            case TIMED_OUT:
+                return R.string.status_timed_out;
+            case SERVER_NOT_SET_UP:
+                return R.string.status_server_not_set_up;
+            case SERVER_REJECTED:
+                return R.string.status_server_rejected;
+            case NETWORK_ERROR:
+                return R.string.status_network_error;
+            default:
+                return R.string.status_failed;
         }
     }
 

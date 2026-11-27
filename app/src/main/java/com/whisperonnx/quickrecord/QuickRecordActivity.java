@@ -1,11 +1,10 @@
 package com.whisperonnx.quickrecord;
 
-import com.whisperonnx.ui.Components;
-
 import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import com.whisperonnx.ui.Components;
 
 // External: Android lets the service use the mic from the background only when a visible activity started it
 public class QuickRecordActivity extends Activity {

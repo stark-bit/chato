@@ -12,15 +12,16 @@ public final class TextEdits {
         if (i > 0 && Character.isLetterOrDigit(before.charAt(i - 1))) {
             while (i > 0 && Character.isLetterOrDigit(before.charAt(i - 1))) i--;
         } else {
-            while (i > 0 && !Character.isWhitespace(before.charAt(i - 1))
+            while (i > 0
+                    && !Character.isWhitespace(before.charAt(i - 1))
                     && !Character.isLetterOrDigit(before.charAt(i - 1))) i--;
         }
         return before.length() - i;
     }
 
     public static String bulletInsert(CharSequence charBefore) {
-        boolean atLineStart = charBefore == null || charBefore.length() == 0
-                || charBefore.charAt(charBefore.length() - 1) == '\n';
+        boolean atLineStart =
+                charBefore == null || charBefore.length() == 0 || charBefore.charAt(charBefore.length() - 1) == '\n';
         return atLineStart ? "- " : "\n- ";
     }
 

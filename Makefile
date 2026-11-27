@@ -19,7 +19,7 @@ NC     := \033[0m
 
 .DEFAULT_GOAL := help
 
-.PHONY: help device build install uninstall clean run test check device-check push-parakeet bench release
+.PHONY: help device build install uninstall clean run test format check device-check push-parakeet bench release
 
 help: ## Show this help message
 	@echo "$(CYAN)WhisperIME+ Makefile$(NC)"
@@ -81,8 +81,11 @@ clean: ## Remove build artifacts
 test: ## Run unit tests (JVM, no device needed)
 	$(GRADLEW) testDebugUnitTest
 
-check: ## Package boundaries, comments, complexity, copy-paste, lint and unit tests, fastest first (no device needed)
-	$(GRADLEW) checkstyle
+format: ## Reformat Java code (make check fails on unformatted code)
+	$(GRADLEW) spotlessApply
+
+check: ## Formatting, package boundaries, comments, complexity, copy-paste, lint and unit tests, fastest first (no device needed)
+	$(GRADLEW) spotlessCheck checkstyle
 	$(GRADLEW) pmd cpd
 	$(GRADLEW) lintDebug
 	$(GRADLEW) testDebugUnitTest

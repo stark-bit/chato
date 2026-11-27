@@ -2,14 +2,14 @@ package com.whisperonnx.recording;
 
 import static org.junit.Assert.assertEquals;
 
-import org.junit.Test;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import org.junit.Test;
 
 public class WavUtilsTest {
-    @Test public void writesStandardPcmHeader() {
+    @Test
+    public void writesStandardPcmHeader() {
         byte[] pcm = {1, 2, 3, 4, 5, 6};
         byte[] wav = WavUtils.pcmToWav(pcm, 16000, 1, 16);
         ByteBuffer b = ByteBuffer.wrap(wav).order(ByteOrder.LITTLE_ENDIAN);
@@ -31,7 +31,8 @@ public class WavUtilsTest {
         for (int i = 0; i < pcm.length; i++) assertEquals(pcm[i], wav[44 + i]);
     }
 
-    @Test public void emptyAudioIsJustAHeader() {
+    @Test
+    public void emptyAudioIsJustAHeader() {
         byte[] wav = WavUtils.pcmToWav(new byte[0], 16000, 1, 16);
         assertEquals(44, wav.length);
         assertEquals(0, ByteBuffer.wrap(wav).order(ByteOrder.LITTLE_ENDIAN).getInt(40));

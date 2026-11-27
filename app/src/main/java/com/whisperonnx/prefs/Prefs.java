@@ -2,7 +2,6 @@ package com.whisperonnx.prefs;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-
 import androidx.preference.PreferenceManager;
 
 public final class Prefs {
@@ -31,7 +30,10 @@ public final class Prefs {
     private static final String STAR_VERSION_CODE = "versionCode";
 
     public enum EndpointField {
-        NAME("name", ""), URL("url", ""), HEADERS("headers", ""), BODY("body", DEFAULT_ENDPOINT_BODY);
+        NAME("name", ""),
+        URL("url", ""),
+        HEADERS("headers", ""),
+        BODY("body", DEFAULT_ENDPOINT_BODY);
 
         final String key;
         final String fallback;
@@ -52,39 +54,108 @@ public final class Prefs {
         return new Prefs(PreferenceManager.getDefaultSharedPreferences(context));
     }
 
-    public boolean useServer() { return BACKEND_SERVER.equals(sp.getString(BACKEND_TYPE, BACKEND_LOCAL)); }
-    public void setUseServer(boolean server) { putString(BACKEND_TYPE, server ? BACKEND_SERVER : BACKEND_LOCAL); }
-    public String localEngine() { return sp.getString(LOCAL_ENGINE, ENGINE_WHISPER); }
+    public boolean useServer() {
+        return BACKEND_SERVER.equals(sp.getString(BACKEND_TYPE, BACKEND_LOCAL));
+    }
+
+    public void setUseServer(boolean server) {
+        putString(BACKEND_TYPE, server ? BACKEND_SERVER : BACKEND_LOCAL);
+    }
+
+    public String localEngine() {
+        return sp.getString(LOCAL_ENGINE, ENGINE_WHISPER);
+    }
 
     public void setLocal(String engine) {
-        sp.edit().putString(BACKEND_TYPE, BACKEND_LOCAL).putString(LOCAL_ENGINE, engine).apply();
+        sp.edit()
+                .putString(BACKEND_TYPE, BACKEND_LOCAL)
+                .putString(LOCAL_ENGINE, engine)
+                .apply();
     }
 
-    public String serverUrl() { return sp.getString(SERVER_URL, DEFAULT_SERVER_URL); }
-    public String serverApiKey() { return sp.getString(SERVER_API_KEY, ""); }
-    public String serverModel() { return sp.getString(SERVER_MODEL, DEFAULT_SERVER_MODEL); }
+    public String serverUrl() {
+        return sp.getString(SERVER_URL, DEFAULT_SERVER_URL);
+    }
+
+    public String serverApiKey() {
+        return sp.getString(SERVER_API_KEY, "");
+    }
+
+    public String serverModel() {
+        return sp.getString(SERVER_MODEL, DEFAULT_SERVER_MODEL);
+    }
 
     public void setServer(String url, String apiKey, String model) {
-        sp.edit().putString(SERVER_URL, url).putString(SERVER_API_KEY, apiKey).putString(SERVER_MODEL, model).apply();
+        sp.edit()
+                .putString(SERVER_URL, url)
+                .putString(SERVER_API_KEY, apiKey)
+                .putString(SERVER_MODEL, model)
+                .apply();
     }
 
-    public boolean modeAuto() { return sp.getBoolean(MODE_AUTO, false); }
-    public void setModeAuto(boolean on) { putBoolean(MODE_AUTO, on); }
-    public boolean pauseOtherAudio() { return sp.getBoolean(PAUSE_OTHER_AUDIO, false); }
-    public void setPauseOtherAudio(boolean on) { putBoolean(PAUSE_OTHER_AUDIO, on); }
-    public boolean toolbarExpanded() { return sp.getBoolean(TOOLBAR_EXPANDED, true); }
-    public void setToolbarExpanded(boolean on) { putBoolean(TOOLBAR_EXPANDED, on); }
-    public int sendTarget() { return sp.getInt(SEND_TARGET, 0); }
-    public void setSendTarget(int endpoint) { putInt(SEND_TARGET, endpoint); }
-    public boolean bluetooth() { return sp.getBoolean(BLUETOOTH, false); }
-    public void setBluetooth(boolean on) { putBoolean(BLUETOOTH, on); }
-    public int silenceMs() { return sp.getInt(SILENCE_MS, DEFAULT_SILENCE_MS); }
-    public void setSilenceMs(int ms) { putInt(SILENCE_MS, ms); }
-    public int quickRecordEndpoint() { return sp.getInt(QUICK_RECORD_ENDPOINT, 1); }
-    public void setQuickRecordEndpoint(int endpoint) { putInt(QUICK_RECORD_ENDPOINT, endpoint); }
+    public boolean modeAuto() {
+        return sp.getBoolean(MODE_AUTO, false);
+    }
 
-    public int widgetEndpoint(int widgetId) { return sp.getInt(widgetKey(widgetId), 0); }
-    public void setWidgetEndpoint(int widgetId, int endpoint) { putInt(widgetKey(widgetId), endpoint); }
+    public void setModeAuto(boolean on) {
+        putBoolean(MODE_AUTO, on);
+    }
+
+    public boolean pauseOtherAudio() {
+        return sp.getBoolean(PAUSE_OTHER_AUDIO, false);
+    }
+
+    public void setPauseOtherAudio(boolean on) {
+        putBoolean(PAUSE_OTHER_AUDIO, on);
+    }
+
+    public boolean toolbarExpanded() {
+        return sp.getBoolean(TOOLBAR_EXPANDED, true);
+    }
+
+    public void setToolbarExpanded(boolean on) {
+        putBoolean(TOOLBAR_EXPANDED, on);
+    }
+
+    public int sendTarget() {
+        return sp.getInt(SEND_TARGET, 0);
+    }
+
+    public void setSendTarget(int endpoint) {
+        putInt(SEND_TARGET, endpoint);
+    }
+
+    public boolean bluetooth() {
+        return sp.getBoolean(BLUETOOTH, false);
+    }
+
+    public void setBluetooth(boolean on) {
+        putBoolean(BLUETOOTH, on);
+    }
+
+    public int silenceMs() {
+        return sp.getInt(SILENCE_MS, DEFAULT_SILENCE_MS);
+    }
+
+    public void setSilenceMs(int ms) {
+        putInt(SILENCE_MS, ms);
+    }
+
+    public int quickRecordEndpoint() {
+        return sp.getInt(QUICK_RECORD_ENDPOINT, 1);
+    }
+
+    public void setQuickRecordEndpoint(int endpoint) {
+        putInt(QUICK_RECORD_ENDPOINT, endpoint);
+    }
+
+    public int widgetEndpoint(int widgetId) {
+        return sp.getInt(widgetKey(widgetId), 0);
+    }
+
+    public void setWidgetEndpoint(int widgetId, int endpoint) {
+        putInt(widgetKey(widgetId), endpoint);
+    }
 
     public void forgetWidgets(int[] widgetIds) {
         SharedPreferences.Editor e = sp.edit();
@@ -100,22 +171,47 @@ public final class Prefs {
         putString(endpointKey(index, field.key), value);
     }
 
-    public boolean endpointCombine(int index) { return sp.getBoolean(endpointKey(index, "combine"), true); }
-    public void setEndpointCombine(int index, boolean on) { putBoolean(endpointKey(index, "combine"), on); }
+    public boolean endpointCombine(int index) {
+        return sp.getBoolean(endpointKey(index, "combine"), true);
+    }
 
-    public boolean askForStar() { return sp.getBoolean(ASK_FOR_STAR, true); }
-    public void setAskForStar(boolean ask) { putBoolean(ASK_FOR_STAR, ask); }
+    public void setEndpointCombine(int index, boolean on) {
+        putBoolean(endpointKey(index, "combine"), on);
+    }
+
+    public boolean askForStar() {
+        return sp.getBoolean(ASK_FOR_STAR, true);
+    }
+
+    public void setAskForStar(boolean ask) {
+        putBoolean(ASK_FOR_STAR, ask);
+    }
 
     public boolean starVersionIsOlderThan(int versionCode) {
         return sp.contains(STAR_VERSION_CODE) && sp.getInt(STAR_VERSION_CODE, 0) < versionCode;
     }
 
-    public void setStarVersion(int versionCode) { putInt(STAR_VERSION_CODE, versionCode); }
+    public void setStarVersion(int versionCode) {
+        putInt(STAR_VERSION_CODE, versionCode);
+    }
 
-    private static String widgetKey(int widgetId) { return "quickRecordWidget_" + widgetId; }
-    private static String endpointKey(int index, String field) { return "endpoint" + index + "_" + field; }
+    private static String widgetKey(int widgetId) {
+        return "quickRecordWidget_" + widgetId;
+    }
 
-    private void putString(String key, String value) { sp.edit().putString(key, value).apply(); }
-    private void putBoolean(String key, boolean value) { sp.edit().putBoolean(key, value).apply(); }
-    private void putInt(String key, int value) { sp.edit().putInt(key, value).apply(); }
+    private static String endpointKey(int index, String field) {
+        return "endpoint" + index + "_" + field;
+    }
+
+    private void putString(String key, String value) {
+        sp.edit().putString(key, value).apply();
+    }
+
+    private void putBoolean(String key, boolean value) {
+        sp.edit().putBoolean(key, value).apply();
+    }
+
+    private void putInt(String key, int value) {
+        sp.edit().putInt(key, value).apply();
+    }
 }

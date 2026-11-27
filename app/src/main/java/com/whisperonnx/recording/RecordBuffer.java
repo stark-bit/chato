@@ -40,6 +40,5 @@ public class RecordBuffer {
         }
 
         return samples;
-
     }
 }

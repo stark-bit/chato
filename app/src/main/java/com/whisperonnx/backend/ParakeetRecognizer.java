@@ -1,8 +1,11 @@
 package com.whisperonnx.backend;
 
+import ai.onnxruntime.OnnxTensor;
+import ai.onnxruntime.OrtEnvironment;
+import ai.onnxruntime.OrtException;
+import ai.onnxruntime.OrtSession;
 import android.content.Context;
 import android.util.Log;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -17,11 +20,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import ai.onnxruntime.OnnxTensor;
-import ai.onnxruntime.OrtEnvironment;
-import ai.onnxruntime.OrtException;
-import ai.onnxruntime.OrtSession;
 
 // External: NVIDIA Parakeet TDT 0.6B v2 (CC-BY-4.0), int8 ONNX export from onnx-asr
 public class ParakeetRecognizer implements AutoCloseable {
@@ -39,20 +37,22 @@ public class ParakeetRecognizer implements AutoCloseable {
     public static final String SOURCE = "huggingface.co/istupakov/parakeet-tdt-0.6b-v2-onnx";
 
     public static final List<ModelDownloader.FileSpec> FILES = Collections.unmodifiableList(Arrays.asList(
-            new ModelDownloader.FileSpec(VOCAB, REPO + VOCAB, 9384,
-                    "ec182b70dd42113aff6c5372c75cac58c952443eb22322f57bbd7f53977d497d"),
-            new ModelDownloader.FileSpec(PRE, REPO + PRE, 139764,
-                    "a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f"),
-            new ModelDownloader.FileSpec(DEC, REPO + DEC, 8998286,
-                    "a449f49acd68979d418651dd2dcb737cc0f1bf0225e009e29ee326354edbf7d3"),
-            new ModelDownloader.FileSpec(ENC, REPO + ENC, 652184014,
-                    "3e0581fda6ab843888b51e56d7ee78b6d5bc3237ec113af1f732d1d5286aa155")));
+            new ModelDownloader.FileSpec(
+                    VOCAB, REPO + VOCAB, 9384, "ec182b70dd42113aff6c5372c75cac58c952443eb22322f57bbd7f53977d497d"),
+            new ModelDownloader.FileSpec(
+                    PRE, REPO + PRE, 139764, "a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f"),
+            new ModelDownloader.FileSpec(
+                    DEC, REPO + DEC, 8998286, "a449f49acd68979d418651dd2dcb737cc0f1bf0225e009e29ee326354edbf7d3"),
+            new ModelDownloader.FileSpec(
+                    ENC, REPO + ENC, 652184014, "3e0581fda6ab843888b51e56d7ee78b6d5bc3237ec113af1f732d1d5286aa155")));
 
     public static class Timing {
         public long preMs, encMs, decMs, steps, frames;
-        @Override public String toString() {
-            return "pre " + preMs + "ms, enc " + encMs + "ms, dec " + decMs + "ms ("
-                    + steps + " steps / " + frames + " frames)";
+
+        @Override
+        public String toString() {
+            return "pre " + preMs + "ms, enc " + encMs + "ms, dec " + decMs + "ms (" + steps + " steps / " + frames
+                    + " frames)";
         }
     }
 
@@ -93,7 +93,8 @@ public class ParakeetRecognizer implements AutoCloseable {
 
     private static String[] loadVocab(File f) throws IOException {
         Map<Integer, String> byId = new HashMap<>();
-        try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8))) {
+        try (BufferedReader r =
+                new BufferedReader(new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8))) {
             String line;
             while ((line = r.readLine()) != null) {
                 int sp = line.lastIndexOf(' ');
@@ -113,9 +114,10 @@ public class ParakeetRecognizer implements AutoCloseable {
         // External: the preprocessor outputs log-mel features [1, 128, T]
         float[] feats;
         long featFrames, featLen;
-        try (OnnxTensor wav = OnnxTensor.createTensor(env, FloatBuffer.wrap(samples), new long[]{1, samples.length});
-             OnnxTensor wavLen = OnnxTensor.createTensor(env, LongBuffer.wrap(new long[]{samples.length}), new long[]{1});
-             OrtSession.Result r = pre.run(map("waveforms", wav, "waveforms_lens", wavLen))) {
+        try (OnnxTensor wav = OnnxTensor.createTensor(env, FloatBuffer.wrap(samples), new long[] {1, samples.length});
+                OnnxTensor wavLen =
+                        OnnxTensor.createTensor(env, LongBuffer.wrap(new long[] {samples.length}), new long[] {1});
+                OrtSession.Result r = pre.run(map("waveforms", wav, "waveforms_lens", wavLen))) {
             OnnxTensor f = (OnnxTensor) r.get(0);
             featFrames = f.getInfo().getShape()[2];
             feats = toArray(f.getFloatBuffer());
@@ -126,9 +128,9 @@ public class ParakeetRecognizer implements AutoCloseable {
         // External: the encoder outputs [1, 1024, T'], stored as [dim][frame]
         float[] encoded;
         int dim, frames, validFrames;
-        try (OnnxTensor x = OnnxTensor.createTensor(env, FloatBuffer.wrap(feats), new long[]{1, 128, featFrames});
-             OnnxTensor len = OnnxTensor.createTensor(env, LongBuffer.wrap(new long[]{featLen}), new long[]{1});
-             OrtSession.Result r = enc.run(map("audio_signal", x, "length", len))) {
+        try (OnnxTensor x = OnnxTensor.createTensor(env, FloatBuffer.wrap(feats), new long[] {1, 128, featFrames});
+                OnnxTensor len = OnnxTensor.createTensor(env, LongBuffer.wrap(new long[] {featLen}), new long[] {1});
+                OrtSession.Result r = enc.run(map("audio_signal", x, "length", len))) {
             OnnxTensor out = (OnnxTensor) r.get(0);
             long[] shape = out.getInfo().getShape();
             dim = (int) shape[1];
@@ -143,22 +145,36 @@ public class ParakeetRecognizer implements AutoCloseable {
         final float[][] state = {new float[2 * STATE_SIZE], new float[2 * STATE_SIZE]};
         final float[][] pending = new float[2][];
         List<Integer> tokens = tdt.decode(validFrames, vocab.length, new TdtDecoder.Joint() {
-            @Override public float[] step(int t, int prevToken) throws Exception {
+            @Override
+            public float[] step(int t, int prevToken) throws Exception {
                 for (int d = 0; d < fDim; d++) frame[d] = encoded[d * fFrames + t];
-                try (OnnxTensor e = OnnxTensor.createTensor(env, FloatBuffer.wrap(frame), new long[]{1, fDim, 1});
-                     OnnxTensor tg = OnnxTensor.createTensor(env, IntBuffer.wrap(new int[]{prevToken}), new long[]{1, 1});
-                     OnnxTensor tl = OnnxTensor.createTensor(env, IntBuffer.wrap(new int[]{1}), new long[]{1});
-                     OnnxTensor s1 = OnnxTensor.createTensor(env, FloatBuffer.wrap(state[0]), new long[]{2, 1, STATE_SIZE});
-                     OnnxTensor s2 = OnnxTensor.createTensor(env, FloatBuffer.wrap(state[1]), new long[]{2, 1, STATE_SIZE});
-                     OrtSession.Result r = dec.run(map("encoder_outputs", e, "targets", tg, "target_length", tl,
-                             "input_states_1", s1, "input_states_2", s2))) {
+                try (OnnxTensor e = OnnxTensor.createTensor(env, FloatBuffer.wrap(frame), new long[] {1, fDim, 1});
+                        OnnxTensor tg =
+                                OnnxTensor.createTensor(env, IntBuffer.wrap(new int[] {prevToken}), new long[] {1, 1});
+                        OnnxTensor tl = OnnxTensor.createTensor(env, IntBuffer.wrap(new int[] {1}), new long[] {1});
+                        OnnxTensor s1 = OnnxTensor.createTensor(
+                                env, FloatBuffer.wrap(state[0]), new long[] {2, 1, STATE_SIZE});
+                        OnnxTensor s2 = OnnxTensor.createTensor(
+                                env, FloatBuffer.wrap(state[1]), new long[] {2, 1, STATE_SIZE});
+                        OrtSession.Result r = dec.run(map(
+                                "encoder_outputs",
+                                e,
+                                "targets",
+                                tg,
+                                "target_length",
+                                tl,
+                                "input_states_1",
+                                s1,
+                                "input_states_2",
+                                s2))) {
                     pending[0] = toArray(((OnnxTensor) r.get(2)).getFloatBuffer());
                     pending[1] = toArray(((OnnxTensor) r.get(3)).getFloatBuffer());
                     return toArray(((OnnxTensor) r.get(0)).getFloatBuffer());
                 }
             }
 
-            @Override public void commit() {
+            @Override
+            public void commit() {
                 state[0] = pending[0];
                 state[1] = pending[1];
             }
@@ -189,8 +205,11 @@ public class ParakeetRecognizer implements AutoCloseable {
 
     @Override
     public void close() {
-        for (OrtSession s : new OrtSession[]{pre, enc, dec}) {
-            try { if (s != null) s.close(); } catch (OrtException ignored) { }
+        for (OrtSession s : new OrtSession[] {pre, enc, dec}) {
+            try {
+                if (s != null) s.close();
+            } catch (OrtException ignored) {
+            }
         }
     }
 }

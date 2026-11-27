@@ -1,16 +1,13 @@
 package com.whisperonnx.quickrecord;
 
-import com.whisperonnx.prefs.Prefs;
-import com.whisperonnx.R;
-import com.whisperonnx.endpoint.EndpointSender;
-
 import android.appwidget.AppWidgetManager;
 import android.content.Intent;
 import android.os.Bundle;
-
 import androidx.appcompat.app.AppCompatActivity;
-
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.whisperonnx.R;
+import com.whisperonnx.endpoint.EndpointSender;
+import com.whisperonnx.prefs.Prefs;
 
 public class QuickRecordWidgetConfigActivity extends AppCompatActivity {
     private int widgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
@@ -20,7 +17,9 @@ public class QuickRecordWidgetConfigActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         Bundle extras = getIntent().getExtras();
         if (extras != null) widgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
-        setResult(RESULT_CANCELED, result());  // External: backing out leaves RESULT_CANCELED, so Android doesn't add the widget
+        setResult(
+                RESULT_CANCELED,
+                result()); // External: backing out leaves RESULT_CANCELED, so Android doesn't add the widget
         if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
             finish();
             return;
@@ -38,7 +37,8 @@ public class QuickRecordWidgetConfigActivity extends AppCompatActivity {
                 .setTitle(R.string.quick_record_widget_pick)
                 .setItems(items, (d, which) -> {
                     prefs.setWidgetEndpoint(widgetId, which + 1);
-                    AppWidgetManager.getInstance(this).updateAppWidget(widgetId, QuickRecordWidgetProvider.views(this, widgetId));
+                    AppWidgetManager.getInstance(this)
+                            .updateAppWidget(widgetId, QuickRecordWidgetProvider.views(this, widgetId));
                     setResult(RESULT_OK, result());
                     finish();
                 })

@@ -9,7 +9,8 @@ import org.junit.Test;
 public class PrefsTest {
     private final Prefs prefs = new Prefs(new FakeSharedPreferences());
 
-    @Test public void defaults() {
+    @Test
+    public void defaults() {
         assertFalse(prefs.useServer());
         assertEquals(Prefs.ENGINE_WHISPER, prefs.localEngine());
         assertEquals(Prefs.DEFAULT_SERVER_URL, prefs.serverUrl());
@@ -23,7 +24,8 @@ public class PrefsTest {
         assertTrue(prefs.endpointCombine(1));
     }
 
-    @Test public void choosingLocalAfterServerKeepsTheEngine() {
+    @Test
+    public void choosingLocalAfterServerKeepsTheEngine() {
         prefs.setLocal(Prefs.ENGINE_PARAKEET);
         prefs.setUseServer(true);
         assertTrue(prefs.useServer());
@@ -31,19 +33,22 @@ public class PrefsTest {
         assertEquals(Prefs.ENGINE_PARAKEET, prefs.localEngine());
     }
 
-    @Test public void endpointsAreStoredPerIndex() {
+    @Test
+    public void endpointsAreStoredPerIndex() {
         prefs.setEndpointText(2, Prefs.EndpointField.URL, "http://x");
         assertEquals("", prefs.endpointText(1, Prefs.EndpointField.URL));
         assertEquals("http://x", prefs.endpointText(2, Prefs.EndpointField.URL));
     }
 
-    @Test public void forgottenWidgetsFallBackToNoChoice() {
+    @Test
+    public void forgottenWidgetsFallBackToNoChoice() {
         prefs.setWidgetEndpoint(7, 3);
-        prefs.forgetWidgets(new int[]{7});
+        prefs.forgetWidgets(new int[] {7});
         assertEquals(0, prefs.widgetEndpoint(7));
     }
 
-    @Test public void starAskedOnlyAfterAnUpdate() {
+    @Test
+    public void starAskedOnlyAfterAnUpdate() {
         assertFalse(prefs.starVersionIsOlderThan(19));
         prefs.setStarVersion(18);
         assertTrue(prefs.starVersionIsOlderThan(19));

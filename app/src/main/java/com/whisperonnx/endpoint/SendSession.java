@@ -5,6 +5,7 @@ import java.util.concurrent.Executor;
 public final class SendSession {
     public interface Output {
         void type(String text);
+
         void send(EndpointSender.Endpoint endpoint, String text);
     }
 

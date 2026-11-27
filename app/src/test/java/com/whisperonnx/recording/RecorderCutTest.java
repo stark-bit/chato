@@ -21,20 +21,23 @@ public class RecorderCutTest {
         for (int i = from; i < to; i++) pcm[i] = 0;
     }
 
-    @Test public void cutsInTheMiddleOfTheQuietFrame() {
+    @Test
+    public void cutsInTheMiddleOfTheQuietFrame() {
         byte[] pcm = tone(FRAME * 10, 10000);
         int quietStart = FRAME * 5;
         silence(pcm, quietStart, quietStart + FRAME);
         assertEquals(quietStart + FRAME / 2, Recorder.findQuietCut(pcm, 0, pcm.length));
     }
 
-    @Test public void negativeSamplesCountAsLoud() {
+    @Test
+    public void negativeSamplesCountAsLoud() {
         byte[] pcm = tone(FRAME * 10, -10000);
         silence(pcm, FRAME * 3, FRAME * 4);
         assertEquals(FRAME * 3 + FRAME / 2, Recorder.findQuietCut(pcm, 0, pcm.length));
     }
 
-    @Test public void ignoresQuietAudioOutsideTheWindow() {
+    @Test
+    public void ignoresQuietAudioOutsideTheWindow() {
         byte[] pcm = tone(FRAME * 10, 10000);
         silence(pcm, 0, FRAME * 2);
         int from = FRAME * 4, to = FRAME * 10;
@@ -42,23 +45,27 @@ public class RecorderCutTest {
         assertTrue("cut " + cut, cut >= from && cut <= to);
     }
 
-    @Test public void uniformAudioCutsAtFirstFrame() {
+    @Test
+    public void uniformAudioCutsAtFirstFrame() {
         byte[] pcm = tone(FRAME * 4, 500);
         assertEquals(FRAME / 2, Recorder.findQuietCut(pcm, 0, pcm.length));
     }
 
-    @Test public void windowShorterThanAFrameCutsAtItsEnd() {
+    @Test
+    public void windowShorterThanAFrameCutsAtItsEnd() {
         byte[] pcm = tone(FRAME * 4, 500);
         assertEquals(FRAME * 2, Recorder.findQuietCut(pcm, FRAME * 2 - 10, FRAME * 2));
     }
 
-    @Test public void windowIsClampedToTheBuffer() {
+    @Test
+    public void windowIsClampedToTheBuffer() {
         byte[] pcm = tone(FRAME * 2, 500);
         int cut = Recorder.findQuietCut(pcm, -100, FRAME * 50);
         assertTrue("cut " + cut, cut >= 0 && cut <= pcm.length);
     }
 
-    @Test public void cutIsAlwaysOnASampleBoundary() {
+    @Test
+    public void cutIsAlwaysOnASampleBoundary() {
         byte[] pcm = tone(FRAME * 6 + 1, 500);
         silence(pcm, FRAME * 2, FRAME * 3);
         for (int from = 1; from < 20; from += 3) {

@@ -1,7 +1,11 @@
 package com.whisperonnx.endpoint;
 
 public final class SendFailure {
-    public enum Kind { INVALID_CONFIG, HTTP, NETWORK }
+    public enum Kind {
+        INVALID_CONFIG,
+        HTTP,
+        NETWORK
+    }
 
     public final Kind kind;
     public final String detail;

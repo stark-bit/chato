@@ -23,13 +23,13 @@ public final class CursorDrag {
 
     public int[] move(float x, float y) {
         if (!dragging) {
-            if (Math.hypot(x - startX, y - startY) < slop) return new int[]{0, 0};
+            if (Math.hypot(x - startX, y - startY) < slop) return new int[] {0, 0};
             dragging = true;
         }
         int cols = (int) ((x - anchorX) / stepX);
         int lines = (int) ((y - anchorY) / stepY);
         anchorX += cols * stepX;
         anchorY += lines * stepY;
-        return new int[]{cols, lines};
+        return new int[] {cols, lines};
     }
 }

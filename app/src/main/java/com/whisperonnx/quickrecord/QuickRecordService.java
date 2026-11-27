@@ -1,20 +1,5 @@
 package com.whisperonnx.quickrecord;
 
-import com.whisperonnx.prefs.Prefs;
-import com.whisperonnx.R;
-import com.whisperonnx.backend.TranscriptionStatus;
-import com.whisperonnx.backend.Whisper;
-import com.whisperonnx.backend.WhisperResult;
-import com.whisperonnx.endpoint.EndpointSender;
-import com.whisperonnx.endpoint.SendFailure;
-import com.whisperonnx.endpoint.SendSession;
-import com.whisperonnx.recording.OtherAudioPauser;
-import com.whisperonnx.recording.Recorder;
-import com.whisperonnx.recording.RecorderEvent;
-import com.whisperonnx.ui.Components;
-import com.whisperonnx.ui.HapticFeedback;
-import com.whisperonnx.ui.Labels;
-
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -31,9 +16,22 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
-
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
+import com.whisperonnx.R;
+import com.whisperonnx.backend.TranscriptionStatus;
+import com.whisperonnx.backend.Whisper;
+import com.whisperonnx.backend.WhisperResult;
+import com.whisperonnx.endpoint.EndpointSender;
+import com.whisperonnx.endpoint.SendFailure;
+import com.whisperonnx.endpoint.SendSession;
+import com.whisperonnx.prefs.Prefs;
+import com.whisperonnx.recording.OtherAudioPauser;
+import com.whisperonnx.recording.Recorder;
+import com.whisperonnx.recording.RecorderEvent;
+import com.whisperonnx.ui.Components;
+import com.whisperonnx.ui.HapticFeedback;
+import com.whisperonnx.ui.Labels;
 
 public class QuickRecordService extends Service {
     public static final String ACTION_TOGGLE = "dev.starkbit.chato.action.QUICK_RECORD_TOGGLE";
@@ -44,7 +42,11 @@ public class QuickRecordService extends Service {
     private static final String CHANNEL = "quick_record";
     private static final int NOTIFICATION_ID = 7;
 
-    enum State { IDLE, RECORDING, SENDING }
+    enum State {
+        IDLE,
+        RECORDING,
+        SENDING
+    }
 
     private static volatile State state = State.IDLE;
 
@@ -68,8 +70,11 @@ public class QuickRecordService extends Service {
     private String lastError;
 
     public static void toggle(Context context, int endpoint) {
-        ContextCompat.startForegroundService(context, new Intent(context, QuickRecordService.class)
-                .setAction(ACTION_TOGGLE).putExtra(EXTRA_ENDPOINT, endpoint));
+        ContextCompat.startForegroundService(
+                context,
+                new Intent(context, QuickRecordService.class)
+                        .setAction(ACTION_TOGGLE)
+                        .putExtra(EXTRA_ENDPOINT, endpoint));
     }
 
     @Override
@@ -86,9 +91,15 @@ public class QuickRecordService extends Service {
             return START_NOT_STICKY;
         }
         switch (state) {
-            case IDLE: begin(intent.getIntExtra(EXTRA_ENDPOINT, 0)); break;
-            case RECORDING: stopRecording(); break;
-            case SENDING: toast(getString(R.string.quick_record_busy)); break;
+            case IDLE:
+                begin(intent.getIntExtra(EXTRA_ENDPOINT, 0));
+                break;
+            case RECORDING:
+                stopRecording();
+                break;
+            case SENDING:
+                toast(getString(R.string.quick_record_busy));
+                break;
         }
         return START_NOT_STICKY;
     }
@@ -120,13 +131,22 @@ public class QuickRecordService extends Service {
         });
         whisper.loadModel();
 
-        session = new SendSession(new SendSession.Output() {
-            @Override public void type(String text) { }
-            @Override public void send(EndpointSender.Endpoint ep, String text) {
-                pendingSends++;
-                EndpointSender.post(ep, Labels.endpoint(QuickRecordService.this, ep), text, QuickRecordService.this::onSent);
-            }
-        }, handler::post);
+        session = new SendSession(
+                new SendSession.Output() {
+                    @Override
+                    public void type(String text) {}
+
+                    @Override
+                    public void send(EndpointSender.Endpoint ep, String text) {
+                        pendingSends++;
+                        EndpointSender.post(
+                                ep,
+                                Labels.endpoint(QuickRecordService.this, ep),
+                                text,
+                                QuickRecordService.this::onSent);
+                    }
+                },
+                handler::post);
         session.begin(endpoint);
 
         recorder = new Recorder(this);
@@ -153,7 +173,8 @@ public class QuickRecordService extends Service {
             return 0;
         }
         boolean[] configured = new boolean[EndpointSender.COUNT];
-        for (int i = 1; i <= EndpointSender.COUNT; i++) configured[i - 1] = EndpointSender.load(prefs, i).isConfigured();
+        for (int i = 1; i <= EndpointSender.COUNT; i++)
+            configured[i - 1] = EndpointSender.load(prefs, i).isConfigured();
         int picked = EndpointSender.pickQuickRecord(prefs.quickRecordEndpoint(), configured);
         if (picked == 0) finish(getString(R.string.endpoint_none_configured));
         return picked;
@@ -217,7 +238,8 @@ public class QuickRecordService extends Service {
         } else {
             ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Dictation", text));
-            lastError = getString(R.string.endpoint_failed, Labels.endpoint(this, ep), Labels.sendFailure(this, failure));
+            lastError =
+                    getString(R.string.endpoint_failed, Labels.endpoint(this, ep), Labels.sendFailure(this, failure));
             HapticFeedback.vibrate(this);
         }
         maybeFinish();
@@ -268,7 +290,8 @@ public class QuickRecordService extends Service {
     }
 
     private String currentText() {
-        return state == State.RECORDING ? getString(R.string.quick_record_recording)
+        return state == State.RECORDING
+                ? getString(R.string.quick_record_recording)
                 : getString(R.string.endpoint_target, endpoint == null ? "" : Labels.endpoint(this, endpoint));
     }
 
@@ -284,11 +307,11 @@ public class QuickRecordService extends Service {
     private Notification notification(String text) {
         NotificationManager nm = getSystemService(NotificationManager.class);
         if (nm.getNotificationChannel(CHANNEL) == null) {
-            nm.createNotificationChannel(new NotificationChannel(CHANNEL,
-                    getString(R.string.quick_record), NotificationManager.IMPORTANCE_LOW));
+            nm.createNotificationChannel(new NotificationChannel(
+                    CHANNEL, getString(R.string.quick_record), NotificationManager.IMPORTANCE_LOW));
         }
-        PendingIntent toggle = PendingIntent.getActivity(this, 0,
-                new Intent(this, QuickRecordActivity.class), PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent toggle = PendingIntent.getActivity(
+                this, 0, new Intent(this, QuickRecordActivity.class), PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder b = new NotificationCompat.Builder(this, CHANNEL)
                 .setSmallIcon(R.drawable.ic_mic_48dp)
                 .setContentTitle(getString(R.string.quick_record))

@@ -1,30 +1,13 @@
 package com.whisperonnx.keyboard;
 
-import com.whisperonnx.prefs.Prefs;
-import com.whisperonnx.R;
-import com.whisperonnx.backend.TranscriptionStatus;
-import com.whisperonnx.backend.Whisper;
-import com.whisperonnx.backend.WhisperResult;
-import com.whisperonnx.endpoint.EndpointSender;
-import com.whisperonnx.endpoint.SendFailure;
-import com.whisperonnx.endpoint.SendSession;
-import com.whisperonnx.recording.OtherAudioPauser;
-import com.whisperonnx.recording.Recorder;
-import com.whisperonnx.recording.RecorderEvent;
-import com.whisperonnx.ui.Components;
-import com.whisperonnx.ui.Labels;
-import com.whisperonnx.ui.RecordGlow;
-import com.whisperonnx.ui.HapticFeedback;
-
 import android.annotation.SuppressLint;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.ColorStateList;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.inputmethodservice.InputMethodService;
-
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -32,13 +15,27 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.widget.ImageButton;
-import android.view.ViewGroup;
 import android.widget.TextView;
-
 import androidx.core.content.ContextCompat;
+import com.whisperonnx.R;
+import com.whisperonnx.backend.TranscriptionStatus;
+import com.whisperonnx.backend.Whisper;
+import com.whisperonnx.backend.WhisperResult;
+import com.whisperonnx.endpoint.EndpointSender;
+import com.whisperonnx.endpoint.SendFailure;
+import com.whisperonnx.endpoint.SendSession;
+import com.whisperonnx.prefs.Prefs;
+import com.whisperonnx.recording.OtherAudioPauser;
+import com.whisperonnx.recording.Recorder;
+import com.whisperonnx.recording.RecorderEvent;
+import com.whisperonnx.ui.Components;
+import com.whisperonnx.ui.HapticFeedback;
+import com.whisperonnx.ui.Labels;
+import com.whisperonnx.ui.RecordGlow;
 
 public class KeyboardService extends InputMethodService {
     private static final String TAG = "KeyboardService";
@@ -67,15 +64,24 @@ public class KeyboardService extends InputMethodService {
     private Whisper mWhisper = null;
     private Prefs prefs = null;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final SendSession session = new SendSession(new SendSession.Output() {
-        @Override public void type(String text) {
-            InputConnection ic = getCurrentInputConnection();
-            if (ic != null) ic.commitText(text, 1);
-        }
-        @Override public void send(EndpointSender.Endpoint ep, String text) {
-            EndpointSender.post(ep, Labels.endpoint(KeyboardService.this, ep), text, KeyboardService.this::onEndpointResult);
-        }
-    }, handler::post);
+    private final SendSession session = new SendSession(
+            new SendSession.Output() {
+                @Override
+                public void type(String text) {
+                    InputConnection ic = getCurrentInputConnection();
+                    if (ic != null) ic.commitText(text, 1);
+                }
+
+                @Override
+                public void send(EndpointSender.Endpoint ep, String text) {
+                    EndpointSender.post(
+                            ep,
+                            Labels.endpoint(KeyboardService.this, ep),
+                            text,
+                            KeyboardService.this::onEndpointResult);
+                }
+            },
+            handler::post);
     private Context mContext;
     private boolean modeAuto = false;
     private ViewGroup layoutButtons;
@@ -110,8 +116,11 @@ public class KeyboardService extends InputMethodService {
 
     @Override
     public void onStartInput(EditorInfo attribute, boolean restarting) {
-        if (attribute.inputType ==  EditorInfo.TYPE_NULL) {
-            Log.d(TAG, "Cancelling: onStartInput: inputType=" + attribute.inputType + ", package=" + attribute.packageName + ", fieldId=" + attribute.fieldId);
+        if (attribute.inputType == EditorInfo.TYPE_NULL) {
+            Log.d(
+                    TAG,
+                    "Cancelling: onStartInput: inputType=" + attribute.inputType + ", package=" + attribute.packageName
+                            + ", fieldId=" + attribute.fieldId);
             deinitModel();
             if (mRecorder != null && mRecorder.isInProgress()) {
                 mRecorder.stop();
@@ -126,8 +135,9 @@ public class KeyboardService extends InputMethodService {
     }
 
     @Override
-    public void onStartInputView(EditorInfo attribute, boolean restarting){
-        if (mWhisper != null && (!mWhisper.getLocalEngine().equals(prefs.localEngine()) || mWhisper.modelInstalledSince())
+    public void onStartInputView(EditorInfo attribute, boolean restarting) {
+        if (mWhisper != null
+                && (!mWhisper.getLocalEngine().equals(prefs.localEngine()) || mWhisper.modelInstalledSince())
                 && !(mRecorder != null && mRecorder.isInProgress())) {
             deinitModel();
         }
@@ -136,13 +146,12 @@ public class KeyboardService extends InputMethodService {
         } else if (needsLocalModel() && !isBusy()) {
             reloadModel();
         }
-
     }
 
     // External: Android attaches the input view to its window itself, so it has no parent to inflate into
     @SuppressLint({"ClickableViewAccessibility", "InflateParams"})
     @Override
-    public View onCreateInputView() {  // External: Android calls this before onStartInputView
+    public View onCreateInputView() { // External: Android calls this before onStartInputView
         prefs = Prefs.of(this);
         View view = getLayoutInflater().inflate(R.layout.voice_service, null);
         bindViews(view);
@@ -155,7 +164,8 @@ public class KeyboardService extends InputMethodService {
 
     private void bindViews(View view) {
         btnRecord = view.findViewById(R.id.btnRecord);
-        glow = new RecordGlow(btnRecord, 8, getColor(R.color.ime_key_pressed), R.drawable.ime_mic_background, handler::post);
+        glow = new RecordGlow(
+                btnRecord, 8, getColor(R.color.ime_key_pressed), R.drawable.ime_mic_background, handler::post);
         btnKeyboard = view.findViewById(R.id.btnKeyboard);
         btnModeAuto = view.findViewById(R.id.btnModeAuto);
         btnEnter = view.findViewById(R.id.btnEnter);
@@ -241,8 +251,19 @@ public class KeyboardService extends InputMethodService {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) HapticFeedback.tick(mContext);
             return false;
         };
-        for (View b : new View[]{btnKeyboard, btnEnter, btnDot, btnDash, btnBullet,
-                btnModeAuto, btnToolbarToggle, btnPauseAudio, btnBackend, btnSendTarget, btnSettings}) {
+        for (View b : new View[] {
+            btnKeyboard,
+            btnEnter,
+            btnDot,
+            btnDash,
+            btnBullet,
+            btnModeAuto,
+            btnToolbarToggle,
+            btnPauseAudio,
+            btnBackend,
+            btnSendTarget,
+            btnSettings
+        }) {
             b.setOnTouchListener(tickOnPress);
         }
 
@@ -254,8 +275,7 @@ public class KeyboardService extends InputMethodService {
         btnDot.setOnClickListener(v -> getCurrentInputConnection().commitText(".", 1));
         btnSpace.setOnClickListener(v -> getCurrentInputConnection().commitText(" ", 1));
         float dp = getResources().getDisplayMetrics().density;
-        CursorDrag cursorDrag = new CursorDrag(
-                ViewConfiguration.get(mContext).getScaledTouchSlop(), 12 * dp, 24 * dp);
+        CursorDrag cursorDrag = new CursorDrag(ViewConfiguration.get(mContext).getScaledTouchSlop(), 12 * dp, 24 * dp);
         btnSpace.setOnTouchListener((v, event) -> {
             onSpaceTouch(v, event, cursorDrag);
             return true;
@@ -394,9 +414,12 @@ public class KeyboardService extends InputMethodService {
         sendTarget = next;
         prefs.setSendTarget(sendTarget);
         updateSendTargetUi();
-        showTransientStatus(sendTarget == 0
-                ? getString(R.string.endpoint_target_cursor)
-                : getString(R.string.endpoint_target, Labels.endpoint(this, EndpointSender.load(prefs, sendTarget))));
+        showTransientStatus(
+                sendTarget == 0
+                        ? getString(R.string.endpoint_target_cursor)
+                        : getString(
+                                R.string.endpoint_target,
+                                Labels.endpoint(this, EndpointSender.load(prefs, sendTarget))));
     }
 
     private int nextConfiguredEndpoint() {
@@ -469,16 +492,19 @@ public class KeyboardService extends InputMethodService {
     }
 
     private boolean needsLocalModel() {
-        return mWhisper != null && !mWhisper.hasLocalModel()
-                && !prefs.useServer();
+        return mWhisper != null && !mWhisper.hasLocalModel() && !prefs.useServer();
     }
 
     private void reloadModel() {
         deinitModel();
         initModel();
         if (mWhisper.hasLocalModel() && !mWhisper.isModelMissing()) {
-            loadingStatus = getString(R.string.loading_model, getString(
-                    Prefs.ENGINE_PARAKEET.equals(mWhisper.getLocalEngine()) ? R.string.model_parakeet : R.string.model_whisper));
+            loadingStatus = getString(
+                    R.string.loading_model,
+                    getString(
+                            Prefs.ENGINE_PARAKEET.equals(mWhisper.getLocalEngine())
+                                    ? R.string.model_parakeet
+                                    : R.string.model_whisper));
             showStatus(loadingStatus);
         }
     }
@@ -552,7 +578,8 @@ public class KeyboardService extends InputMethodService {
             HapticFeedback.vibrate(mContext);
             ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Dictation", text));
-            showStatus(getString(R.string.endpoint_failed, Labels.endpoint(this, ep), Labels.sendFailure(this, failure)));
+            showStatus(
+                    getString(R.string.endpoint_failed, Labels.endpoint(this, ep), Labels.sendFailure(this, failure)));
         }
     }
 
@@ -561,8 +588,7 @@ public class KeyboardService extends InputMethodService {
         btnSendTarget.setActivated(active);
         tvSendTargetBadge.setVisibility(active ? View.VISIBLE : View.GONE);
         tvSendTargetBadge.setText(String.valueOf(sendTarget));
-        btnRecord.setImageTintList(ColorStateList.valueOf(
-                getColor(active ? R.color.ime_accent : R.color.ime_on_key)));
+        btnRecord.setImageTintList(ColorStateList.valueOf(getColor(active ? R.color.ime_accent : R.color.ime_on_key)));
     }
 
     private void showStatus(String message) {

@@ -1,25 +1,5 @@
 package com.whisperonnx.testscreen;
 
-import com.whisperonnx.prefs.Prefs;
-import com.whisperonnx.BuildConfig;
-import com.whisperonnx.R;
-import com.whisperonnx.backend.Backends;
-import com.whisperonnx.backend.ParakeetRecognizer;
-import com.whisperonnx.backend.TranscriptionStatus;
-import com.whisperonnx.backend.Whisper;
-import com.whisperonnx.backend.WhisperModel;
-import com.whisperonnx.backend.WhisperResult;
-import com.whisperonnx.recording.Recorder;
-import com.whisperonnx.recording.RecorderEvent;
-import com.whisperonnx.ui.Permissions;
-import com.whisperonnx.ui.Components;
-import com.whisperonnx.ui.RecordCountdown;
-import com.whisperonnx.ui.RecordGlow;
-import com.whisperonnx.ui.HapticFeedback;
-import com.whisperonnx.ui.Labels;
-import com.whisperonnx.ui.ModelInstaller;
-import com.whisperonnx.ui.ThemeUtils;
-
 import android.annotation.SuppressLint;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -29,31 +9,46 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import androidx.appcompat.app.AppCompatDelegate;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
+import android.view.View;
 import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
-import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Spinner;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.appcompat.app.AppCompatActivity;
-
+import androidx.appcompat.app.AppCompatDelegate;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
-
-import org.woheller69.freeDroidWarn.FreeDroidWarn;
-
+import com.whisperonnx.BuildConfig;
+import com.whisperonnx.R;
+import com.whisperonnx.backend.Backends;
+import com.whisperonnx.backend.ParakeetRecognizer;
+import com.whisperonnx.backend.TranscriptionStatus;
+import com.whisperonnx.backend.Whisper;
+import com.whisperonnx.backend.WhisperModel;
+import com.whisperonnx.backend.WhisperResult;
+import com.whisperonnx.prefs.Prefs;
+import com.whisperonnx.recording.Recorder;
+import com.whisperonnx.recording.RecorderEvent;
+import com.whisperonnx.ui.Components;
+import com.whisperonnx.ui.HapticFeedback;
+import com.whisperonnx.ui.Labels;
+import com.whisperonnx.ui.ModelInstaller;
+import com.whisperonnx.ui.Permissions;
+import com.whisperonnx.ui.RecordCountdown;
+import com.whisperonnx.ui.RecordGlow;
+import com.whisperonnx.ui.ThemeUtils;
 import java.util.List;
+import org.woheller69.freeDroidWarn.FreeDroidWarn;
 
 public class TestScreenActivity extends AppCompatActivity {
     private Context mContext;
@@ -102,7 +97,7 @@ public class TestScreenActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(final MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.menu_settings){
+        if (id == R.id.menu_settings) {
             Components.open(this, Components.SETTINGS);
         }
 
@@ -127,7 +122,8 @@ public class TestScreenActivity extends AppCompatActivity {
         setupBackendPicker();
 
         btnInfo = findViewById(R.id.btnInfo);
-        btnInfo.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/woheller69/whisperIMEplus#Donate"))));
+        btnInfo.setOnClickListener(view -> startActivity(
+                new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/woheller69/whisperIMEplus#Donate"))));
 
         btnRecord = findViewById(R.id.btnRecord);
         glow = new RecordGlow(btnRecord, 10, null, R.drawable.ime_mic_background, this::runOnUiThread);
@@ -151,16 +147,17 @@ public class TestScreenActivity extends AppCompatActivity {
         mRecorder = new Recorder(this);
         mRecorder.setListener(this::onRecorderUpdate);
         FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
-        if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this, "https://github.com/woheller69/whisperIMEplus");
+        if (GithubStar.shouldShowStarDialog(this))
+            GithubStar.starDialog(this, "https://github.com/woheller69/whisperIMEplus");
         checkPermissions();
-
     }
 
     private void onRecordPressed() {
         glow.start();
         Log.d(TAG, "Start recording...");
         if (mWhisper.isInProgress()) {
-            Toast.makeText(this, getString(R.string.please_wait), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.please_wait), Toast.LENGTH_SHORT)
+                    .show();
             return;
         }
         HapticFeedback.vibrate(this);
@@ -179,7 +176,8 @@ public class TestScreenActivity extends AppCompatActivity {
         Log.d(TAG, "Recorder: " + event + " " + detail);
         switch (event) {
             case RECORDING:
-                runOnUiThread(() -> tvStatus.setText(getString(R.string.test_recording, getString(R.string.record_button))));
+                runOnUiThread(
+                        () -> tvStatus.setText(getString(R.string.test_recording, getString(R.string.record_button))));
                 runOnUiThread(this::clearResultUnlessAppending);
                 glow.start();
                 break;
@@ -239,7 +237,9 @@ public class TestScreenActivity extends AppCompatActivity {
 
     private void showResult(String text, long timeTaken) {
         processingBar.setIndeterminate(false);
-        tvStatus.setText(getString(R.string.test_done_with_backend, getString(R.string.test_done, timeTaken),
+        tvStatus.setText(getString(
+                R.string.test_done_with_backend,
+                getString(R.string.test_done, timeTaken),
                 getResources().getStringArray(R.array.backend_labels)[loadedBackend]));
         if (text.isEmpty()) return;
         if (tvResult.length() > 0 && !Character.isWhitespace(tvResult.getText().charAt(tvResult.length() - 1))) {
@@ -278,15 +278,21 @@ public class TestScreenActivity extends AppCompatActivity {
             @Override
             public void onResultReceived(WhisperResult whisperResult) {
                 long timeTaken = System.currentTimeMillis() - startTime;
-                String text = whisperResult.getResult() == null ? "" : whisperResult.getResult().trim();
+                String text = whisperResult.getResult() == null
+                        ? ""
+                        : whisperResult.getResult().trim();
                 Log.d(TAG, "Result: " + text);
                 runOnUiThread(() -> showResult(text, timeTaken));
             }
         });
         boolean remote = prefs.useServer();
         if (!remote && !mWhisper.isModelMissing()) {
-            tvStatus.setText(getString(R.string.loading_model, getString(
-                    Prefs.ENGINE_PARAKEET.equals(mWhisper.getLocalEngine()) ? R.string.model_parakeet : R.string.model_whisper)));
+            tvStatus.setText(getString(
+                    R.string.loading_model,
+                    getString(
+                            Prefs.ENGINE_PARAKEET.equals(mWhisper.getLocalEngine())
+                                    ? R.string.model_parakeet
+                                    : R.string.model_whisper)));
         } else {
             tvStatus.setText(R.string.test_ready);
         }
@@ -303,7 +309,8 @@ public class TestScreenActivity extends AppCompatActivity {
     private void setupBackendPicker() {
         spinnerBackend = findViewById(R.id.spinner_backend);
         tvBackendInfo = findViewById(R.id.tvBackendInfo);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, getResources().getStringArray(R.array.backend_labels));
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_item, getResources().getStringArray(R.array.backend_labels));
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerBackend.setAdapter(adapter);
         spinnerBackend.setSelection(Backends.current(prefs), false);
@@ -314,7 +321,8 @@ public class TestScreenActivity extends AppCompatActivity {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (position == loadedBackend) return;
                 if ((mRecorder != null && mRecorder.isInProgress()) || (mWhisper != null && mWhisper.isInProgress())) {
-                    Toast.makeText(mContext, getString(R.string.please_wait), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(mContext, getString(R.string.please_wait), Toast.LENGTH_SHORT)
+                            .show();
                     spinnerBackend.setSelection(loadedBackend);
                     return;
                 }
@@ -342,7 +350,8 @@ public class TestScreenActivity extends AppCompatActivity {
         deinitModel();
         initModel();
         loadedBackend = backend;
-        tvBackendInfo.setText(Labels.backend(this, Backends.describe(prefs, backend, ParakeetRecognizer.isInstalled(this))));
+        tvBackendInfo.setText(
+                Labels.backend(this, Backends.describe(prefs, backend, ParakeetRecognizer.isInstalled(this))));
     }
 
     @Override
@@ -354,7 +363,8 @@ public class TestScreenActivity extends AppCompatActivity {
             spinnerBackend.setSelection(current, false);
             loadBackend(current);
         } else {
-            tvBackendInfo.setText(Labels.backend(this, Backends.describe(prefs, current, ParakeetRecognizer.isInstalled(this))));
+            tvBackendInfo.setText(
+                    Labels.backend(this, Backends.describe(prefs, current, ParakeetRecognizer.isInstalled(this))));
         }
     }
 
@@ -382,7 +392,9 @@ public class TestScreenActivity extends AppCompatActivity {
     }
 
     private void startProcessing() {
-        if (countDownTimer!=null) { countDownTimer.cancel();}
+        if (countDownTimer != null) {
+            countDownTimer.cancel();
+        }
         runOnUiThread(() -> {
             processingBar.setProgress(0);
             processingBar.setIndeterminate(true);
@@ -395,5 +407,4 @@ public class TestScreenActivity extends AppCompatActivity {
         processingBar.setIndeterminate(false);
         if (mWhisper != null && mWhisper.isInProgress()) mWhisper.stop();
     }
-
 }

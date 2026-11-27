@@ -6,12 +6,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -23,31 +17,42 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import okhttp3.OkHttpClient;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import okio.Buffer;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class ModelDownloaderTest {
-    @Rule public TemporaryFolder tmp = new TemporaryFolder();
+    @Rule
+    public TemporaryFolder tmp = new TemporaryFolder();
 
     private MockWebServer server;
-    private final OkHttpClient client = new OkHttpClient.Builder().readTimeout(2, TimeUnit.SECONDS).build();
+    private final OkHttpClient client =
+            new OkHttpClient.Builder().readTimeout(2, TimeUnit.SECONDS).build();
     private final AtomicBoolean cancelled = new AtomicBoolean();
     private long lastDone = -1, lastTotal = -1;
-    private final ModelDownloader.Progress progress = (done, total) -> { lastDone = done; lastTotal = total; };
+    private final ModelDownloader.Progress progress = (done, total) -> {
+        lastDone = done;
+        lastTotal = total;
+    };
 
     private static final byte[] A = bytes(3000, 'a');
     private static final byte[] B = bytes(700_000, 'b');
 
-    @Before public void setUp() throws Exception {
+    @Before
+    public void setUp() throws Exception {
         server = new MockWebServer();
         server.start();
     }
 
-    @After public void tearDown() throws Exception {
+    @After
+    public void tearDown() throws Exception {
         server.shutdown();
     }
 
@@ -75,7 +80,8 @@ public class ModelDownloaderTest {
         return new File(tmp.getRoot(), "models");
     }
 
-    @Test public void downloadsAndVerifiesAllFiles() throws Exception {
+    @Test
+    public void downloadsAndVerifiesAllFiles() throws Exception {
         List<ModelDownloader.FileSpec> files = Arrays.asList(spec("a.bin", A), spec("b.bin", B));
         server.enqueue(ok(A));
         server.enqueue(ok(B));
@@ -90,7 +96,8 @@ public class ModelDownloaderTest {
         assertEquals(A.length + B.length, lastTotal);
     }
 
-    @Test public void skipsFilesAlreadyPresent() throws Exception {
+    @Test
+    public void skipsFilesAlreadyPresent() throws Exception {
         List<ModelDownloader.FileSpec> files = Arrays.asList(spec("a.bin", A), spec("b.bin", B));
         assertTrue(dir().mkdirs());
         Files.write(new File(dir(), "a.bin").toPath(), A);
@@ -102,12 +109,14 @@ public class ModelDownloaderTest {
         assertEquals("/b.bin", server.takeRequest().getPath());
     }
 
-    @Test public void resumesFromPartialFile() throws Exception {
+    @Test
+    public void resumesFromPartialFile() throws Exception {
         List<ModelDownloader.FileSpec> files = Collections.singletonList(spec("b.bin", B));
         assertTrue(dir().mkdirs());
         int have = 250_000;
         Files.write(new File(dir(), "b.bin.part").toPath(), Arrays.copyOf(B, have));
-        server.enqueue(new MockResponse().setResponseCode(206)
+        server.enqueue(new MockResponse()
+                .setResponseCode(206)
                 .setBody(new Buffer().write(Arrays.copyOfRange(B, have, B.length))));
 
         ModelDownloader.download(client, files, dir(), progress, cancelled);
@@ -117,7 +126,8 @@ public class ModelDownloaderTest {
         assertArrayEquals(B, Files.readAllBytes(new File(dir(), "b.bin").toPath()));
     }
 
-    @Test public void restartsWhenServerIgnoresRange() throws Exception {
+    @Test
+    public void restartsWhenServerIgnoresRange() throws Exception {
         List<ModelDownloader.FileSpec> files = Collections.singletonList(spec("b.bin", B));
         assertTrue(dir().mkdirs());
         Files.write(new File(dir(), "b.bin.part").toPath(), "garbage".getBytes(StandardCharsets.UTF_8));
@@ -128,7 +138,8 @@ public class ModelDownloaderTest {
         assertArrayEquals(B, Files.readAllBytes(new File(dir(), "b.bin").toPath()));
     }
 
-    @Test public void checksumMismatchDeletesFileAndFails() throws Exception {
+    @Test
+    public void checksumMismatchDeletesFileAndFails() throws Exception {
         ModelDownloader.FileSpec good = spec("a.bin", A);
         byte[] corrupt = A.clone();
         corrupt[10] ^= 1;
@@ -143,7 +154,8 @@ public class ModelDownloaderTest {
         assertFalse(new File(dir(), "a.bin.part").exists());
     }
 
-    @Test public void httpErrorFails() throws Exception {
+    @Test
+    public void httpErrorFails() throws Exception {
         server.enqueue(new MockResponse().setResponseCode(404));
         try {
             ModelDownloader.download(client, Collections.singletonList(spec("a.bin", A)), dir(), progress, cancelled);
@@ -154,14 +166,18 @@ public class ModelDownloaderTest {
         assertFalse(new File(dir(), "a.bin").exists());
     }
 
-    @Test public void cancelKeepsPartialDataForResume() throws Exception {
+    @Test
+    public void cancelKeepsPartialDataForResume() throws Exception {
         List<ModelDownloader.FileSpec> files = Collections.singletonList(spec("b.bin", B));
         server.enqueue(ok(B).throttleBody(64 * 1024, 20, TimeUnit.MILLISECONDS));
-        ModelDownloader.Progress cancelMidway = (done, total) -> { if (done > 0 && done < total) cancelled.set(true); };
+        ModelDownloader.Progress cancelMidway = (done, total) -> {
+            if (done > 0 && done < total) cancelled.set(true);
+        };
         try {
             ModelDownloader.download(client, files, dir(), cancelMidway, cancelled);
             fail("expected cancellation");
-        } catch (InterruptedIOException expected) { }
+        } catch (InterruptedIOException expected) {
+        }
 
         File part = new File(dir(), "b.bin.part");
         assertTrue(part.exists());
@@ -170,7 +186,8 @@ public class ModelDownloaderTest {
         assertFalse(ModelDownloader.isComplete(files, dir()));
     }
 
-    @Test public void isCompleteChecksSize() throws Exception {
+    @Test
+    public void isCompleteChecksSize() throws Exception {
         List<ModelDownloader.FileSpec> files = Collections.singletonList(spec("a.bin", A));
         assertFalse(ModelDownloader.isComplete(files, dir()));
         assertTrue(dir().mkdirs());

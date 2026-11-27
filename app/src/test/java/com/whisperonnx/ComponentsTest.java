@@ -5,32 +5,29 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.whisperonnx.ui.Components;
-
+import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.HashMap;
+import java.util.Map;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-import java.io.File;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.HashMap;
-import java.util.Map;
-
-import javax.xml.parsers.DocumentBuilderFactory;
-
 public class ComponentsTest {
     private static final String ANDROID = "http://schemas.android.com/apk/res/android";
     private static final String PACKAGE = "com.whisperonnx";
 
     private static final String[][] STORED = {
-            {"activity-alias", ".MainActivity", "launcher icon"},
-            {"activity-alias", ".WhisperRecognizeActivity", "default speech recognizer activity"},
-            {"activity-alias", ".QuickRecordActivity", "digital assistant"},
-            {"service", ".WhisperInputMethodService", "enabled keyboard"},
-            {"service", ".WhisperRecognitionService", "system voice input"},
-            {"receiver", ".QuickRecordWidget", "placed widgets"},
+        {"activity-alias", ".MainActivity", "launcher icon"},
+        {"activity-alias", ".WhisperRecognizeActivity", "default speech recognizer activity"},
+        {"activity-alias", ".QuickRecordActivity", "digital assistant"},
+        {"service", ".WhisperInputMethodService", "enabled keyboard"},
+        {"service", ".WhisperRecognitionService", "system voice input"},
+        {"receiver", ".QuickRecordWidget", "placed widgets"},
     };
 
     private static final Map<String, String> declared = new HashMap<>();
@@ -39,7 +36,7 @@ public class ComponentsTest {
     @BeforeClass
     public static void readManifest() throws Exception {
         manifest = parse(new File("src/main/AndroidManifest.xml"));
-        for (String tag : new String[]{"activity", "activity-alias", "service", "receiver"}) {
+        for (String tag : new String[] {"activity", "activity-alias", "service", "receiver"}) {
             NodeList nodes = manifest.getElementsByTagName(tag);
             for (int i = 0; i < nodes.getLength(); i++) {
                 declared.put(resolve(((Element) nodes.item(i)).getAttributeNS(ANDROID, "name")), tag);
@@ -50,9 +47,12 @@ public class ComponentsTest {
     @Test
     public void storedNamesAreStillDeclared() {
         for (String[] name : STORED) {
-            assertEquals(name[1] + " is stored by Android as the " + name[2] + "; renaming it turns that off"
-                    + " after an update. Keep it declared as a " + name[0] + ": an <activity-alias> to the"
-                    + " moved activity, or an empty subclass in " + PACKAGE, name[0], declared.get(resolve(name[1])));
+            assertEquals(
+                    name[1] + " is stored by Android as the " + name[2] + "; renaming it turns that off"
+                            + " after an update. Keep it declared as a " + name[0] + ": an <activity-alias> to the"
+                            + " moved activity, or an empty subclass in " + PACKAGE,
+                    name[0],
+                    declared.get(resolve(name[1])));
         }
     }
 
@@ -74,7 +74,8 @@ public class ComponentsTest {
         for (Field f : Components.class.getFields()) {
             if (!Modifier.isStatic(f.getModifiers()) || f.getType() != String.class) continue;
             String name = (String) f.get(null);
-            assertTrue("Components." + f.getName() + " = " + name + " is not declared in the manifest",
+            assertTrue(
+                    "Components." + f.getName() + " = " + name + " is not declared in the manifest",
                     declared.containsKey(name));
             checked++;
         }
@@ -89,11 +90,13 @@ public class ComponentsTest {
             NodeList all = parse(file).getElementsByTagName("*");
             for (int i = 0; i < all.getLength(); i++) {
                 Element el = (Element) all.item(i);
-                for (String attr : new String[]{"settingsActivity", "configure"}) {
+                for (String attr : new String[] {"settingsActivity", "configure"}) {
                     String value = el.getAttributeNS(ANDROID, attr);
                     if (!value.isEmpty()) {
-                        assertEquals(file.getName() + ": " + attr + "=" + value + " must be a declared activity",
-                                "activity", declared.get(resolve(value)));
+                        assertEquals(
+                                file.getName() + ": " + attr + "=" + value + " must be a declared activity",
+                                "activity",
+                                declared.get(resolve(value)));
                     }
                 }
             }

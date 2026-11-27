@@ -1,14 +1,5 @@
 package com.whisperonnx.voiceinput;
 
-import com.whisperonnx.R;
-import com.whisperonnx.backend.TranscriptionStatus;
-import com.whisperonnx.backend.Whisper;
-import com.whisperonnx.backend.WhisperResult;
-import com.whisperonnx.recording.Recorder;
-import com.whisperonnx.recording.RecorderEvent;
-import com.whisperonnx.ui.Components;
-import com.whisperonnx.ui.HapticFeedback;
-
 import static android.speech.SpeechRecognizer.ERROR_CLIENT;
 import static android.speech.SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS;
 
@@ -23,9 +14,15 @@ import android.speech.RecognitionService;
 import android.speech.SpeechRecognizer;
 import android.util.Log;
 import android.widget.Toast;
-
 import androidx.core.content.ContextCompat;
-
+import com.whisperonnx.R;
+import com.whisperonnx.backend.TranscriptionStatus;
+import com.whisperonnx.backend.Whisper;
+import com.whisperonnx.backend.WhisperResult;
+import com.whisperonnx.recording.Recorder;
+import com.whisperonnx.recording.RecorderEvent;
+import com.whisperonnx.ui.Components;
+import com.whisperonnx.ui.HapticFeedback;
 import java.util.ArrayList;
 
 public class VoiceInputService extends RecognitionService {
@@ -86,7 +83,7 @@ public class VoiceInputService extends RecognitionService {
 
     @Override
     protected void onCancel(Callback callback) {
-        Log.d(TAG,"cancel");
+        Log.d(TAG, "cancel");
         stopRecording();
         deinitModel();
         recognitionCancelled = true;
@@ -94,7 +91,7 @@ public class VoiceInputService extends RecognitionService {
 
     @Override
     protected void onStopListening(Callback callback) {
-        Log.d(TAG,"StopListening");
+        Log.d(TAG, "StopListening");
         stopRecording();
     }
 
@@ -104,7 +101,7 @@ public class VoiceInputService extends RecognitionService {
         mWhisper.loadModel();
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
-            public void onUpdateReceived(TranscriptionStatus status, String detail) { }
+            public void onUpdateReceived(TranscriptionStatus status, String detail) {}
 
             @Override
             public void onResultReceived(WhisperResult whisperResult) {
@@ -137,7 +134,7 @@ public class VoiceInputService extends RecognitionService {
         new Handler(Looper.getMainLooper()).post(this::showProcessingToast);
         mWhisper.setTranslate(false);
         mWhisper.start();
-        Log.d(TAG,"Start Transcription");
+        Log.d(TAG, "Start Transcription");
     }
 
     private void showProcessingToast() {
@@ -157,9 +154,10 @@ public class VoiceInputService extends RecognitionService {
     }
 
     @Override
-    public void onDestroy (){
+    public void onDestroy() {
         deinitModel();
     }
+
     private void deinitModel() {
         if (mWhisper != null) {
             mWhisper.unloadModel();
@@ -169,8 +167,8 @@ public class VoiceInputService extends RecognitionService {
 
     private void checkRecordPermission(Callback callback) {
         int permission = ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO);
-        if (permission != PackageManager.PERMISSION_GRANTED){
-            Log.d(TAG,getString(R.string.need_record_audio_permission));
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, getString(R.string.need_record_audio_permission));
             try {
                 callback.error(ERROR_INSUFFICIENT_PERMISSIONS);
             } catch (RemoteException e) {
@@ -178,5 +176,4 @@ public class VoiceInputService extends RecognitionService {
             }
         }
     }
-
 }

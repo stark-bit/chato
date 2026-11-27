@@ -5,10 +5,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -20,9 +16,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class WhisperModelTest {
-    @Rule public TemporaryFolder tmp = new TemporaryFolder();
+    @Rule
+    public TemporaryFolder tmp = new TemporaryFolder();
 
     private static byte[] zip(String... names) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -36,18 +36,22 @@ public class WhisperModelTest {
         return bytes.toByteArray();
     }
 
-    @Test public void extractsTopLevelFilesAndSkipsFolders() throws IOException {
+    @Test
+    public void extractsTopLevelFilesAndSkipsFolders() throws IOException {
         File dir = tmp.newFolder("model");
         List<String> seen = new ArrayList<>();
         int n = WhisperModel.extract(new ByteArrayInputStream(zip("a.onnx", "empty/", "b.onnx")), dir, seen::add);
         assertEquals(2, n);
         assertEquals(Arrays.asList("a.onnx", "b.onnx"), seen);
-        assertEquals("data of b.onnx", new String(Files.readAllBytes(new File(dir, "b.onnx").toPath()), StandardCharsets.UTF_8));
+        assertEquals(
+                "data of b.onnx",
+                new String(Files.readAllBytes(new File(dir, "b.onnx").toPath()), StandardCharsets.UTF_8));
     }
 
-    @Test public void rejectsEntriesOutsideTheFolder() throws IOException {
+    @Test
+    public void rejectsEntriesOutsideTheFolder() throws IOException {
         File dir = tmp.newFolder("model");
-        for (String bad : new String[]{"../evil.onnx", "sub/nested.onnx"}) {
+        for (String bad : new String[] {"../evil.onnx", "sub/nested.onnx"}) {
             try {
                 WhisperModel.extract(new ByteArrayInputStream(zip(bad)), dir, null);
                 fail("accepted " + bad);
@@ -57,7 +61,8 @@ public class WhisperModelTest {
         assertFalse(new File(tmp.getRoot(), "evil.onnx").exists());
     }
 
-    @Test public void installedMeansSixFilesFoldersDontCount() throws IOException {
+    @Test
+    public void installedMeansSixFilesFoldersDontCount() throws IOException {
         File dir = tmp.newFolder("model");
         assertFalse(WhisperModel.isInstalled(dir));
         WhisperModel.extract(new ByteArrayInputStream(zip("1", "2", "3", "4", "5")), dir, null);

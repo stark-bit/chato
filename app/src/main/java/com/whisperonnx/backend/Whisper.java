@@ -1,16 +1,12 @@
 package com.whisperonnx.backend;
 
+import android.content.Context;
+import android.util.Log;
 import com.whisperonnx.prefs.Prefs;
-
 import com.whisperonnx.recording.RecordBuffer;
 import com.whisperonnx.thirdparty.rtranslator.NeuralNetworkApi;
 import com.whisperonnx.thirdparty.rtranslator.voice.Recognizer;
 import com.whisperonnx.thirdparty.rtranslator.voice.RecognizerListener;
-
-import android.content.Context;
-import android.util.Log;
-
-
 import java.io.File;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -25,11 +21,11 @@ import java.util.concurrent.locks.ReentrantLock;
 public class Whisper {
     public interface WhisperListener {
         void onUpdateReceived(TranscriptionStatus status, String detail);
+
         void onResultReceived(WhisperResult result);
     }
 
     private static final String TAG = "Whisper";
-
 
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
@@ -88,7 +84,6 @@ public class Whisper {
             recordBufferThread = new Thread(this::processRecordBufferLoop, "whisper-record");
             recordBufferThread.start();
         }
-
     }
 
     public boolean modelInstalledSince() {
@@ -118,17 +113,20 @@ public class Whisper {
         localModelRequested = true;
         if (needsSetup) return;
         if (mLocalEngine.equals(Prefs.ENGINE_PARAKEET)) {
-            new Thread(() -> {
-                try {
-                    parakeet = new ParakeetRecognizer(ParakeetRecognizer.dir(mContext));
-                    sendUpdate(TranscriptionStatus.MODEL_LOADED);
-                } catch (Throwable e) {
-                    Log.e(TAG, "Parakeet failed to load", e);
-                    sendUpdate(TranscriptionStatus.MODEL_FAILED, e.getMessage());
-                } finally {
-                    parakeetReady.countDown();
-                }
-            }, "parakeet-load").start();
+            new Thread(
+                            () -> {
+                                try {
+                                    parakeet = new ParakeetRecognizer(ParakeetRecognizer.dir(mContext));
+                                    sendUpdate(TranscriptionStatus.MODEL_LOADED);
+                                } catch (Throwable e) {
+                                    Log.e(TAG, "Parakeet failed to load", e);
+                                    sendUpdate(TranscriptionStatus.MODEL_FAILED, e.getMessage());
+                                } finally {
+                                    parakeetReady.countDown();
+                                }
+                            },
+                            "parakeet-load")
+                    .start();
             return;
         }
         recognizer = new Recognizer(mContext, false, new NeuralNetworkApi.InitListener() {
@@ -147,9 +145,10 @@ public class Whisper {
 
         recognizer.addCallback(new RecognizerListener() {
             @Override
-            public void onSpeechRecognizedResult(String text, String languageCode, double confidenceScore, boolean isFinal) {
+            public void onSpeechRecognizedResult(
+                    String text, String languageCode, double confidenceScore, boolean isFinal) {
                 Log.d(TAG, languageCode + " " + text);
-                WhisperResult whisperResult = new WhisperResult(text,languageCode, mAction);
+                WhisperResult whisperResult = new WhisperResult(text, languageCode, mAction);
 
                 sendResult(whisperResult);
                 CountDownLatch latch = localResultLatch;
@@ -417,5 +416,4 @@ public class Whisper {
             mUpdateListener.onResultReceived(whisperResult);
         }
     }
-
 }

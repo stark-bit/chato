@@ -1,21 +1,15 @@
 package com.whisperonnx.backend;
 
-import com.whisperonnx.thirdparty.rtranslator.NeuralNetworkApi;
-import com.whisperonnx.thirdparty.rtranslator.voice.Recognizer;
-import com.whisperonnx.thirdparty.rtranslator.voice.RecognizerListener;
-
 import static org.junit.Assume.assumeTrue;
 
 import android.content.Context;
 import android.os.Debug;
 import android.util.Log;
-
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
+import com.whisperonnx.thirdparty.rtranslator.NeuralNetworkApi;
+import com.whisperonnx.thirdparty.rtranslator.voice.Recognizer;
+import com.whisperonnx.thirdparty.rtranslator.voice.RecognizerListener;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -25,6 +19,8 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 @RunWith(AndroidJUnit4.class)
 public class LocalEngineBenchmark {
@@ -47,8 +43,8 @@ public class LocalEngineBenchmark {
         float[][] clips = new float[wavs.length][];
         for (int i = 0; i < wavs.length; i++) clips[i] = readWav(wavs[i]);
 
-        out("Device: " + android.os.Build.MODEL + " / " + android.os.Build.SOC_MODEL
-                + ", cores " + Runtime.getRuntime().availableProcessors());
+        out("Device: " + android.os.Build.MODEL + " / " + android.os.Build.SOC_MODEL + ", cores "
+                + Runtime.getRuntime().availableProcessors());
 
         // External: the second engine's PSS reads low after the first frees memory, and Parakeet frees more reliably
         benchWhisper(ctx, wavs, clips);
@@ -75,8 +71,9 @@ public class LocalEngineBenchmark {
                     long t0 = System.currentTimeMillis();
                     String text = p.transcribe(clips[i]);
                     long ms = System.currentTimeMillis() - t0;
-                    out(String.format("%s run%d: %dms (%.2fx realtime) [%s]", wavs[i].getName(), run, ms,
-                            ms / (clips[i].length / 16000.0 * 1000), p.lastTiming));
+                    out(String.format(
+                            "%s run%d: %dms (%.2fx realtime) [%s]",
+                            wavs[i].getName(), run, ms, ms / (clips[i].length / 16000.0 * 1000), p.lastTiming));
                     if (run == 2) out("  \"" + text + "\"");
                 }
             }
@@ -89,8 +86,15 @@ public class LocalEngineBenchmark {
         long t0 = System.currentTimeMillis();
         CountDownLatch ready = new CountDownLatch(1);
         Recognizer r = new Recognizer(ctx, false, new NeuralNetworkApi.InitListener() {
-            @Override public void onInitializationFinished() { ready.countDown(); }
-            @Override public void onError(int[] reasons, long value) { ready.countDown(); }
+            @Override
+            public void onInitializationFinished() {
+                ready.countDown();
+            }
+
+            @Override
+            public void onError(int[] reasons, long value) {
+                ready.countDown();
+            }
         });
         if (!ready.await(120, TimeUnit.SECONDS)) {
             out("Whisper: load timed out");
@@ -102,11 +106,14 @@ public class LocalEngineBenchmark {
         final String[] result = new String[1];
         final CountDownLatch[] done = new CountDownLatch[1];
         r.addCallback(new RecognizerListener() {
-            @Override public void onSpeechRecognizedResult(String text, String lang, double conf, boolean isFinal) {
+            @Override
+            public void onSpeechRecognizedResult(String text, String lang, double conf, boolean isFinal) {
                 result[0] = text;
                 done[0].countDown();
             }
-            @Override public void onError(int[] reasons, long value) {
+
+            @Override
+            public void onError(int[] reasons, long value) {
                 result[0] = "ERROR " + Arrays.toString(reasons);
                 done[0].countDown();
             }
@@ -119,8 +126,9 @@ public class LocalEngineBenchmark {
                 r.recognize(clips[i], 1, Whisper.LANGUAGE, Recognizer.Action.TRANSCRIBE);
                 if (!done[0].await(120, TimeUnit.SECONDS)) result[0] = "TIMEOUT";
                 long ms = System.currentTimeMillis() - s;
-                out(String.format("%s run%d: %dms (%.2fx realtime)", wavs[i].getName(), run, ms,
-                        ms / (clips[i].length / 16000.0 * 1000)));
+                out(String.format(
+                        "%s run%d: %dms (%.2fx realtime)",
+                        wavs[i].getName(), run, ms, ms / (clips[i].length / 16000.0 * 1000)));
                 if (run == 2) out("  \"" + result[0] + "\"");
             }
         }
@@ -136,7 +144,9 @@ public class LocalEngineBenchmark {
 
     private static float[] readWav(File f) throws IOException {
         byte[] all = new byte[(int) f.length()];
-        try (RandomAccessFile raf = new RandomAccessFile(f, "r")) { raf.readFully(all); }
+        try (RandomAccessFile raf = new RandomAccessFile(f, "r")) {
+            raf.readFully(all);
+        }
         ByteBuffer b = ByteBuffer.wrap(all).order(ByteOrder.LITTLE_ENDIAN);
         int pos = 12;
         while (pos + 8 <= all.length) {

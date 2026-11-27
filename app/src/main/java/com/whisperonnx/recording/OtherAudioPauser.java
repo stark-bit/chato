@@ -5,7 +5,7 @@ import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 
-// External: on exclusive transient audio focus media apps pause, most resume on release, and apps that ignore focus keep playing
+// External: exclusive transient audio focus pauses media apps; most resume on release, apps ignoring focus play on
 public class OtherAudioPauser {
     private final AudioManager audioManager;
     private final AudioFocusRequest request;
@@ -18,7 +18,8 @@ public class OtherAudioPauser {
                         .setUsage(AudioAttributes.USAGE_ASSISTANT)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build())
-                .setOnAudioFocusChangeListener(change -> { })  // External: a call taking audio focus doesn't stop the recording
+                .setOnAudioFocusChangeListener(
+                        change -> {}) // External: a call taking audio focus doesn't stop the recording
                 .build();
     }
 

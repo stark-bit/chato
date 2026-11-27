@@ -1,11 +1,9 @@
 package com.whisperonnx.endpoint;
 
-import com.whisperonnx.prefs.Prefs;
-
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-
+import com.whisperonnx.prefs.Prefs;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -15,7 +13,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -43,7 +40,9 @@ public class EndpointSender {
             this.combine = combine;
         }
 
-        public boolean isConfigured() { return !url.isEmpty(); }
+        public boolean isConfigured() {
+            return !url.isEmpty();
+        }
     }
 
     public interface ResultCallback {
@@ -51,7 +50,8 @@ public class EndpointSender {
     }
 
     public static Endpoint load(Prefs prefs, int index) {
-        return new Endpoint(index,
+        return new Endpoint(
+                index,
                 prefs.endpointText(index, Prefs.EndpointField.NAME).trim(),
                 prefs.endpointText(index, Prefs.EndpointField.URL).trim(),
                 prefs.endpointText(index, Prefs.EndpointField.HEADERS),
@@ -101,12 +101,15 @@ public class EndpointSender {
             else builder.addHeader(name, value);
         }
         String body = fillTemplate(ep, label, text);
-        return builder.post(RequestBody.create(body, MediaType.parse(contentType))).build();
+        return builder.post(RequestBody.create(body, MediaType.parse(contentType)))
+                .build();
     }
 
     static SendFailure execute(OkHttpClient client, Request req) {
         try (Response response = client.newCall(req).execute()) {
-            return response.isSuccessful() ? null : new SendFailure(SendFailure.Kind.HTTP, String.valueOf(response.code()));
+            return response.isSuccessful()
+                    ? null
+                    : new SendFailure(SendFailure.Kind.HTTP, String.valueOf(response.code()));
         } catch (IOException e) {
             Log.e(TAG, "POST to " + req.url() + " failed", e);
             return new SendFailure(SendFailure.Kind.NETWORK, e.getMessage());
@@ -123,10 +126,18 @@ public class EndpointSender {
         while (m.find()) {
             String value;
             switch (m.group(1)) {
-                case "text_raw": value = text; break;
-                case "text": value = jsonEscape(text); break;
-                case "timestamp": value = timestamp; break;
-                default: value = jsonEscape(label); break;
+                case "text_raw":
+                    value = text;
+                    break;
+                case "text":
+                    value = jsonEscape(text);
+                    break;
+                case "timestamp":
+                    value = timestamp;
+                    break;
+                default:
+                    value = jsonEscape(label);
+                    break;
             }
             m.appendReplacement(out, Matcher.quoteReplacement(value));
         }
@@ -139,12 +150,23 @@ public class EndpointSender {
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             switch (c) {
-                case '"': sb.append("\\\""); break;
-                case '\\': sb.append("\\\\"); break;
-                case '\n': sb.append("\\n"); break;
-                case '\r': sb.append("\\r"); break;
-                case '\t': sb.append("\\t"); break;
-                default: sb.append(c < 0x20 ? String.format(Locale.US, "\\u%04x", (int) c) : String.valueOf(c));
+                case '"':
+                    sb.append("\\\"");
+                    break;
+                case '\\':
+                    sb.append("\\\\");
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                case '\r':
+                    sb.append("\\r");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                default:
+                    sb.append(c < 0x20 ? String.format(Locale.US, "\\u%04x", (int) c) : String.valueOf(c));
             }
         }
         return sb.toString();

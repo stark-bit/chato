@@ -6,7 +6,7 @@ import android.os.Build;
 import android.view.WindowInsetsController;
 
 public class ThemeUtils {
-    public static void setStatusBarAppearance(Activity activity){
+    public static void setStatusBarAppearance(Activity activity) {
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return;
         WindowInsetsController insetsController = activity.getWindow().getInsetsController();
         if (insetsController == null) return;

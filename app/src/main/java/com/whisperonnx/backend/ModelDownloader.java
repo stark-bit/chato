@@ -11,7 +11,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -50,8 +49,9 @@ public final class ModelDownloader {
         return true;
     }
 
-    public static void download(OkHttpClient client, List<FileSpec> files, File dir,
-                                Progress progress, AtomicBoolean cancelled) throws IOException {
+    public static void download(
+            OkHttpClient client, List<FileSpec> files, File dir, Progress progress, AtomicBoolean cancelled)
+            throws IOException {
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create " + dir);
         long total = totalSize(files);
         long doneBefore = 0;
@@ -81,8 +81,15 @@ public final class ModelDownloader {
         }
     }
 
-    private static void fetch(OkHttpClient client, FileSpec f, File part, long doneBefore, long total,
-                              Progress progress, AtomicBoolean cancelled) throws IOException {
+    private static void fetch(
+            OkHttpClient client,
+            FileSpec f,
+            File part,
+            long doneBefore,
+            long total,
+            Progress progress,
+            AtomicBoolean cancelled)
+            throws IOException {
         long have = resumeFrom(f, part);
         if (have == f.size) return;
         Copy copy = new Copy(f, doneBefore, total, progress, cancelled);
@@ -111,7 +118,8 @@ public final class ModelDownloader {
         if (body == null) throw new IOException(f.name + ": empty response");
         // External: a 200 means the server ignored the range, so start over
         boolean append = resp.code() == 206 && have > 0;
-        try (InputStream in = body.byteStream(); OutputStream out = new FileOutputStream(part, append)) {
+        try (InputStream in = body.byteStream();
+                OutputStream out = new FileOutputStream(part, append)) {
             return copy.run(in, out, append ? have : 0);
         }
     }

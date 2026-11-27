@@ -1,7 +1,5 @@
 package com.whisperonnx.recording;
 
-import com.whisperonnx.prefs.Prefs;
-
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -10,18 +8,15 @@ import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.util.Log;
-
 import androidx.annotation.RequiresPermission;
 import androidx.core.app.ActivityCompat;
-
 import com.konovalov.vad.webrtc.Vad;
 import com.konovalov.vad.webrtc.VadWebRTC;
 import com.konovalov.vad.webrtc.config.FrameSize;
 import com.konovalov.vad.webrtc.config.Mode;
 import com.konovalov.vad.webrtc.config.SampleRate;
-
+import com.whisperonnx.prefs.Prefs;
 import java.io.ByteArrayOutputStream;
-
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -96,7 +91,7 @@ public class Recorder {
         }
     }
 
-    public void initVad(){
+    public void initVad() {
         int silenceDurationMs = prefs.silenceMs();
         vad = Vad.builder()
                 .setSampleRate(SampleRate.SAMPLE_RATE_16K)
@@ -135,8 +130,7 @@ public class Recorder {
     }
 
     private void sendUpdate(RecorderEvent event, String detail) {
-        if (mListener != null)
-            mListener.onUpdateReceived(event, detail);
+        if (mListener != null) mListener.onUpdateReceived(event, detail);
     }
 
     private void recordLoop() {
@@ -166,7 +160,8 @@ public class Recorder {
     }
 
     private void recordAudio() {
-        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
             Log.d(TAG, "AudioRecord permission is not granted");
             sendUpdate(RecorderEvent.NO_PERMISSION);
             return;
@@ -174,7 +169,7 @@ public class Recorder {
 
         int bufferSize = bufferSize();
         AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
-        if (prefs.bluetooth()){
+        if (prefs.bluetooth()) {
             audioManager.startBluetoothSco();
             audioManager.setBluetoothScoOn(true);
         }
@@ -186,7 +181,7 @@ public class Recorder {
         int bytesPerChunk = BYTES_PER_SECOND * mChunkMs / 1000;
         ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream();
         byte[] audioData = new byte[bufferSize];
-        byte[] vadAudioBuffer = new byte[VAD_FRAME_SIZE * 2];  // External: the VAD needs 16-bit samples
+        byte[] vadAudioBuffer = new byte[VAD_FRAME_SIZE * 2]; // External: the VAD needs 16-bit samples
         int totalBytesRead = 0;
         boolean isRecording = false;
 
@@ -218,7 +213,8 @@ public class Recorder {
     }
 
     private static int bufferSize() {
-        int min = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+        int min =
+                AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
         // External: a larger buffer prevents dropped frames
         return Math.max(min, VAD_FRAME_SIZE * 2) * 4;
     }
@@ -236,7 +232,8 @@ public class Recorder {
                 .build();
     }
 
-    private static void emitChunkIfFull(ByteArrayOutputStream outputBuffer, ChunkListener chunkListener, int bytesPerChunk) {
+    private static void emitChunkIfFull(
+            ByteArrayOutputStream outputBuffer, ChunkListener chunkListener, int bytesPerChunk) {
         if (outputBuffer.size() < bytesPerChunk) return;
         byte[] pcm = outputBuffer.toByteArray();
         int cut = findQuietCut(pcm, bytesPerChunk - BYTES_PER_SECOND * CUT_SEARCH_MS / 1000, bytesPerChunk);

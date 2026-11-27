@@ -3,6 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.android'
     id 'checkstyle'
     id 'pmd'
+    id 'com.diffplug.spotless' version '6.25.0'
 }
 
 android {
@@ -151,5 +152,15 @@ tasks.register('cpd') {
         if (found) {
             throw new GradleException("Copy-pasted code: move the shared part into one method, or into ui/, backend/, recording/ or endpoint/ when two features share it. Do not suppress.\n" + found)
         }
+    }
+}
+
+spotless {
+    java {
+        target 'src/**/*.java'
+        targetExclude 'src/main/java/com/whisperonnx/thirdparty/**'
+        palantirJavaFormat('2.50.0')
+        trimTrailingWhitespace()
+        endWithNewline()
     }
 }

@@ -1,7 +1,6 @@
 package com.whisperonnx.backend;
 
 import android.content.Context;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -21,9 +20,8 @@ public final class WhisperModel {
             "https://huggingface.co/DocWolle/whisperOnnx/resolve/cb523d0fba0f8d9a28a3f7432668a8ea4e8be6e4/";
     public static final String SOURCE = "huggingface.co/DocWolle/whisperOnnx";
 
-    public static final List<ModelDownloader.FileSpec> FILES = Collections.singletonList(
-            new ModelDownloader.FileSpec(ZIP, REPO + ZIP, 242722488L,
-                    "97ac121610693e8c9adaef9c6db9066ef0cbebba53ca6e47f6d1541068ca19e3"));
+    public static final List<ModelDownloader.FileSpec> FILES = Collections.singletonList(new ModelDownloader.FileSpec(
+            ZIP, REPO + ZIP, 242722488L, "97ac121610693e8c9adaef9c6db9066ef0cbebba53ca6e47f6d1541068ca19e3"));
 
     private WhisperModel() {}
 

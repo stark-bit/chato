@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.TextView;
-
 import com.whisperonnx.R;
 
 public class DeviceCheckActivity extends Activity {

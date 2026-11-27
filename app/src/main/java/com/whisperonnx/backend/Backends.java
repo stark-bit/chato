@@ -1,7 +1,6 @@
 package com.whisperonnx.backend;
 
 import com.whisperonnx.prefs.Prefs;
-
 import java.net.URI;
 
 public final class Backends {
@@ -20,7 +19,13 @@ public final class Backends {
     }
 
     public static final class Description {
-        public enum Kind { WHISPER, PARAKEET, PARAKEET_MISSING, SERVER, SERVER_NOT_SET_UP }
+        public enum Kind {
+            WHISPER,
+            PARAKEET,
+            PARAKEET_MISSING,
+            SERVER,
+            SERVER_NOT_SET_UP
+        }
 
         public final Kind kind;
         public final String host;
@@ -38,8 +43,8 @@ public final class Backends {
             case REMOTE:
                 return describeServer(prefs);
             case PARAKEET:
-                return new Description(parakeetInstalled ? Description.Kind.PARAKEET : Description.Kind.PARAKEET_MISSING,
-                        "", "");
+                return new Description(
+                        parakeetInstalled ? Description.Kind.PARAKEET : Description.Kind.PARAKEET_MISSING, "", "");
             default:
                 return new Description(Description.Kind.WHISPER, "", "");
         }

@@ -9,27 +9,31 @@ import org.junit.Test;
 public class CursorDragTest {
     private final CursorDrag drag = new CursorDrag(10, 20, 40);
 
-    @Test public void smallMovesStayATap() {
+    @Test
+    public void smallMovesStayATap() {
         drag.start(100, 100);
-        assertArrayEquals(new int[]{0, 0}, drag.move(106, 105));
+        assertArrayEquals(new int[] {0, 0}, drag.move(106, 105));
         assertFalse(drag.isDragging());
     }
 
-    @Test public void sidewaysMovesByCharacters() {
+    @Test
+    public void sidewaysMovesByCharacters() {
         drag.start(100, 100);
-        assertArrayEquals(new int[]{2, 0}, drag.move(145, 100));
+        assertArrayEquals(new int[] {2, 0}, drag.move(145, 100));
         assertTrue(drag.isDragging());
-        assertArrayEquals(new int[]{0, 0}, drag.move(150, 100));
-        assertArrayEquals(new int[]{-2, 0}, drag.move(85, 100));
+        assertArrayEquals(new int[] {0, 0}, drag.move(150, 100));
+        assertArrayEquals(new int[] {-2, 0}, drag.move(85, 100));
     }
 
-    @Test public void upAndDownMovesByLines() {
+    @Test
+    public void upAndDownMovesByLines() {
         drag.start(100, 100);
-        assertArrayEquals(new int[]{0, -1}, drag.move(100, 55));
-        assertArrayEquals(new int[]{1, 2}, drag.move(125, 145));
+        assertArrayEquals(new int[] {0, -1}, drag.move(100, 55));
+        assertArrayEquals(new int[] {1, 2}, drag.move(125, 145));
     }
 
-    @Test public void staysADragAfterReturningToTheStart() {
+    @Test
+    public void staysADragAfterReturningToTheStart() {
         drag.start(100, 100);
         drag.move(130, 100);
         drag.move(100, 100);

@@ -10,8 +10,8 @@ import android.os.VibratorManager;
 import android.provider.Settings;
 
 public class HapticFeedback {
-    public static void vibrate(Context context){
-        if (hapticEnabled(context)){
+    public static void vibrate(Context context) {
+        if (hapticEnabled(context)) {
             Vibrator vibrator = (Vibrator) context.getSystemService(VIBRATOR_SERVICE);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK));
@@ -22,8 +22,8 @@ public class HapticFeedback {
         }
     }
 
-    public static void tick(Context context){
-        if (hapticEnabled(context)){
+    public static void tick(Context context) {
+        if (hapticEnabled(context)) {
             Vibrator vibrator = (Vibrator) context.getSystemService(VIBRATOR_SERVICE);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK));
@@ -33,12 +33,14 @@ public class HapticFeedback {
         }
     }
 
-    private static boolean hapticEnabled(Context context){
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            VibratorManager vibratorManager = (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+    private static boolean hapticEnabled(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            VibratorManager vibratorManager =
+                    (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
             return vibratorManager.getDefaultVibrator().hasVibrator();
         } else {
-            return Settings.System.getInt(context.getContentResolver(), Settings.System.HAPTIC_FEEDBACK_ENABLED, 0) == 1;
+            return Settings.System.getInt(context.getContentResolver(), Settings.System.HAPTIC_FEEDBACK_ENABLED, 0)
+                    == 1;
         }
     }
 }

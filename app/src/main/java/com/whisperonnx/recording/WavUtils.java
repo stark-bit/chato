@@ -36,14 +36,14 @@ public class WavUtils {
     }
 
     private static void writeIntLE(byte[] dest, int offset, int value) {
-        dest[offset]     = (byte) (value & 0xFF);
+        dest[offset] = (byte) (value & 0xFF);
         dest[offset + 1] = (byte) ((value >> 8) & 0xFF);
         dest[offset + 2] = (byte) ((value >> 16) & 0xFF);
         dest[offset + 3] = (byte) ((value >> 24) & 0xFF);
     }
 
     private static void writeShortLE(byte[] dest, int offset, short value) {
-        dest[offset]     = (byte) (value & 0xFF);
+        dest[offset] = (byte) (value & 0xFF);
         dest[offset + 1] = (byte) ((value >> 8) & 0xFF);
     }
 }

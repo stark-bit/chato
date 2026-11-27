@@ -1,16 +1,5 @@
 package com.whisperonnx.settings;
 
-import com.whisperonnx.prefs.Prefs;
-import com.whisperonnx.R;
-import com.whisperonnx.backend.Backends;
-import com.whisperonnx.backend.ParakeetRecognizer;
-import com.whisperonnx.backend.WhisperModel;
-import com.whisperonnx.endpoint.EndpointSender;
-import com.whisperonnx.ui.Permissions;
-import com.whisperonnx.ui.Components;
-import com.whisperonnx.ui.ModelInstaller;
-import com.whisperonnx.ui.ThemeUtils;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
@@ -18,11 +7,11 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.CompoundButton;
@@ -30,14 +19,21 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
-
 import com.google.android.material.slider.RangeSlider;
-
+import com.whisperonnx.R;
+import com.whisperonnx.backend.Backends;
+import com.whisperonnx.backend.ParakeetRecognizer;
+import com.whisperonnx.backend.WhisperModel;
+import com.whisperonnx.endpoint.EndpointSender;
+import com.whisperonnx.prefs.Prefs;
+import com.whisperonnx.ui.Components;
+import com.whisperonnx.ui.ModelInstaller;
+import com.whisperonnx.ui.Permissions;
+import com.whisperonnx.ui.ThemeUtils;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -63,14 +59,16 @@ public class SettingsActivity extends AppCompatActivity {
         modeBluetooth.setChecked(prefs.bluetooth());
         modeBluetooth.setOnCheckedChangeListener((compoundButton, isChecked) -> {
             prefs.setBluetooth(isChecked);
-            if (isChecked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                    && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT},111);
+            if (isChecked
+                    && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                    && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                            != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[] {Manifest.permission.BLUETOOTH_CONNECT}, 111);
             }
         });
 
-        findViewById(R.id.row_test_transcription).setOnClickListener(v ->
-                Components.open(this, Components.TEST_SCREEN));
+        findViewById(R.id.row_test_transcription)
+                .setOnClickListener(v -> Components.open(this, Components.TEST_SCREEN));
 
         Spinner spinnerBackendType = findViewById(R.id.spinner_backend_type);
         LinearLayout layoutOpenaiSettings = findViewById(R.id.layout_openai_settings);
@@ -96,9 +94,9 @@ public class SettingsActivity extends AppCompatActivity {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 Backends.select(prefs, position);
                 if (position == Backends.PARAKEET && !ParakeetRecognizer.isInstalled(SettingsActivity.this)) {
-                    modelInstaller.offerParakeet(() -> { }, () -> spinnerBackendType.setSelection(Backends.WHISPER));
+                    modelInstaller.offerParakeet(() -> {}, () -> spinnerBackendType.setSelection(Backends.WHISPER));
                 } else if (position == Backends.WHISPER && !WhisperModel.isInstalled(SettingsActivity.this)) {
-                    modelInstaller.offerWhisper(() -> { }, () -> { });
+                    modelInstaller.offerWhisper(() -> {}, () -> {});
                 }
                 layoutOpenaiSettings.setVisibility(position == Backends.REMOTE ? View.VISIBLE : View.GONE);
             }
@@ -108,9 +106,16 @@ public class SettingsActivity extends AppCompatActivity {
         });
 
         TextWatcher openaiSaveWatcher = new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(Editable s) { saveOpenaiConfig(); }
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                saveOpenaiConfig();
+            }
         };
 
         editEndpoint.addTextChangedListener(openaiSaveWatcher);
@@ -132,7 +137,6 @@ public class SettingsActivity extends AppCompatActivity {
         findViewById(R.id.layout_mode_bluetooth).setOnClickListener(v -> modeBluetooth.toggle());
 
         checkPermissions();
-
     }
 
     private void setupEndpointSettings() {
@@ -149,8 +153,7 @@ public class SettingsActivity extends AppCompatActivity {
             CompoundButton combine = item.findViewById(R.id.check_endpoint_combine);
             item.findViewById(R.id.row_endpoint_combine).setOnClickListener(v -> combine.toggle());
             combine.setChecked(ep.combine);
-            combine.setOnCheckedChangeListener((b, checked) ->
-                    prefs.setEndpointCombine(index, checked));
+            combine.setOnCheckedChangeListener((b, checked) -> prefs.setEndpointCombine(index, checked));
             container.addView(item);
         }
     }
@@ -175,8 +178,11 @@ public class SettingsActivity extends AppCompatActivity {
 
         // External: phones differ in which settings page lists the assistant
         findViewById(R.id.row_assistant).setOnClickListener(v -> {
-            for (String action : new String[]{Settings.ACTION_VOICE_INPUT_SETTINGS,
-                    Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS, Settings.ACTION_SETTINGS}) {
+            for (String action : new String[] {
+                Settings.ACTION_VOICE_INPUT_SETTINGS,
+                Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS,
+                Settings.ACTION_SETTINGS
+            }) {
                 try {
                     startActivity(new Intent(action));
                     return;
@@ -189,9 +195,16 @@ public class SettingsActivity extends AppCompatActivity {
     private void bindText(EditText edit, int index, Prefs.EndpointField field, String value) {
         edit.setText(value);
         edit.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(Editable s) { prefs.setEndpointText(index, field, s.toString()); }
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                prefs.setEndpointText(index, field, s.toString());
+            }
         });
     }
 
@@ -223,7 +236,8 @@ public class SettingsActivity extends AppCompatActivity {
         EditText editApiKey = findViewById(R.id.edit_openai_api_key);
         EditText editModel = findViewById(R.id.edit_openai_model);
 
-        prefs.setServer(editEndpoint.getText().toString().trim(),
+        prefs.setServer(
+                editEndpoint.getText().toString().trim(),
                 editApiKey.getText().toString().trim(),
                 editModel.getText().toString().trim());
     }

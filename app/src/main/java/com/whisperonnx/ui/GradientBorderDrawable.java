@@ -5,25 +5,15 @@ import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
-
 import java.lang.ref.WeakReference;
 
 // External: the glow draws outside the bounds, so the parent View needs clipChildren=false
 public class GradientBorderDrawable extends Drawable {
     private static final int[] GRADIENT_COLORS = {
-        0xFF6366F1,
-        0xFF6366F1,
-        0xFFE11D48,
-        0xFFEAB308,
-        0xFF22C55E,
-        0xFF6366F1,
-        0xFF22C55E,
-        0xFF6366F1
+        0xFF6366F1, 0xFF6366F1, 0xFFE11D48, 0xFFEAB308, 0xFF22C55E, 0xFF6366F1, 0xFF22C55E, 0xFF6366F1
     };
 
-    private static final float[] GRADIENT_POSITIONS = {
-        0f, 0.27f, 0.33f, 0.41f, 0.49f, 0.65f, 0.93f, 1f
-    };
+    private static final float[] GRADIENT_POSITIONS = {0f, 0.27f, 0.33f, 0.41f, 0.49f, 0.65f, 0.93f, 1f};
 
     private static final int GLOW_STEPS = 10;
     private static final float GLOW_MAX_ALPHA = 0.18f;
@@ -160,10 +150,7 @@ public class GradientBorderDrawable extends Drawable {
 
             glowPaint.setColor(Color.argb(alpha, 255, 255, 255));
             glowPaint.setShader(gradient);
-            tempGlow.set(
-                bounds.left - expand, bounds.top - expand,
-                bounds.right + expand, bounds.bottom + expand
-            );
+            tempGlow.set(bounds.left - expand, bounds.top - expand, bounds.right + expand, bounds.bottom + expand);
             canvas.drawRoundRect(tempGlow, cornerRadius + expand, cornerRadius + expand, glowPaint);
         }
 
@@ -173,9 +160,10 @@ public class GradientBorderDrawable extends Drawable {
 
         float innerInset = borderWidth;
         tempInner.set(
-            bounds.left + innerInset, bounds.top + innerInset,
-            bounds.right - innerInset, bounds.bottom - innerInset
-        );
+                bounds.left + innerInset,
+                bounds.top + innerInset,
+                bounds.right - innerInset,
+                bounds.bottom - innerInset);
         float innerRadius = Math.max(0, cornerRadius - borderWidth);
         if (tempInner.width() > 0 && tempInner.height() > 0) {
             canvas.drawRoundRect(tempInner, innerRadius, innerRadius, centerPaint);

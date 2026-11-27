@@ -1,10 +1,8 @@
 package com.whisperonnx.ui;
 
 import android.view.View;
-
 import androidx.annotation.ColorInt;
 import androidx.annotation.DrawableRes;
-
 import java.util.concurrent.Executor;
 
 public final class RecordGlow {
@@ -15,8 +13,12 @@ public final class RecordGlow {
     private final Executor uiThread;
     private GradientBorderDrawable drawable;
 
-    public RecordGlow(View button, float borderDp, @ColorInt Integer centerColor, @DrawableRes int idleBackground,
-                      Executor uiThread) {
+    public RecordGlow(
+            View button,
+            float borderDp,
+            @ColorInt Integer centerColor,
+            @DrawableRes int idleBackground,
+            Executor uiThread) {
         this.button = button;
         this.borderDp = borderDp;
         this.centerColor = centerColor;
