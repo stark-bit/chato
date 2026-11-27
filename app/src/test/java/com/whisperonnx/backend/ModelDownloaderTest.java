@@ -31,7 +31,6 @@ import okhttp3.mockwebserver.RecordedRequest;
 import okio.Buffer;
 
 public class ModelDownloaderTest {
-
     @Rule public TemporaryFolder tmp = new TemporaryFolder();
 
     private MockWebServer server;
@@ -41,7 +40,7 @@ public class ModelDownloaderTest {
     private final ModelDownloader.Progress progress = (done, total) -> { lastDone = done; lastTotal = total; };
 
     private static final byte[] A = bytes(3000, 'a');
-    private static final byte[] B = bytes(700_000, 'b');  // big enough for mid-file progress
+    private static final byte[] B = bytes(700_000, 'b');
 
     @Before public void setUp() throws Exception {
         server = new MockWebServer();
@@ -122,7 +121,7 @@ public class ModelDownloaderTest {
         List<ModelDownloader.FileSpec> files = Collections.singletonList(spec("b.bin", B));
         assertTrue(dir().mkdirs());
         Files.write(new File(dir(), "b.bin.part").toPath(), "garbage".getBytes(StandardCharsets.UTF_8));
-        server.enqueue(ok(B));  // 200 with the whole file
+        server.enqueue(ok(B));
 
         ModelDownloader.download(client, files, dir(), progress, cancelled);
 

@@ -7,7 +7,6 @@ import android.view.inputmethod.EditorInfo;
 import org.junit.Test;
 
 public class TextEditsTest {
-
     private static int del(String before) { return TextEdits.wordDeleteLength(before); }
 
     @Test public void deletesLastWord() {
@@ -36,7 +35,7 @@ public class TextEditsTest {
     }
 
     @Test public void emojiIsDeletedWhole() {
-        assertEquals(2, del("nice 😀"));        // one surrogate pair
+        assertEquals(2, del("nice 😀"));
         assertEquals(4, del("nice 😀😀"));
     }
 

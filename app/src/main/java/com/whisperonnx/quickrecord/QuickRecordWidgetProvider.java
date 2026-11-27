@@ -17,15 +17,7 @@ import android.widget.RemoteViews;
 
 import androidx.preference.PreferenceManager;
 
-
-/**
- * The quick record widget: one mic button that starts and stops quick record for one endpoint,
- * chosen when the widget is placed ({@link QuickRecordWidgetConfigActivity}). Shows the endpoint's
- * number and name, and is lit while recording for that endpoint.
- */
 public class QuickRecordWidgetProvider extends AppWidgetProvider {
-
-    /** Pref key for a widget's endpoint (1 or 2). Widgets placed before this existed have none. */
     static String endpointKey(int widgetId) {
         return "quickRecordWidget_" + widgetId;
     }
@@ -42,7 +34,6 @@ public class QuickRecordWidgetProvider extends AppWidgetProvider {
         e.apply();
     }
 
-    /** Redraws every placed widget, e.g. when recording starts or stops. */
     static void updateAll(Context context) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         for (int id : manager.getAppWidgetIds(new ComponentName(context.getPackageName(), Components.QUICK_RECORD_WIDGET))) {
@@ -68,7 +59,7 @@ public class QuickRecordWidgetProvider extends AppWidgetProvider {
         v.setContentDescription(R.id.widget_quick_record, context.getString(
                 recording ? R.string.quick_record_stop_to : R.string.quick_record_to, name));
 
-        // A distinct data URI per widget, so each keeps its own PendingIntent and endpoint
+        // External: PendingIntents that differ only in extras are the same one, so each widget gets its own data URI
         Intent toggle = new Intent(context, QuickRecordActivity.class)
                 .setData(Uri.parse("chato://quick-record/" + widgetId))
                 .putExtra(QuickRecordService.EXTRA_ENDPOINT, chosen);

@@ -1,34 +1,5 @@
-# =============================================================================
-# WhisperIME+ Build & Deploy Makefile
-# =============================================================================
-#
-# FIRST-TIME SETUP (one-time per phone):
-#   1. Enable Developer Options:
-#        Settings → About Phone → tap "Build Number" 7 times fast
-#   2. Enable USB Debugging:
-#        Settings → System → Developer Options → USB Debugging → ON
-#   3. Plug phone via USB, pull down notification shade, select "File Transfer"
-#   4. Phone will show "Allow USB debugging?" RSA dialog → tap "Allow"
-#   5. Run:  make device
-#      Should show your phone listed. If it says "unauthorized", unlock phone
-#      and accept the dialog. If nothing shows, run:  adb kill-server && make device
-#
-# USAGE:
-#   make                Build + install (auto-detects single device)
-#   make device         List all connected devices and current DEVICE
-#   make build          Build debug APK only, no install
-#   make install        Install APK on device (build first if needed)
-#   make uninstall      Remove app from device
-#   make clean          Wipe build artifacts
-#   make help           Print this help
-#
-# With specific device (useful when multiple phones connected):
-#   make DEVICE=3B6623010MJ00000 install
-#   make DEVICE=3B6623010MJ00000 run
-#
-# =============================================================================
+# External: adb needs Developer options > USB debugging on, and the phone's "Allow USB debugging?" prompt accepted
 
-# ---- Paths ----------------------------------------------------------------
 SDK_DIR  := $(shell grep sdk.dir local.properties 2>/dev/null | cut -d'=' -f2)
 ADB      := $(or $(shell which adb 2>/dev/null),$(SDK_DIR)/platform-tools/adb)
 GRADLEW  := ./gradlew
@@ -36,22 +7,17 @@ APK      := app/build/outputs/apk/debug/app-debug.apk
 TEST_APK := app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 PACKAGE  := dev.starkbit.chato
 
-# ---- Auto-detect device ----------------------------------------------------
-# Picks first online device. Override with DEVICE=XXXX on command line.
-# "grep device$$" matches lines ending in "device" (not "offline"/"unauthorized")
+# External: adb lists ready phones as "device", others as "offline" or "unauthorized"
 DEVICE ?= $(shell $(ADB) devices 2>/dev/null | grep -v 'List' | grep 'device$$' | head -1 | awk '{print $$1}')
 
-# ---- Colors ----------------------------------------------------------------
 GREEN  := \033[0;32m
 YELLOW := \033[0;33m
 RED    := \033[0;31m
 CYAN   := \033[0;36m
-NC     := \033[0m # No Color
+NC     := \033[0m
 
-# ---- Default target --------------------------------------------------------
 .DEFAULT_GOAL := help
 
-# ---- Targets ---------------------------------------------------------------
 .PHONY: help device build install uninstall clean run test check push-parakeet bench release
 
 help: ## Show this help message
@@ -111,7 +77,6 @@ clean: ## Remove build artifacts
 	$(GRADLEW) clean
 	@echo "$(GREEN)Clean.$(NC)"
 
-# ---- Tests -----------------------------------------------------------------
 test: ## Run unit tests (JVM, no device needed)
 	$(GRADLEW) testDebugUnitTest
 
@@ -120,7 +85,6 @@ check: ## Package boundaries, lint and unit tests, fastest first (no device need
 	$(GRADLEW) lintDebug
 	$(GRADLEW) testDebugUnitTest
 
-# ---- On-device Parakeet (experimental) -------------------------------------
 PARAKEET_DIR ?= /mnt/Wolf_1/_stacks/parakeet/data/models
 BENCH_WAVS   ?= bench
 FILES_DIR    := /sdcard/Android/data/$(PACKAGE)/files
@@ -138,7 +102,7 @@ bench: ## Benchmark Parakeet vs Whisper on the phone with WAVs from BENCH_WAVS=d
 ifeq ($(DEVICE),)
 	$(error $(RED)No device found. Run 'make device' first.$(NC))
 endif
-	@# Not 'gradlew connectedAndroidTest': it uninstalls the app afterwards, wiping its data
+	@# External: gradlew connectedAndroidTest uninstalls the app afterwards, wiping its data
 	$(GRADLEW) assembleDebug assembleDebugAndroidTest
 	$(ADB) -s $(DEVICE) install -r $(APK)
 	$(ADB) -s $(DEVICE) install -r -t $(TEST_APK)

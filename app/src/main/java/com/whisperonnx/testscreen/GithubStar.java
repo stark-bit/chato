@@ -25,7 +25,7 @@ public class GithubStar {
         int versionCode = prefManager.getInt("versionCode", 0);
         boolean askForStar = prefManager.getBoolean("askForStar", true);
 
-        if (prefManager.contains("versionCode") && BuildConfig.VERSION_CODE > versionCode && askForStar) { //not at first start, only after upgrade and only if use has not yet given a star or has declined
+        if (prefManager.contains("versionCode") && BuildConfig.VERSION_CODE > versionCode && askForStar) {
             SharedPreferences.Editor editor = prefManager.edit();
             editor.putInt("versionCode", BuildConfig.VERSION_CODE);
             editor.apply();

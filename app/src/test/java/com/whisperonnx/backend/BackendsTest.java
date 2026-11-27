@@ -11,8 +11,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class BackendsTest {
-
-    /** Minimal in-memory SharedPreferences (strings only, which is all Backends uses). */
     private static class Prefs implements SharedPreferences {
         final Map<String, Object> m = new HashMap<>();
         @Override public Map<String, ?> getAll() { return m; }
@@ -56,7 +54,6 @@ public class BackendsTest {
     }
 
     @Test public void remoteKeepsTheLocalEngine() {
-        // The keyboard's cloud key flips local <-> remote; coming back must keep Parakeet
         Backends.select(sp, Backends.PARAKEET);
         Backends.select(sp, Backends.REMOTE);
         sp.m.put(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL);

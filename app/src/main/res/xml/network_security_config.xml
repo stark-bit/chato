@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Servers and endpoints are URLs the user types in Settings, often self-hosted on a LAN
-     without TLS (e.g. http://192.168.x.x:5092). Allow http everywhere; typing an http:// URL
-     is the user's explicit choice. -->
+<!-- External: servers and endpoints are user-typed URLs, often http on a LAN (e.g. http://192.168.x.x:5092) -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

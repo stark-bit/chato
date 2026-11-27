@@ -20,7 +20,6 @@ import okhttp3.mockwebserver.RecordedRequest;
 import okio.Buffer;
 
 public class EndpointSenderTest {
-
     private static final String JOT_BODY =
             "{\"edits\":[{\"oldText\":\"<!-- voice -->\",\"newText\":\"- {{text}}\\n<!-- voice -->\"}]}";
 
@@ -46,8 +45,6 @@ public class EndpointSenderTest {
         req.body().writeTo(buf);
         return buf.readUtf8();
     }
-
-    // ---- jsonEscape / fillTemplate ----
 
     @Test public void jsonEscape_escapesSpecialCharacters() {
         assertEquals("a\\\"b", EndpointSender.jsonEscape("a\"b"));
@@ -89,7 +86,6 @@ public class EndpointSenderTest {
     }
 
     @Test public void fillTemplate_textContainingPlaceholderIsNotExpandedTwice() throws Exception {
-        // Placeholders are filled in one pass, so dictated "{{name}}" must survive as-is
         String body = EndpointSender.fillTemplate(ep("http://x", "", EndpointSender.DEFAULT_BODY), "say {{name}}");
         assertEquals("say {{name}}", new JSONObject(body).getString("text"));
     }
@@ -101,8 +97,6 @@ public class EndpointSenderTest {
         assertEquals("<!-- voice -->", edit.getString("oldText"));
         assertEquals("- " + text + "\n<!-- voice -->", edit.getString("newText"));
     }
-
-    // ---- buildRequest ----
 
     @Test public void buildRequest_parsesHeaders() throws Exception {
         Request req = EndpointSender.buildRequest(ep("https://example.com/api",
@@ -118,7 +112,7 @@ public class EndpointSenderTest {
         Request req = EndpointSender.buildRequest(ep("https://example.com",
                 "content-type: text/plain", "{{text_raw}}"), "hello");
         assertTrue(req.body().contentType().toString().startsWith("text/plain"));
-        assertNull(req.header("content-type"));  // carried by the body, not duplicated
+        assertNull(req.header("content-type"));
         assertEquals("hello", bodyOf(req));
     }
 
@@ -142,8 +136,6 @@ public class EndpointSenderTest {
             fail("expected IllegalArgumentException");
         } catch (IllegalArgumentException expected) { }
     }
-
-    // ---- execute (real HTTP against a local mock server) ----
 
     @Test public void execute_sendsRequestAndReportsSuccess() throws Exception {
         server.enqueue(new MockResponse().setResponseCode(200));
@@ -181,7 +173,7 @@ public class EndpointSenderTest {
 
     @Test public void execute_networkFailureIsReported() throws Exception {
         String url = server.url("/").toString();
-        server.shutdown();  // nothing listening any more
+        server.shutdown();
         Request req = EndpointSender.buildRequest(ep(url, "", "{}"), "t");
         String error = EndpointSender.execute(client, req);
         assertTrue(error, error.startsWith("Network error"));

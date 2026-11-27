@@ -38,7 +38,6 @@ import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 
-
 public class KeyboardService extends InputMethodService {
     private static final String TAG = "KeyboardService";
     private ImageButton btnRecord;
@@ -57,13 +56,11 @@ public class KeyboardService extends InputMethodService {
     private ImageButton btnSendTarget;
     private ImageButton btnSettings;
     private TextView tvSendTargetBadge;
-    // 0 = type at cursor, otherwise 1-based endpoint index
     private int sendTarget = 0;
-    // Endpoint routing for the current recording; null = type at cursor
-    private TextView tvStatus;        // line above the main row, used while the top row is collapsed
-    private TextView tvStatusInline;  // gap in the top row, used while it is expanded
+    private TextView tvStatus;
+    private TextView tvStatusInline;
     private String statusMessage = "";
-    private String loadingStatus;     // "Loading Parakeet…" while a model loads after a switch
+    private String loadingStatus;
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
     private SharedPreferences sp = null;
@@ -89,9 +86,9 @@ public class KeyboardService extends InputMethodService {
         if (gradientDrawable == null) {
             float density = getResources().getDisplayMetrics().density;
             gradientDrawable = new GradientBorderDrawable(
-                8 * density,    // cornerRadius (matches ime_mic_background 8dp)
-                0.5f * density, // borderWidth (near-invisible)
-                15 * density    // glowBlur (CSS blur(15px))
+                8 * density,
+                0.5f * density,
+                15 * density
             );
             gradientDrawable.setCenterColor(getColor(R.color.ime_key_pressed));
         }
@@ -108,10 +105,7 @@ public class KeyboardService extends InputMethodService {
         });
     }
 
-    /**
-     * Keeps the screen awake while recording. Auto mode runs hands-free, so without this the
-     * screen times out mid-dictation. Applies only while the keyboard is showing.
-     */
+    // External: Android turns the screen off mid-dictation unless the window keeps it on
     private void keepScreenOn(boolean on) {
         handler.post(() -> {
             if (layoutButtons != null) layoutButtons.setKeepScreenOn(on);
@@ -156,15 +150,12 @@ public class KeyboardService extends InputMethodService {
 
     @Override
     public void onFinishInputView(boolean finishingInput) {
-        // A toggled (auto mode) recording must not keep running with the keyboard hidden
         if (mRecorder != null && mRecorder.isInProgress()) stopMicRecording();
         super.onFinishInputView(finishingInput);
     }
 
     @Override
     public void onStartInputView(EditorInfo attribute, boolean restarting){
-
-        // Reload if the local engine was changed in Settings, or a model was installed since loading
         if (mWhisper != null && (!mWhisper.getLocalEngine().equals(Whisper.localEngine(sp)) || mWhisper.modelInstalledSince())
                 && !(mRecorder != null && mRecorder.isInProgress())) {
             deinitModel();
@@ -172,15 +163,14 @@ public class KeyboardService extends InputMethodService {
         if (mWhisper == null) {
             initModel();
         } else if (needsLocalModel() && !isBusy()) {
-            reloadModel();  // switched to local in Settings while this keyboard used the server
+            reloadModel();
         }
 
     }
 
-
     @SuppressLint("ClickableViewAccessibility")
     @Override
-    public View onCreateInputView() {  //runs before onStartInputView
+    public View onCreateInputView() {  // External: Android calls this before onStartInputView
         sp = PreferenceManager.getDefaultSharedPreferences(this);
 
         View view = getLayoutInflater().inflate(R.layout.voice_service, null);
@@ -217,7 +207,6 @@ public class KeyboardService extends InputMethodService {
         updateSendTargetUi();
         checkRecordPermission();
 
-        // Audio recording functionality
         mRecorder = new Recorder(this);
         mRecorder.setListener(new Recorder.RecorderListener() {
             @Override
@@ -241,13 +230,12 @@ public class KeyboardService extends InputMethodService {
                         showStatus(getString(R.string.error_no_input));
                     });
                 } else {
-                    keepScreenOn(false);  // recorder failed (permission, device error)
+                    keepScreenOn(false);
                     otherAudio.release();
                 }
             }
 
         });
-        // Stream chunks (Recorder.CHUNK_MS) to the transcriber while the mic is held
         mRecorder.setChunkListener(pcm -> {
             Whisper whisper = mWhisper;
             if (whisper != null) {
@@ -255,11 +243,8 @@ public class KeyboardService extends InputMethodService {
             }
         });
 
-
-        // Tap: delete one character. Hold: delete whole words, accelerating.
         btnDel.setOnTouchListener(new View.OnTouchListener() {
             private static final long HOLD_DELAY_MS = 400;
-            // Continuous ramp: 350ms -> 40ms over ~4.5s of holding (~30 words), then 25 words/s
             private static final long START_INTERVAL_MS = 350;
             private static final long MIN_INTERVAL_MS = 40;
             private static final float ACCELERATION = 0.93f;
@@ -298,7 +283,6 @@ public class KeyboardService extends InputMethodService {
             }
         });
 
-        // Normal mode: hold to record. Auto mode: tap to start, tap again to stop.
         btnRecord.setOnTouchListener((v, event) -> {
             int action = event.getActionMasked();
             boolean recording = mRecorder != null && mRecorder.isInProgress();
@@ -315,10 +299,9 @@ public class KeyboardService extends InputMethodService {
             return true;
         });
 
-        // Same tick haptic as backspace, on press for all simple keys
         View.OnTouchListener tickOnPress = (v, event) -> {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) HapticFeedback.tick(mContext);
-            return false; // let the click listener handle the action
+            return false;
         };
         for (View b : new View[]{btnKeyboard, btnEnter, btnDot, btnDash, btnBullet,
                 btnModeAuto, btnToolbarToggle, btnPauseAudio, btnBackend, btnSendTarget, btnSettings}) {
@@ -330,7 +313,6 @@ public class KeyboardService extends InputMethodService {
             switchToPreviousInputMethod();
         });
 
-        // Run the field's action (Search, Go, Send…) like other keyboards; otherwise a new line
         btnEnter.setOnClickListener(v -> {
             InputConnection ic = getCurrentInputConnection();
             if (ic == null) return;
@@ -343,7 +325,6 @@ public class KeyboardService extends InputMethodService {
 
         btnDot.setOnClickListener(v -> getCurrentInputConnection().commitText(".", 1));
         btnSpace.setOnClickListener(v -> getCurrentInputConnection().commitText(" ", 1));
-        // Cursor drag: tap types a space; drag sideways moves by characters, up and down by lines
         float dp = getResources().getDisplayMetrics().density;
         CursorDrag cursorDrag = new CursorDrag(
                 ViewConfiguration.get(mContext).getScaledTouchSlop(), 12 * dp, 24 * dp);
@@ -370,7 +351,6 @@ public class KeyboardService extends InputMethodService {
             return true;
         });
         btnDash.setOnClickListener(v -> getCurrentInputConnection().commitText("-", 1));
-        // Bullet: start a new "- " list item on a new line (no leading newline on an empty line)
         btnBullet.setOnClickListener(v -> {
             InputConnection ic = getCurrentInputConnection();
             if (ic == null) return;
@@ -378,14 +358,12 @@ public class KeyboardService extends InputMethodService {
         });
 
         btnModeAuto.setOnClickListener(v -> {
-            // Switching modes mid-recording would leave the mic in the wrong state
             if (mRecorder != null && mRecorder.isInProgress()) stopMicRecording();
             modeAuto = !modeAuto;
             sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
             btnModeAuto.setActivated(modeAuto);
         });
 
-        // Cycle: cursor -> endpoint 1 -> endpoint 2 -> cursor, skipping endpoints without a URL
         btnSendTarget.setOnClickListener(v -> {
             if (mRecorder != null && mRecorder.isInProgress()) stopMicRecording();
             int next = 0;
@@ -416,7 +394,6 @@ public class KeyboardService extends InputMethodService {
             updateToolbarVisibility();
         });
 
-        // Pause other audio key: takes effect at once, also mid-recording
         btnPauseAudio.setOnClickListener(v -> {
             pauseOtherAudio = !pauseOtherAudio;
             sp.edit().putBoolean("imePauseOtherAudio", pauseOtherAudio).apply();
@@ -431,7 +408,6 @@ public class KeyboardService extends InputMethodService {
             String next = current.equals("openai") ? "local" : "openai";
             boolean toLocal = next.equals("local");
             if (toLocal && isBusy()) {
-                // Loading a model would cancel the recording or the chunks still being transcribed
                 showTransientStatus(getString(R.string.please_wait));
                 return;
             }
@@ -448,7 +424,6 @@ public class KeyboardService extends InputMethodService {
         if (mWhisper != null) {
             mWhisper.setTranslate(true);
         }
-        // Auto mode streams text every 8 s; hold-to-talk sends 30 s pieces for better context
         mRecorder.setChunkMs(modeAuto ? 8000 : 30000);
         mRecorder.start();
     }
@@ -459,7 +434,7 @@ public class KeyboardService extends InputMethodService {
         if (mWhisper != null && !mWhisper.isInProgress()) {
             HapticFeedback.vibrate(this);
             beginSession();
-            // Before the mic opens, so the first words aren't mixed with the phone's audio
+            // External: pause before the mic opens, so the first words aren't mixed with the phone's audio
             if (pauseOtherAudio) otherAudio.pause();
             startRecording();
             handler.post(() -> {
@@ -486,17 +461,12 @@ public class KeyboardService extends InputMethodService {
                 || (mWhisper != null && (mWhisper.isInProgress() || mWhisper.hasPendingChunks()));
     }
 
-    /**
-     * True if the local backend is selected but this keyboard's model instance has no local model,
-     * because it was created while the server was selected.
-     */
     private boolean needsLocalModel() {
         return mWhisper != null && !mWhisper.hasLocalModel()
                 && !OpenAITranscriber.BACKEND_OPENAI.equals(
                         sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL));
     }
 
-    /** Creates a fresh model instance and shows "Loading <model>…" until it is ready. */
     private void reloadModel() {
         deinitModel();
         initModel();
@@ -507,9 +477,7 @@ public class KeyboardService extends InputMethodService {
         }
     }
 
-    // Model initialization
     private void initModel() {
-
         mWhisper = new Whisper(this);
         if (mWhisper.isModelMissing()) Components.openSetup(this);
         mWhisper.setListener(new Whisper.WhisperListener() {
@@ -523,16 +491,14 @@ public class KeyboardService extends InputMethodService {
                     return;
                 }
                 if (message.equals(Whisper.MSG_QUEUE_EMPTY)) {
-                    // Posted after the last result, so a combined message is complete here
                     handler.post(() -> session.onQueueEmpty());
                 }
                 if (modeAuto && message.equals(OpenAITranscriber.MSG_EMPTY_TRANSCRIPTION)) {
-                    // Auto mode records pauses too; silent chunks are expected, not an error
                     Log.d(TAG, "Ignoring empty transcription in auto mode");
                 } else if (!message.equals(Whisper.MSG_PROCESSING)
                         && !message.equals(Whisper.MSG_PROCESSING_DONE)
-                        && !message.equals(Whisper.MSG_QUEUE_EMPTY)) {  // status messages, not errors
-                    handler.post(() -> {  // errors, e.g. network / API
+                        && !message.equals(Whisper.MSG_QUEUE_EMPTY)) {
+                    handler.post(() -> {
                         showStatus(message);
                     });
                 }
@@ -551,7 +517,6 @@ public class KeyboardService extends InputMethodService {
         mWhisper.loadModel();
     }
 
-    /** Called when a recording starts: locks in the target for this recording. */
     private void beginSession() {
         session.begin(sendTarget == 0 ? null : EndpointSender.load(sp, sendTarget));
     }
@@ -577,12 +542,10 @@ public class KeyboardService extends InputMethodService {
         btnSendTarget.setActivated(active);
         tvSendTargetBadge.setVisibility(active ? View.VISIBLE : View.GONE);
         tvSendTargetBadge.setText(String.valueOf(sendTarget));
-        // Mic turns accent-coloured so the target is visible even with the top row collapsed
         btnRecord.setImageTintList(ColorStateList.valueOf(
                 getColor(active ? R.color.ime_accent : R.color.ime_on_key)));
     }
 
-    /** Shows a status/error message without moving the keys (see updateStatusViews). Main thread only. */
     private void showStatus(String message) {
         handler.removeCallbacks(hideStatus);
         statusMessage = message;
@@ -597,10 +560,6 @@ public class KeyboardService extends InputMethodService {
 
     private final Runnable hideStatus = this::clearStatus;
 
-    /**
-     * With the top row expanded the message sits in its empty middle, so the keyboard height
-     * never changes. Collapsed, it falls back to a line above the main row.
-     */
     private void updateStatusViews() {
         boolean empty = statusMessage.isEmpty();
         tvStatusInline.setText(toolbarExpanded ? statusMessage : "");
@@ -639,8 +598,6 @@ public class KeyboardService extends InputMethodService {
         updateStatusViews();
     }
 
-    /** Deletes the word (plus trailing whitespace) before the cursor, or the selection if any. */
-    /** Moves the cursor {@code steps} times with arrow keys: negative uses {@code back}, positive {@code forward}. */
     private void moveCursor(int steps, int back, int forward) {
         if (steps == 0) return;
         int key = steps < 0 ? back : forward;

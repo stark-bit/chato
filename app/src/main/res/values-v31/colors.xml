@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 12+: follow the wallpaper (Material You), like FUTO keyboard does -->
+<!-- External: Android 12+ system colours follow the wallpaper (Material You) -->
 <resources>
     <color name="ime_bg">@android:color/system_neutral1_900</color>
     <color name="ime_key">@android:color/system_neutral2_800</color>

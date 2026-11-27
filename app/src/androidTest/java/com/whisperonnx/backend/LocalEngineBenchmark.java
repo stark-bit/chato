@@ -26,16 +26,8 @@ import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Compares the two on-device engines on the same audio. Not a pass/fail test.
- *
- * Put 16 kHz mono 16-bit WAVs in {@code <external files>/bench/} ({@code make bench} does this),
- * run, and read {@code bench/results.txt}. Each clip is run twice: the first run includes
- * one-time warm-up costs, the second is what you'd see on later dictations.
- */
 @RunWith(AndroidJUnit4.class)
 public class LocalEngineBenchmark {
-
     private static final String TAG = "Bench";
     private final StringBuilder report = new StringBuilder();
 
@@ -58,8 +50,7 @@ public class LocalEngineBenchmark {
         out("Device: " + android.os.Build.MODEL + " / " + android.os.Build.SOC_MODEL
                 + ", cores " + Runtime.getRuntime().availableProcessors());
 
-        // Whisper first: memory freed by the first engine can make the second one's PSS
-        // look smaller, and Parakeet's session close is the more reliable of the two
+        // External: the second engine's PSS reads low after the first frees memory, and Parakeet frees more reliably
         benchWhisper(ctx, wavs, clips);
         System.gc();
         Thread.sleep(2000);
@@ -143,7 +134,6 @@ public class LocalEngineBenchmark {
         return mi.getTotalPss() / 1024;
     }
 
-    /** Reads the "data" chunk of a 16-bit mono WAV as floats in [-1, 1]. */
     private static float[] readWav(File f) throws IOException {
         byte[] all = new byte[(int) f.length()];
         try (RandomAccessFile raf = new RandomAccessFile(f, "r")) { raf.readFully(all); }

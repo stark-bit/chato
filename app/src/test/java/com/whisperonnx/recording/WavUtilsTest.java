@@ -9,7 +9,6 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
 public class WavUtilsTest {
-
     @Test public void writesStandardPcmHeader() {
         byte[] pcm = {1, 2, 3, 4, 5, 6};
         byte[] wav = WavUtils.pcmToWav(pcm, 16000, 1, 16);
@@ -21,11 +20,11 @@ public class WavUtilsTest {
         assertEquals("WAVE", new String(wav, 8, 4, StandardCharsets.US_ASCII));
         assertEquals("fmt ", new String(wav, 12, 4, StandardCharsets.US_ASCII));
         assertEquals(16, b.getInt(16));
-        assertEquals(1, b.getShort(20));        // PCM
-        assertEquals(1, b.getShort(22));        // mono
+        assertEquals(1, b.getShort(20));
+        assertEquals(1, b.getShort(22));
         assertEquals(16000, b.getInt(24));
-        assertEquals(32000, b.getInt(28));      // byte rate
-        assertEquals(2, b.getShort(32));        // block align
+        assertEquals(32000, b.getInt(28));
+        assertEquals(2, b.getShort(32));
         assertEquals(16, b.getShort(34));
         assertEquals("data", new String(wav, 36, 4, StandardCharsets.US_ASCII));
         assertEquals(pcm.length, b.getInt(40));

@@ -50,9 +50,9 @@ public class VoiceInputActivity extends AppCompatActivity {
         if (gradientDrawable == null) {
             float density = getResources().getDisplayMetrics().density;
             gradientDrawable = new GradientBorderDrawable(
-                10 * density,   // cornerRadius
-                0.5f * density, // borderWidth (near-invisible)
-                15 * density    // glowBlur
+                10 * density,
+                0.5f * density,
+                15 * density
             );
         }
         return gradientDrawable;
@@ -87,11 +87,10 @@ public class VoiceInputActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_recognize);
 
-        // Set the window layout parameters
         WindowManager.LayoutParams params = getWindow().getAttributes();
         params.width = WindowManager.LayoutParams.MATCH_PARENT;
         params.height =  WindowManager.LayoutParams.WRAP_CONTENT;
-        params.gravity = Gravity.BOTTOM; // Position at the bottom of the screen
+        params.gravity = Gravity.BOTTOM;
 
         btnCancel = findViewById(R.id.btnCancel);
         btnRecord = findViewById(R.id.btnRecord);
@@ -104,7 +103,6 @@ public class VoiceInputActivity extends AppCompatActivity {
         modeAuto = sp.getBoolean("imeModeAuto",false);
         btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
 
-        // Audio recording functionality
         mRecorder = new Recorder(this);
         mRecorder.setListener(new Recorder.RecorderListener() {
             @Override
@@ -165,7 +163,6 @@ public class VoiceInputActivity extends AppCompatActivity {
 
         btnRecord.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                // Pressed
                 applyGradientBackground();
                 if (checkRecordPermission()){
                     if (!mWhisper.isInProgress()) {
@@ -186,7 +183,6 @@ public class VoiceInputActivity extends AppCompatActivity {
                     }
                 }
             } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                // Released
                 revertBackground();
                 if (mRecorder != null && mRecorder.isInProgress()) {
                     mRecorder.stop();
@@ -207,9 +203,7 @@ public class VoiceInputActivity extends AppCompatActivity {
         mRecorder.start();
     }
 
-    // Model initialization
     private void initModel() {
-
         mWhisper = new Whisper(this);
         if (mWhisper.isModelMissing()) Components.openSetup(this);
         mWhisper.loadModel();

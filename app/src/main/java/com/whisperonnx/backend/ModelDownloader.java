@@ -17,15 +17,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
-/**
- * Downloads a set of model files into a folder, checking each one's size and SHA-256.
- *
- * Each file is written to {@code name.part} and only renamed once verified, so a folder never
- * holds a half-written model. An interrupted download resumes from the .part file
- * (HTTP Range) on the next attempt.
- */
 public final class ModelDownloader {
-
     public static final class FileSpec {
         public final String name, url, sha256;
         public final long size;
@@ -39,7 +31,6 @@ public final class ModelDownloader {
     }
 
     public interface Progress {
-        /** Bytes done and total across all files. Called from the download thread. */
         void onProgress(long done, long total);
     }
 
@@ -51,7 +42,6 @@ public final class ModelDownloader {
         return t;
     }
 
-    /** True if every file is present with the expected size. Does not hash (too slow for 600 MB). */
     public static boolean isComplete(List<FileSpec> files, File dir) {
         for (FileSpec f : files) {
             File file = new File(dir, f.name);
@@ -60,12 +50,6 @@ public final class ModelDownloader {
         return true;
     }
 
-    /**
-     * Downloads every missing file. Blocking; run off the main thread.
-     *
-     * @throws InterruptedIOException if {@code cancelled} is set; partial data is kept for resuming
-     * @throws IOException            on network errors or a checksum mismatch (the bad file is deleted)
-     */
     public static void download(OkHttpClient client, List<FileSpec> files, File dir,
                                 Progress progress, AtomicBoolean cancelled) throws IOException {
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create " + dir);
@@ -83,8 +67,7 @@ public final class ModelDownloader {
 
             String actual = sha256(part);
             if (!actual.equalsIgnoreCase(f.sha256)) {
-                //noinspection ResultOfMethodCallIgnored
-                part.delete();
+                if (!part.delete()) throw new IOException(f.name + ": checksum mismatch, and cannot delete " + part);
                 throw new IOException(f.name + ": checksum mismatch");
             }
             if ((target.exists() && !target.delete()) || !part.renameTo(target)) {
@@ -99,11 +82,10 @@ public final class ModelDownloader {
                               Progress progress, AtomicBoolean cancelled) throws IOException {
         long have = part.isFile() ? part.length() : 0;
         if (have > f.size) {
-            //noinspection ResultOfMethodCallIgnored
-            part.delete();
+            if (!part.delete()) throw new IOException("Cannot delete " + part);
             have = 0;
         }
-        if (have == f.size) return;  // fully downloaded earlier, just not verified yet
+        if (have == f.size) return;
 
         Request.Builder rb = new Request.Builder().url(f.url);
         if (have > 0) rb.header("Range", "bytes=" + have + "-");
@@ -112,7 +94,7 @@ public final class ModelDownloader {
             if (resp.code() == 206 && have > 0) {
                 append = true;
             } else if (resp.isSuccessful()) {
-                append = false;  // server ignored the range: start over
+                append = false;  // External: the server ignored the range, so start over
                 have = 0;
             } else {
                 throw new IOException(f.name + ": HTTP " + resp.code());

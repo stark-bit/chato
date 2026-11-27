@@ -20,26 +20,19 @@ import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
-/**
- * Checks the component names in the manifest, res/xml and ui.Components, which the compiler
- * can't check because they are strings.
- */
 public class ComponentsTest {
-
     private static final String ANDROID = "http://schemas.android.com/apk/res/android";
     private static final String PACKAGE = "com.whisperonnx";
 
-    /** Names Android stores on the phone. Changing one disables the feature until set up again. */
     private static final String[][] STORED = {
-            {"activity-alias", ".MainActivity"},              // launcher icon
-            {"activity-alias", ".WhisperRecognizeActivity"},  // default speech recognizer activity
-            {"activity-alias", ".QuickRecordActivity"},       // digital assistant
-            {"service", ".WhisperInputMethodService"},        // enabled keyboard
-            {"service", ".WhisperRecognitionService"},        // system voice input
-            {"receiver", ".QuickRecordWidget"},               // placed widgets
+            {"activity-alias", ".MainActivity", "launcher icon"},
+            {"activity-alias", ".WhisperRecognizeActivity", "default speech recognizer activity"},
+            {"activity-alias", ".QuickRecordActivity", "digital assistant"},
+            {"service", ".WhisperInputMethodService", "enabled keyboard"},
+            {"service", ".WhisperRecognitionService", "system voice input"},
+            {"receiver", ".QuickRecordWidget", "placed widgets"},
     };
 
-    /** Component name -> element tag, from the manifest. */
     private static final Map<String, String> declared = new HashMap<>();
     private static Document manifest;
 
@@ -57,8 +50,9 @@ public class ComponentsTest {
     @Test
     public void storedNamesAreStillDeclared() {
         for (String[] name : STORED) {
-            assertEquals(name[1] + " is stored by Android and must stay declared as a " + name[0]
-                    + " (see docs/ARCHITECTURE.md)", name[0], declared.get(resolve(name[1])));
+            assertEquals(name[1] + " is stored by Android as the " + name[2] + "; renaming it turns that off"
+                    + " after an update. Keep it declared as a " + name[0] + ": an <activity-alias> to the"
+                    + " moved activity, or an empty subclass in " + PACKAGE, name[0], declared.get(resolve(name[1])));
         }
     }
 

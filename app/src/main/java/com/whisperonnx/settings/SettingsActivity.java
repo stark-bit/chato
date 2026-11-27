@@ -75,14 +75,12 @@ public class SettingsActivity extends AppCompatActivity {
         findViewById(R.id.row_test_transcription).setOnClickListener(v ->
                 Components.open(this, Components.TEST_SCREEN));
 
-        // ===== OPENAI REMOTE BACKEND SETTINGS =====
         Spinner spinnerBackendType = findViewById(R.id.spinner_backend_type);
         LinearLayout layoutOpenaiSettings = findViewById(R.id.layout_openai_settings);
         EditText editEndpoint = findViewById(R.id.edit_openai_endpoint);
         EditText editApiKey = findViewById(R.id.edit_openai_api_key);
         EditText editModel = findViewById(R.id.edit_openai_model);
 
-        // "local" + an engine, or the remote API. The keyboard's cloud key switches local <-> remote.
         ArrayAdapter<String> backendAdapter = new ArrayAdapter<>(
                 this, android.R.layout.simple_spinner_item, getResources().getStringArray(R.array.backend_labels));
         backendAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -138,7 +136,6 @@ public class SettingsActivity extends AppCompatActivity {
         setupEndpointSettings();
         setupQuickRecordSettings();
 
-        // Tapping anywhere on a switch row toggles it, as in FUTO settings
         findViewById(R.id.layout_mode_bluetooth).setOnClickListener(v -> modeBluetooth.toggle());
 
         checkPermissions();
@@ -183,7 +180,7 @@ public class SettingsActivity extends AppCompatActivity {
             public void onNothingSelected(AdapterView<?> parent) {}
         });
 
-        // Opens the default apps screen; phones differ in which settings page lists the assistant
+        // External: phones differ in which settings page lists the assistant
         findViewById(R.id.row_assistant).setOnClickListener(v -> {
             for (String action : new String[]{Settings.ACTION_VOICE_INPUT_SETTINGS,
                     Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS, Settings.ACTION_SETTINGS}) {
@@ -191,13 +188,11 @@ public class SettingsActivity extends AppCompatActivity {
                     startActivity(new Intent(action));
                     return;
                 } catch (android.content.ActivityNotFoundException ignored) {
-                    // try the next one
                 }
             }
         });
     }
 
-    /** Shows the current value and saves every edit to the given preference key. */
     private void bindText(EditText edit, String prefKey, String value) {
         edit.setText(value);
         edit.addTextChangedListener(new TextWatcher() {
@@ -232,7 +227,7 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) { //handle "back click" on action bar
+    public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
             finish();
             return true;

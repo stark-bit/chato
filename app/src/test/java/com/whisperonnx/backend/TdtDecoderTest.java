@@ -8,12 +8,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/** TDT greedy decoding against a scripted joint network (vocab: 0..2 tokens, 3 = blank). */
 public class TdtDecoderTest {
-
     private static final int V = 4, BLANK = 3;
 
-    /** One joint output: the chosen token and duration get the highest logit. */
     private static float[] out(int token, int duration) {
         float[] o = new float[V + 5];
         o[token] = 1f;
@@ -21,7 +18,6 @@ public class TdtDecoderTest {
         return o;
     }
 
-    /** Plays back outputs in order and records what the decoder asked for. */
     private static class Script implements TdtDecoder.Joint {
         final List<float[]> outputs;
         final List<String> calls = new ArrayList<>();
@@ -38,8 +34,8 @@ public class TdtDecoderTest {
         Script s = new Script(out(0, 2), out(1, 3), out(BLANK, 1));
         List<Integer> tokens = new TdtDecoder().decode(6, V, s);
         assertEquals(Arrays.asList(0, 1), tokens);
-        assertEquals(Arrays.asList("0/3", "2/0", "5/1"), s.calls);  // starts with blank as context
-        assertEquals(2, s.commits);  // state kept only for real tokens
+        assertEquals(Arrays.asList("0/3", "2/0", "5/1"), s.calls);
+        assertEquals(2, s.commits);
     }
 
     @Test public void blankWithZeroDurationStillAdvances() throws Exception {
@@ -59,7 +55,7 @@ public class TdtDecoderTest {
 
     @Test public void tokenLoopIsCappedPerFrame() throws Exception {
         float[][] script = new float[TdtDecoder.MAX_TOKENS_PER_STEP][];
-        Arrays.fill(script, out(2, 0));  // a model that never stops emitting
+        Arrays.fill(script, out(2, 0));
         Script s = new Script(script);
         List<Integer> tokens = new TdtDecoder().decode(1, V, s);
         assertEquals(TdtDecoder.MAX_TOKENS_PER_STEP, tokens.size());

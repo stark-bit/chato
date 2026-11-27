@@ -30,17 +30,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import okhttp3.OkHttpClient;
 
-/**
- * Asks to download a model and shows progress. Used by setup, Settings and the test screen.
- * Leaving the screen cancels the download; the partial files are resumed next time.
- */
 public class ModelInstaller implements DefaultLifecycleObserver {
-
     private final AppCompatActivity activity;
     private final AtomicBoolean cancelled = new AtomicBoolean();
     private Thread thread;
 
-    /** Runs on the download thread after the files are verified, e.g. to unzip them. */
     private interface AfterDownload {
         void run(ProgressBar bar, TextView label) throws IOException;
     }
@@ -54,17 +48,12 @@ public class ModelInstaller implements DefaultLifecycleObserver {
         return thread != null && thread.isAlive();
     }
 
-    /**
-     * @param onInstalled runs on the main thread once the model is ready
-     * @param onAborted   runs on the main thread if the user declines, cancels, or it fails
-     */
     public void offerParakeet(Runnable onInstalled, Runnable onAborted) {
         offer(activity.getString(R.string.model_parakeet), ParakeetRecognizer.FILES, ParakeetRecognizer.SOURCE,
                 activity.getString(R.string.model_download_parakeet_note),
                 ParakeetRecognizer.dir(activity), null, onInstalled, onAborted);
     }
 
-    /** Downloads the Whisper zip, extracts it into place and deletes the zip. */
     public void offerWhisper(Runnable onInstalled, Runnable onAborted) {
         File zipDir = WhisperModel.downloadDir(activity);
         offer(activity.getString(R.string.model_whisper), WhisperModel.FILES, WhisperModel.SOURCE, null, zipDir,
@@ -78,10 +67,7 @@ public class ModelInstaller implements DefaultLifecycleObserver {
                         WhisperModel.extract(in, WhisperModel.dir(activity),
                                 name -> activity.runOnUiThread(() -> label.setText(activity.getString(R.string.setup_unpacking, name))));
                     }
-                    //noinspection ResultOfMethodCallIgnored
-                    zip.delete();
-                    //noinspection ResultOfMethodCallIgnored
-                    zipDir.delete();
+                    if (!zip.delete() || !zipDir.delete()) Log.w("ModelInstaller", "Cannot delete " + zipDir);
                 }, onInstalled, onAborted);
     }
 
@@ -160,6 +146,6 @@ public class ModelInstaller implements DefaultLifecycleObserver {
 
     @Override
     public void onDestroy(@NonNull LifecycleOwner owner) {
-        cancelled.set(true);  // partial files are kept and resumed next time
+        cancelled.set(true);
     }
 }

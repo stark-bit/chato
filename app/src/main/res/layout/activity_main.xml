@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Test screen, styled like Settings (FUTO-style rows on the IME palette) -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -14,7 +13,6 @@
         android:orientation="vertical"
         android:paddingBottom="16dp">
 
-        <!-- ===== Backend ===== -->
         <TextView
             style="@style/Settings.Header"
             android:paddingTop="8dp"
@@ -65,7 +63,6 @@
                 android:contentDescription="@string/test_append" />
         </LinearLayout>
 
-        <!-- ===== Result ===== -->
         <TextView
             style="@style/Settings.Header"
             android:text="@string/test_result" />
@@ -81,8 +78,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:padding="16dp">
-                <!-- Read-only so no keyboard (a second mic) or password manager pops up;
-                     still selectable, and the copy button copies everything -->
+                <!-- External: a TextView, not an EditText, so no keyboard (a second mic) or password manager pops up -->
                 <TextView
                     android:id="@+id/tvResult"
                     android:layout_width="match_parent"
@@ -126,7 +122,6 @@
             android:progressBackgroundTint="@color/ime_key"
             android:indeterminateTint="@color/ime_accent" />
 
-        <!-- Mic key looks like the keyboard's; info sits at the end -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

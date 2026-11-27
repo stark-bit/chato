@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Settings screen styled after FUTO keyboard settings (uses the IME palette) -->
 <resources>
     <style name="Theme.Whisper.Settings" parent="Theme.Material3.Dark">
         <item name="android:windowBackground">@color/ime_bg</item>
@@ -38,7 +37,6 @@
         <item name="android:textSize">22sp</item>
     </style>
 
-    <!-- Section header: small accent label above a group of rows -->
     <style name="Settings.Header" parent="">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
@@ -50,7 +48,6 @@
         <item name="android:textColor">@color/ime_accent</item>
     </style>
 
-    <!-- One setting: title (+ optional summary) with a trailing control -->
     <style name="Settings.Row" parent="">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>

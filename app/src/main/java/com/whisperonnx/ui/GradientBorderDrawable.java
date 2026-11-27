@@ -8,26 +8,17 @@ import android.view.ViewParent;
 
 import java.lang.ref.WeakReference;
 
-/**
- * Rotating sweep gradient border with glow that extends OUTSIDE the button bounds.
- * Requires: clipChildren=false on the button's parent View.
- *
- * Draw order:
- * 1. Glow layers — semi-transparent gradient copies extending beyond bounds
- * 2. Sharp gradient fill — at button bounds (border ring)
- * 3. Solid center fill — covers inner area, matches original button color
- */
+// External: the glow draws outside the bounds, so the parent View needs clipChildren=false
 public class GradientBorderDrawable extends Drawable {
-
     private static final int[] GRADIENT_COLORS = {
-        0xFF6366F1, // indigo
-        0xFF6366F1, // indigo (hold to 27%)
-        0xFFE11D48, // rose
-        0xFFEAB308, // yellow
-        0xFF22C55E, // green
-        0xFF6366F1, // indigo
-        0xFF22C55E, // green
-        0xFF6366F1  // indigo (wrap)
+        0xFF6366F1,
+        0xFF6366F1,
+        0xFFE11D48,
+        0xFFEAB308,
+        0xFF22C55E,
+        0xFF6366F1,
+        0xFF22C55E,
+        0xFF6366F1
     };
 
     private static final float[] GRADIENT_POSITIONS = {
@@ -35,7 +26,7 @@ public class GradientBorderDrawable extends Drawable {
     };
 
     private static final int GLOW_STEPS = 10;
-    private static final float GLOW_MAX_ALPHA = 0.18f; // 18% peak opacity
+    private static final float GLOW_MAX_ALPHA = 0.18f;
 
     private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gradientPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -53,8 +44,8 @@ public class GradientBorderDrawable extends Drawable {
     private float cachedCy = Float.NaN;
     private boolean animating = false;
 
-    private static final long FRAME_DELAY = 16; // ~60fps
-    private static final float DEGREES_PER_FRAME = 360f / (5000f / FRAME_DELAY); // 360° over 5s
+    private static final long FRAME_DELAY = 16;
+    private static final float DEGREES_PER_FRAME = 360f / (5000f / FRAME_DELAY);
 
     private final Runnable animationRunnable = new Runnable() {
         @Override
@@ -75,18 +66,14 @@ public class GradientBorderDrawable extends Drawable {
         this.borderWidth = borderWidthPx;
         this.glowBlur = blurRadiusPx;
 
-        // Glow paint — used for semi-transparent gradient copies
         glowPaint.setStyle(Paint.Style.FILL);
 
-        // Sharp gradient paint
         gradientPaint.setStyle(Paint.Style.FILL);
 
-        // Center paint — solid fill, slightly darker than normal button (slate-600)
         centerPaint.setStyle(Paint.Style.FILL);
         centerPaint.setColor(0xFF475569);
     }
 
-    /** Fill colour inside the rainbow border. */
     public void setCenterColor(int color) {
         centerPaint.setColor(color);
         invalidateSelf();
@@ -96,16 +83,12 @@ public class GradientBorderDrawable extends Drawable {
         this.hostViewRef = new WeakReference<>(view);
     }
 
-    /**
-     * Enable drawing outside bounds. Call on the button's parent ViewGroup.
-     */
     public static void enableGlowClipping(View button) {
         ViewParent vp = button.getParent();
         if (vp instanceof ViewGroup) {
             ViewGroup parent = (ViewGroup) vp;
             parent.setClipChildren(false);
             parent.setClipToPadding(false);
-            // Also check grandparent for nested clipping
             ViewParent gvp = parent.getParent();
             if (gvp instanceof ViewGroup) {
                 ViewGroup grandparent = (ViewGroup) gvp;
@@ -115,9 +98,6 @@ public class GradientBorderDrawable extends Drawable {
         }
     }
 
-    /**
-     * Restore default clipping. Call when reverting.
-     */
     public static void restoreGlowClipping(View button) {
         ViewParent vp = button.getParent();
         if (vp instanceof ViewGroup) {
@@ -171,13 +151,10 @@ public class GradientBorderDrawable extends Drawable {
         gradientMatrix.setRotate(rotationDegrees, cx, cy);
         gradient.setLocalMatrix(gradientMatrix);
 
-        // Layer 1: Glow — semi-transparent gradient copies extending BEYOND bounds
-        // Each step is larger and more transparent, creating a soft glow effect
         float stepSize = glowBlur / GLOW_STEPS;
         for (int i = 1; i <= GLOW_STEPS; i++) {
             float expand = i * stepSize;
-            float t = (float) i / GLOW_STEPS; // 0 at inner edge, 1 at outer edge
-            // Quadratic falloff: bright near button edge, fading outward
+            float t = (float) i / GLOW_STEPS;
             int alpha = (int) (255 * GLOW_MAX_ALPHA * (1f - t) * (1f - t));
             if (alpha <= 0) continue;
 
@@ -190,12 +167,10 @@ public class GradientBorderDrawable extends Drawable {
             canvas.drawRoundRect(tempGlow, cornerRadius + expand, cornerRadius + expand, glowPaint);
         }
 
-        // Layer 2: Sharp gradient fill at button bounds
         gradientPaint.setShader(gradient);
         tempGlow.set(bounds);
         canvas.drawRoundRect(tempGlow, cornerRadius, cornerRadius, gradientPaint);
 
-        // Layer 3: Solid center fill (covers inner area, leaves border ring visible)
         float innerInset = borderWidth;
         tempInner.set(
             bounds.left + innerInset, bounds.top + innerInset,

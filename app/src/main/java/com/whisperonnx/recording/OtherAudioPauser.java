@@ -5,13 +5,8 @@ import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 
-/**
- * Pauses other apps' audio while recording, so the mic doesn't pick up what the phone plays.
- * Takes exclusive transient audio focus: media apps pause, and most resume when it's released.
- * Apps that ignore audio focus keep playing.
- */
+// External: on exclusive transient audio focus media apps pause, most resume on release, and apps that ignore focus keep playing
 public class OtherAudioPauser {
-
     private final AudioManager audioManager;
     private final AudioFocusRequest request;
     private boolean held;
@@ -23,17 +18,15 @@ public class OtherAudioPauser {
                         .setUsage(AudioAttributes.USAGE_ASSISTANT)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build())
-                .setOnAudioFocusChangeListener(change -> { })  // a call taking focus doesn't stop the recording
+                .setOnAudioFocusChangeListener(change -> { })  // External: a call taking audio focus doesn't stop the recording
                 .build();
     }
 
-    /** Safe to call repeatedly; only the first call after a release requests focus. */
     public synchronized void pause() {
         if (held) return;
         held = audioManager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
     }
 
-    /** Lets the paused apps resume. Safe to call when nothing is paused. */
     public synchronized void release() {
         if (!held) return;
         audioManager.abandonAudioFocusRequest(request);

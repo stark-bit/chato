@@ -10,12 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Drives SendSession the way the IME does. {@code looper} stands in for the main-thread
- * queue: results, "queue empty" and "recording done" all arrive as posted runnables.
- */
 public class SendSessionTest {
-
     private final List<String> events = new ArrayList<>();
     private final ArrayDeque<Runnable> looper = new ArrayDeque<>();
     private final SendSession session = new SendSession(new SendSession.Output() {
@@ -37,8 +32,6 @@ public class SendSessionTest {
     private void assertEvents(String... expected) {
         assertEquals(Arrays.asList(expected), events);
     }
-
-    // ---- cursor ----
 
     @Test public void noEndpoint_typesEachChunkWithTrailingSpace() {
         session.begin(null);
@@ -64,8 +57,6 @@ public class SendSessionTest {
         assertEvents();
     }
 
-    // ---- per chunk ----
-
     @Test public void perChunk_sendsEachChunkImmediately() {
         session.begin(endpoint(1, false));
         session.deliver("one");
@@ -73,10 +64,8 @@ public class SendSessionTest {
         assertEvents("send1:one", "send1:two");
         session.end(false);
         runLooper();
-        assertEvents("send1:one", "send1:two");  // nothing extra on end
+        assertEvents("send1:one", "send1:two");
     }
-
-    // ---- one message per recording ----
 
     @Test public void combined_sendsOnceAfterRecordingEnds() {
         session.begin(endpoint(1, true));
@@ -84,13 +73,12 @@ public class SendSessionTest {
         session.deliver("two");
         assertEvents();
         session.end(false);
-        assertEvents();  // flush is posted, not run inline
+        assertEvents();
         runLooper();
         assertEvents("send1:one two");
     }
 
     @Test public void combined_resultAlreadyPostedIsIncluded() {
-        // The last result is queued on the main thread before "recording done" is handled
         session.begin(endpoint(1, true));
         session.deliver("one");
         looper.add(() -> session.deliver("two"));
@@ -102,7 +90,7 @@ public class SendSessionTest {
     @Test public void combined_waitsForChunksStillTranscribing() {
         session.begin(endpoint(1, true));
         session.deliver("one");
-        session.end(true);  // a chunk is still being transcribed
+        session.end(true);
         runLooper();
         assertEvents();
 
@@ -113,7 +101,6 @@ public class SendSessionTest {
     }
 
     @Test public void combined_queueDrainingMidRecordingDoesNotSend() {
-        // Auto mode: chunks finish while the mic is still on
         session.begin(endpoint(1, true));
         session.deliver("one");
         session.onQueueEmpty();
@@ -143,12 +130,10 @@ public class SendSessionTest {
         assertEvents("send1:one");
     }
 
-    // ---- switching targets ----
-
     @Test public void newRecording_flushesLeftoversToPreviousEndpoint() {
         session.begin(endpoint(1, true));
         session.deliver("old");
-        session.end(true);  // still transcribing when the next recording starts
+        session.end(true);
 
         session.begin(endpoint(2, true));
         assertEvents("send1:old");

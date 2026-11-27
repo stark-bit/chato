@@ -21,22 +21,13 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-/**
- * Sends transcribed text as an HTTP POST to a user-configured endpoint instead of typing it.
- *
- * Body template placeholders:
- *   {{text}}      transcribed text, JSON-string-escaped (put it inside quotes in a JSON body)
- *   {{text_raw}}  transcribed text, unescaped
- *   {{timestamp}} ISO 8601 local time
- *   {{name}}      the endpoint's name
- */
 public class EndpointSender {
     private static final String TAG = "EndpointSender";
     public static final int COUNT = 2;
     public static final String DEFAULT_BODY = "{\"text\": \"{{text}}\"}";
 
     public static class Endpoint {
-        public final int index;  // 1-based
+        public final int index;
         public final String name;
         public final String url;
         public final String headers;
@@ -58,7 +49,6 @@ public class EndpointSender {
     }
 
     public interface ResultCallback {
-        /** Called on the main thread. error is null on success. */
         void onDone(Endpoint endpoint, String text, String error);
     }
 
@@ -73,13 +63,8 @@ public class EndpointSender {
                 sp.getBoolean(key(index, "combine"), true));
     }
 
-    /** Endpoint (1 or 2) for quick record from the assistant gesture, chosen in Settings. */
     public static final String PREF_QUICK_RECORD = "quickRecordEndpoint";
 
-    /**
-     * The endpoint quick record sends to: {@code preferred} if it has a URL, otherwise the first
-     * endpoint that has one, or 0 if none does. {@code configured[i]} is endpoint i + 1.
-     */
     public static int pickQuickRecord(int preferred, boolean[] configured) {
         if (preferred >= 1 && preferred <= configured.length && configured[preferred - 1]) return preferred;
         for (int i = 0; i < configured.length; i++) if (configured[i]) return i + 1;
@@ -91,27 +76,25 @@ public class EndpointSender {
             .readTimeout(30, TimeUnit.SECONDS)
             .build();
     private static final ExecutorService sendQueue = Executors.newSingleThreadExecutor();
-    private static Handler mainHandler;  // created lazily so the class loads in JVM unit tests
+    private static Handler mainHandler;
 
     public static void post(Endpoint ep, String text, ResultCallback callback) {
         final Request req;
         try {
             req = buildRequest(ep, text);
-        } catch (IllegalArgumentException e) {  // malformed URL or header
+        } catch (IllegalArgumentException e) {
             callback.onDone(ep, text, "Invalid endpoint config: " + e.getMessage());
             return;
         }
         if (mainHandler == null) mainHandler = new Handler(Looper.getMainLooper());
         final Handler main = mainHandler;
 
-        // One request at a time so per-chunk messages arrive in speech order
         sendQueue.execute(() -> {
             String err = execute(client, req);
             main.post(() -> callback.onDone(ep, text, err));
         });
     }
 
-    /** Builds the POST request. Throws IllegalArgumentException for a bad URL or header. */
     static Request buildRequest(Endpoint ep, String text) {
         Request.Builder builder = new Request.Builder().url(ep.url);
         String contentType = "application/json; charset=utf-8";
@@ -127,7 +110,6 @@ public class EndpointSender {
         return builder.post(RequestBody.create(body, MediaType.parse(contentType))).build();
     }
 
-    /** Runs the request synchronously. Returns null on 2xx, otherwise an error message. */
     static String execute(OkHttpClient client, Request req) {
         try (Response response = client.newCall(req).execute()) {
             return response.isSuccessful() ? null : "HTTP " + response.code();
@@ -139,7 +121,6 @@ public class EndpointSender {
 
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{(text_raw|text|timestamp|name)\\}\\}");
 
-    /** Fills placeholders in one pass, so placeholder-like text in the dictation stays as-is. */
     static String fillTemplate(Endpoint ep, String text) {
         String timestamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(new Date());
         String template = ep.body.isEmpty() ? DEFAULT_BODY : ep.body;

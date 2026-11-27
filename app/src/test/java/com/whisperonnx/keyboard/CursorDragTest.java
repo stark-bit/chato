@@ -7,7 +7,6 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class CursorDragTest {
-
     private final CursorDrag drag = new CursorDrag(10, 20, 40);
 
     @Test public void smallMovesStayATap() {
@@ -20,8 +19,8 @@ public class CursorDragTest {
         drag.start(100, 100);
         assertArrayEquals(new int[]{2, 0}, drag.move(145, 100));
         assertTrue(drag.isDragging());
-        assertArrayEquals(new int[]{0, 0}, drag.move(150, 100));  // 50 px: still the 2nd step
-        assertArrayEquals(new int[]{-2, 0}, drag.move(85, 100));  // back to the start
+        assertArrayEquals(new int[]{0, 0}, drag.move(150, 100));
+        assertArrayEquals(new int[]{-2, 0}, drag.move(85, 100));
     }
 
     @Test public void upAndDownMovesByLines() {

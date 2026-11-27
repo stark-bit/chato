@@ -78,7 +78,6 @@ public class VoiceInputService extends RecognitionService {
             }
         }
 
-
     }
 
     private void stopRecording() {
@@ -101,9 +100,7 @@ public class VoiceInputService extends RecognitionService {
         stopRecording();
     }
 
-    // Model initialization
     private void initModel(Callback callback) {
-
         mWhisper = new Whisper(this);
         if (mWhisper.isModelMissing()) Components.openSetup(this);
         mWhisper.loadModel();

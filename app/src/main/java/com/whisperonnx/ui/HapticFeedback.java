@@ -10,7 +10,6 @@ import android.os.VibratorManager;
 import android.provider.Settings;
 
 public class HapticFeedback {
-
     public static void vibrate(Context context){
         if (hapticEnabled(context)){
             Vibrator vibrator = (Vibrator) context.getSystemService(VIBRATOR_SERVICE);
@@ -23,7 +22,6 @@ public class HapticFeedback {
         }
     }
 
-    /** Short, light tick for repeated actions such as backspace. */
     public static void tick(Context context){
         if (hapticEnabled(context)){
             Vibrator vibrator = (Vibrator) context.getSystemService(VIBRATOR_SERVICE);

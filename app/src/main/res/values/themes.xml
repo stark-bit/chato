@@ -1,7 +1,5 @@
 <resources>
-    <!-- Base application theme. -->
     <style name="Theme.Whisper.NoActionBar" parent="Theme.Material3.Dark.NoActionBar">
-        <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
         <item name="colorPrimary">@color/colorAccent</item>
         <item name="colorOnPrimary">@color/black</item>
@@ -13,9 +11,7 @@
         <item name="colorOutline">@color/lightGrey</item>
     </style>
 
-    <!-- Base application theme. -->
     <style name="Theme.Whisper.ActionBar" parent="Theme.Material3.Dark">
-        <!-- Customize your light theme here. -->
         <item name="android:windowBackground">@color/windowBackground</item>
         <item name="colorPrimary">@color/colorAccent</item>
         <item name="colorOnPrimary">@color/black</item>
@@ -36,12 +32,10 @@
         <item name="android:backgroundDimEnabled">false</item>
     </style>
 
-    <!-- Quick record's toggle screen: nothing is drawn, it closes at once -->
     <style name="Theme.Chato.Invisible" parent="android:Theme.Translucent.NoTitleBar">
         <item name="android:windowAnimationStyle">@null</item>
         <item name="android:windowNoDisplay">false</item>
     </style>
-    <!-- Shows only a dialog over whatever is behind it (quick record widget setup) -->
     <style name="Theme.Chato.Dialog" parent="Theme.Whisper.Settings">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>

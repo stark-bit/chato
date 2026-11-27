@@ -1,6 +1,5 @@
 package com.whisperonnx.recording;
 
-
 import android.Manifest;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -28,19 +27,15 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Recorder {
-
     public interface RecorderListener {
         void onUpdateReceived(String message);
     }
 
-    /** Receives raw PCM (16 kHz, 16 bit, mono) chunks while recording continues. */
     public interface ChunkListener {
         void onChunk(byte[] pcm);
     }
 
-    /** Default target chunk length in chunked mode. */
     public static final int CHUNK_MS = 8000;
-    /** Chunks are cut at the quietest 30 ms frame within this window before the chunk length. */
     private static final int CUT_SEARCH_MS = 1000;
 
     private static final String TAG = "Recorder";
@@ -49,7 +44,6 @@ public class Recorder {
     public static final String MSG_RECORDING = "Recording...";
     public static final String MSG_RECORDING_DONE = "Recording done...!";
     public static final String MSG_RECORDING_ERROR = "Recording error...";
-    /** The mic permission is missing. The caller shows R.string.need_record_audio_permission. */
     public static final String MSG_NO_PERMISSION = "No mic permission";
 
     private final Context mContext;
@@ -60,7 +54,7 @@ public class Recorder {
     private volatile int mChunkMs = CHUNK_MS;
     private final Lock lock = new ReentrantLock();
     private final Condition hasTask = lock.newCondition();
-    private final Object fileSavedLock = new Object(); // Lock object for wait/notify
+    private final Object fileSavedLock = new Object();
 
     private volatile boolean shouldStartRecording = false;
     private boolean useVAD = false;
@@ -73,7 +67,6 @@ public class Recorder {
     public Recorder(Context context) {
         this.mContext = context;
         sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        // Initialize and start the worker thread
         workerThread = new Thread(this::recordLoop);
         workerThread.start();
     }
@@ -82,19 +75,14 @@ public class Recorder {
         this.mListener = listener;
     }
 
-    /**
-     * Enables chunked mode: audio is delivered in ~CHUNK_MS pieces via the listener and
-     * recording continues until stop() (no 30 s limit). RecordBuffer is not filled.
-     */
     public void setChunkListener(ChunkListener listener) {
         this.mChunkListener = listener;
     }
 
-    /** Target chunk length for the next recording (the Whisper model tops out at 30 s). */
+    // External: the Whisper model tops out at 30 s
     public void setChunkMs(int chunkMs) {
         this.mChunkMs = Math.min(chunkMs, 30000);
     }
-
 
     public void start() {
         if (!mInProgress.compareAndSet(false, true)) {
@@ -124,22 +112,19 @@ public class Recorder {
         Log.d(TAG, "VAD initialized");
     }
 
-
     public void stop() {
         Log.d(TAG, "Recording stopped");
         mInProgress.set(false);
 
-        // Wait for the recording thread to finish
         synchronized (fileSavedLock) {
             try {
-                fileSavedLock.wait(); // Wait until notified by the recording thread
+                fileSavedLock.wait();
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt(); // Restore interrupted status
+                Thread.currentThread().interrupt();
             }
         }
     }
 
-    /** Ends the worker thread once the current recording, if any, is done. */
     public void release() {
         workerThread.interrupt();
     }
@@ -152,7 +137,6 @@ public class Recorder {
         if (mListener != null)
             mListener.onUpdateReceived(message);
     }
-
 
     private void recordLoop() {
         while (true) {
@@ -169,7 +153,6 @@ public class Recorder {
                 lock.unlock();
             }
 
-            // Start recording process
             try {
                 recordAudio();
             } catch (Exception e) {
@@ -197,7 +180,7 @@ public class Recorder {
 
         int bufferSize = AudioRecord.getMinBufferSize(sampleRateInHz, channelConfig, audioFormat);
         if (bufferSize < VAD_FRAME_SIZE * 2) bufferSize = VAD_FRAME_SIZE * 2;
-        bufferSize *= 4;  // larger buffer to prevent dropped frames
+        bufferSize *= 4;  // External: a larger buffer prevents dropped frames
 
         AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
         if (sp.getBoolean("bluetooth", false)){
@@ -217,10 +200,9 @@ public class Recorder {
         AudioRecord audioRecord = builder.build();
         audioRecord.startRecording();
 
-        // Calculate maximum byte counts for 30 seconds (for saving)
         int bytesForThirtySeconds = sampleRateInHz * bytesPerSample * channels * 30;
 
-        ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream(); // Buffer for saving data RecordBuffer
+        ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream();
 
         ChunkListener chunkListener = mChunkListener;
         boolean chunked = chunkListener != null;
@@ -232,7 +214,7 @@ public class Recorder {
 
         boolean isSpeech;
         boolean isRecording = false;
-        byte[] vadAudioBuffer = new byte[VAD_FRAME_SIZE * 2];  //VAD needs 16 bit
+        byte[] vadAudioBuffer = new byte[VAD_FRAME_SIZE * 2];  // External: the VAD needs 16-bit samples
 
         while (mInProgress.get() && (chunked || totalBytesRead < bytesForThirtySeconds)) {
             int bytesRead = audioRecord.read(audioData, 0, VAD_FRAME_SIZE * 2);
@@ -255,7 +237,6 @@ public class Recorder {
 
             if (useVAD){
                 if (bytesRead == VAD_FRAME_SIZE * 2) {
-                    // Use the frame just read (16 bit) for VAD
                     System.arraycopy(audioData, 0, vadAudioBuffer, 0, VAD_FRAME_SIZE * 2);
 
                     isSpeech = vad.isSpeech(vadAudioBuffer);
@@ -291,30 +272,22 @@ public class Recorder {
         audioManager.setBluetoothScoOn(false);
 
         if (chunked) {
-            // Flush the remainder as the final chunk (skip if shorter than 0.2 s)
             if (outputBuffer.size() > 6400) chunkListener.onChunk(outputBuffer.toByteArray());
         } else {
-            // Save recorded audio data to BufferStore (up to 30 seconds)
             RecordBuffer.setOutputBuffer(outputBuffer.toByteArray());
         }
-        if (totalBytesRead > 6400){  //min 0.2s
+        if (totalBytesRead > 6400){
             sendUpdate(MSG_RECORDING_DONE);
         } else {
             sendUpdate(MSG_RECORDING_ERROR);
         }
 
-        // Notify the waiting thread that recording is complete
         synchronized (fileSavedLock) {
-            fileSavedLock.notify(); // Notify that recording is finished
+            fileSavedLock.notify();
         }
 
     }
 
-
-    /**
-     * Returns a byte offset in [from, to] at the middle of the quietest VAD-sized frame,
-     * so chunks are split in pauses rather than mid-word.
-     */
     static int findQuietCut(byte[] pcm, int from, int to) {
         final int frameBytes = VAD_FRAME_SIZE * 2;
         from = Math.max(0, from) & ~1;

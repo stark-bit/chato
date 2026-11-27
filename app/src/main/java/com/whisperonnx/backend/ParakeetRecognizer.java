@@ -1,6 +1,5 @@
 package com.whisperonnx.backend;
 
-
 import android.content.Context;
 import android.util.Log;
 
@@ -24,16 +23,8 @@ import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
 
-/**
- * On-device NVIDIA Parakeet TDT 0.6B (English), using the int8 ONNX export from onnx-asr
- * (preprocessor, encoder and decoder/joint as three models plus vocab.txt).
- *
- * Experimental. The app downloads the files from Hugging Face (see {@link #FILES}) into
- * {@code <external files>/parakeet/}; {@code make push-parakeet} copies them over USB instead.
- * Model: NVIDIA Parakeet TDT 0.6B v2, CC-BY-4.0.
- */
+// External: NVIDIA Parakeet TDT 0.6B v2 (CC-BY-4.0), int8 ONNX export from onnx-asr
 public class ParakeetRecognizer implements AutoCloseable {
-
     private static final String TAG = "Parakeet";
     public static final String DIR = "parakeet";
     static final String PRE = "nemo128.onnx";
@@ -42,7 +33,7 @@ public class ParakeetRecognizer implements AutoCloseable {
     static final String VOCAB = "vocab.txt";
     private static final int STATE_SIZE = 640;
 
-    /** Pinned to one commit so the checksums stay valid. */
+    // External: pinned to one commit, so the Hugging Face checksums stay valid
     private static final String REPO =
             "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v2-onnx/resolve/0bbb45a3365852604aef28b538a8f066f4ccaa85/";
     public static final String SOURCE = "huggingface.co/istupakov/parakeet-tdt-0.6b-v2-onnx";
@@ -57,7 +48,6 @@ public class ParakeetRecognizer implements AutoCloseable {
             new ModelDownloader.FileSpec(ENC, REPO + ENC, 652184014,
                     "3e0581fda6ab843888b51e56d7ee78b6d5bc3237ec113af1f732d1d5286aa155")));
 
-    /** Timings of the last {@link #transcribe} call, in milliseconds. */
     public static class Timing {
         public long preMs, encMs, decMs, steps, frames;
         @Override public String toString() {
@@ -81,7 +71,6 @@ public class ParakeetRecognizer implements AutoCloseable {
         return ModelDownloader.isComplete(FILES, dir(context));
     }
 
-    /** Loads all three models. Slow (several seconds); call off the main thread. */
     public ParakeetRecognizer(File dir) throws OrtException, IOException {
         long t0 = System.currentTimeMillis();
         env = OrtEnvironment.getEnvironment();
@@ -96,7 +85,7 @@ public class ParakeetRecognizer implements AutoCloseable {
     private static OrtSession.SessionOptions options() throws OrtException {
         OrtSession.SessionOptions o = new OrtSession.SessionOptions();
         o.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
-        // An IME must stay small: no arena (memory goes back after each run), no pattern cache
+        // External: ONNX Runtime keeps arena and pattern-cache memory after a run; an IME must stay small
         o.setCPUArenaAllocator(false);
         o.setMemoryPatternOptimization(false);
         return o;
@@ -117,12 +106,11 @@ public class ParakeetRecognizer implements AutoCloseable {
         return v;
     }
 
-    /** Transcribes 16 kHz mono samples in [-1, 1]. */
     public synchronized String transcribe(float[] samples) throws Exception {
-        if (samples.length < 1600) return "";  // under 0.1 s, nothing to hear
+        if (samples.length < 1600) return "";
         long t0 = System.currentTimeMillis();
 
-        // 1. Log-mel features [1, 128, T]
+        // External: the preprocessor outputs log-mel features [1, 128, T]
         float[] feats;
         long featFrames, featLen;
         try (OnnxTensor wav = OnnxTensor.createTensor(env, FloatBuffer.wrap(samples), new long[]{1, samples.length});
@@ -135,7 +123,7 @@ public class ParakeetRecognizer implements AutoCloseable {
         }
         long t1 = System.currentTimeMillis();
 
-        // 2. Encoder [1, 1024, T'], stored as [dim][frame]
+        // External: the encoder outputs [1, 1024, T'], stored as [dim][frame]
         float[] encoded;
         int dim, frames, validFrames;
         try (OnnxTensor x = OnnxTensor.createTensor(env, FloatBuffer.wrap(feats), new long[]{1, 128, featFrames});
@@ -150,7 +138,6 @@ public class ParakeetRecognizer implements AutoCloseable {
         }
         long t2 = System.currentTimeMillis();
 
-        // 3. TDT greedy decode, one joint step per visited frame
         final int fDim = dim, fFrames = frames;
         final float[] frame = new float[dim];
         final float[][] state = {new float[2 * STATE_SIZE], new float[2 * STATE_SIZE]};

@@ -21,7 +21,6 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class OpenAITranscriber {
-
     public interface Callback {
         void onSuccess(String transcription);
         void onError(String errorMessage);
@@ -31,7 +30,6 @@ public class OpenAITranscriber {
     private static final String DEFAULT_ENDPOINT = "https://api.openai.com/v1/audio/transcriptions";
     private static final String DEFAULT_MODEL = "whisper-1";
 
-    // SharedPreferences keys (also used by SettingsActivity and IME toggle)
     public static final String PREF_BACKEND_TYPE = "backend_type";
     public static final String PREF_OPENAI_ENDPOINT = "openai_endpoint";
     public static final String PREF_OPENAI_API_KEY = "openai_api_key";
@@ -40,7 +38,6 @@ public class OpenAITranscriber {
     public static final String BACKEND_LOCAL = "local";
     public static final String BACKEND_OPENAI = "openai";
 
-    /** Error sent when the API returns no text (e.g. a silent chunk). */
     public static final String MSG_EMPTY_TRANSCRIPTION = "OpenAI returned empty transcription";
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -49,14 +46,6 @@ public class OpenAITranscriber {
             .readTimeout(60, TimeUnit.SECONDS)
             .build();
 
-    /**
-     * Transcribe PCM audio via OpenAI API.
-     * Runs on background thread. Callbacks on that same thread.
-     *
-     * @param context  Android context (for SharedPreferences)
-     * @param pcmData  Raw PCM 16-bit mono 16kHz audio
-     * @param callback Result callback (called from worker thread)
-     */
     public void transcribe(Context context, byte[] pcmData, Callback callback) {
         executor.execute(() -> {
             try {
@@ -66,7 +55,6 @@ public class OpenAITranscriber {
                 String apiKey = sp.getString(PREF_OPENAI_API_KEY, "");
                 String model = sp.getString(PREF_OPENAI_MODEL, DEFAULT_MODEL);
 
-                // Validate
                 if (endpoint.isEmpty()) {
                     callback.onError("OpenAI endpoint not configured");
                     return;
@@ -76,10 +64,8 @@ public class OpenAITranscriber {
                     return;
                 }
 
-                // Wrap PCM with WAV header
                 byte[] wavData = WavUtils.pcmToWav(pcmData, 16000, 1, 16);
 
-                // Build multipart request
                 RequestBody fileBody = RequestBody.create(
                         wavData,
                         MediaType.parse("audio/wav")
@@ -91,7 +77,6 @@ public class OpenAITranscriber {
                         .addFormDataPart("model", model)
                         .addFormDataPart("response_format", "text")
                         .addFormDataPart("language", Whisper.LANGUAGE);
-
 
                 Request request = new Request.Builder()
                         .url(endpoint)

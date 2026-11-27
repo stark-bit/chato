@@ -33,18 +33,8 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
 
-
-/**
- * Quick record: records up to {@link #MAX_MS} without the keyboard, transcribes with the current
- * backend and POSTs the text to the quick record endpoint. Each {@link #ACTION_TOGGLE} starts a
- * recording or stops the one in progress. Started by {@link QuickRecordActivity}, which the
- * quick record widget and the digital assistant gesture open.
- */
 public class QuickRecordService extends Service {
-
     public static final String ACTION_TOGGLE = "dev.starkbit.chato.action.QUICK_RECORD_TOGGLE";
-    /** Which endpoint quick record sends to (1 or 2). */
-    /** Endpoint (1 or 2) for this recording, e.g. from a quick record widget. 0 or absent = {@link EndpointSender#PREF_QUICK_RECORD}. */
     public static final String EXTRA_ENDPOINT = "endpoint";
     static final int MAX_MS = 30_000;
 
@@ -58,7 +48,6 @@ public class QuickRecordService extends Service {
 
     private static volatile int activeEndpoint;
 
-    /** True while recording for the given endpoint (1 or 2). */
     static boolean isRecordingTo(int index) {
         return state == State.RECORDING && activeEndpoint == index;
     }
@@ -76,7 +65,6 @@ public class QuickRecordService extends Service {
     private int sent;
     private String lastError;
 
-    /** @param endpoint 1 or 2, or 0 for the endpoint chosen in Settings */
     public static void toggle(Context context, int endpoint) {
         ContextCompat.startForegroundService(context, new Intent(context, QuickRecordService.class)
                 .setAction(ACTION_TOGGLE).putExtra(EXTRA_ENDPOINT, endpoint));
@@ -89,7 +77,7 @@ public class QuickRecordService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Every startForegroundService() call needs a matching startForeground()
+        // External: every startForegroundService() call needs a matching startForeground()
         startForeground(state == State.IDLE ? getString(R.string.quick_record_starting) : currentText());
         if (intent == null || !ACTION_TOGGLE.equals(intent.getAction())) {
             if (state == State.IDLE) stopSelf();
@@ -103,12 +91,11 @@ public class QuickRecordService extends Service {
         return START_NOT_STICKY;
     }
 
-    /** @param wanted the endpoint a widget asked for, or 0 to use the one chosen in Settings */
     private void begin(int wanted) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
         if (wanted >= 1 && wanted <= EndpointSender.COUNT) {
             EndpointSender.Endpoint ep = EndpointSender.load(sp, wanted);
-            if (!ep.isConfigured()) {  // the widget's endpoint, not silently another one
+            if (!ep.isConfigured()) {
                 finish(getString(R.string.quick_record_no_url, ep.displayName()));
                 return;
             }
@@ -134,14 +121,14 @@ public class QuickRecordService extends Service {
             @Override
             public void onUpdateReceived(String message) {
                 if (message.equals(Whisper.MSG_QUEUE_EMPTY)) {
-                    handler.post(() -> {  // posted after the last result
+                    handler.post(() -> {
                         session.onQueueEmpty();
                         if (recordingEnded) onTranscriptionFinished();
                     });
                 } else if (!message.equals(Whisper.MSG_PROCESSING) && !message.equals(Whisper.MSG_PROCESSING_DONE)
                         && !message.equals(Whisper.MSG_MODEL_LOADED)
                         && !message.equals(OpenAITranscriber.MSG_EMPTY_TRANSCRIPTION)) {
-                    handler.post(() -> lastError = message);  // e.g. network or model errors
+                    handler.post(() -> lastError = message);
                 }
             }
 
@@ -154,7 +141,7 @@ public class QuickRecordService extends Service {
         whisper.loadModel();
 
         session = new SendSession(new SendSession.Output() {
-            @Override public void type(String text) { }  // the endpoint is always configured
+            @Override public void type(String text) { }
             @Override public void send(EndpointSender.Endpoint ep, String text) {
                 pendingSends++;
                 EndpointSender.post(ep, text, QuickRecordService.this::onSent);
@@ -168,11 +155,11 @@ public class QuickRecordService extends Service {
         recorder.setListener(message -> {
             if (message.equals(Recorder.MSG_RECORDING)) return;
             handler.post(() -> {
-                if (recorder == null) return;  // already finished
+                if (recorder == null) return;
                 if (message.equals(Recorder.MSG_RECORDING_DONE)) onRecordingEnded();
                 else if (message.equals(Recorder.MSG_RECORDING_ERROR)) finish(getString(R.string.error_no_input));
                 else if (message.equals(Recorder.MSG_NO_PERMISSION)) finish(getString(R.string.need_record_audio_permission));
-                else finish(message);  // device error
+                else finish(message);
             });
         });
 
@@ -187,7 +174,6 @@ public class QuickRecordService extends Service {
     private void stopRecording() {
         handler.removeCallbacks(stopAtLimit);
         Recorder r = recorder;
-        // stop() waits for the recording thread, so keep it off the main thread
         if (r != null && r.isInProgress()) new Thread(r::stop, "quick-record-stop").start();
     }
 
@@ -200,7 +186,7 @@ public class QuickRecordService extends Service {
         setState(State.SENDING);
         boolean pending = whisper.hasPendingChunks();
         session.end(pending);
-        if (!pending) handler.post(this::onTranscriptionFinished);  // runs after the flush end() posted
+        if (!pending) handler.post(this::onTranscriptionFinished);
     }
 
     private void onTranscriptionFinished() {
@@ -229,7 +215,6 @@ public class QuickRecordService extends Service {
         else finish(getString(R.string.error_no_input));
     }
 
-    /** Ends the session, shows {@code message} (if any) and stops the service. */
     private void finish(String message) {
         if (message != null) toast(message);
         Log.d(TAG, "Finished: " + message);

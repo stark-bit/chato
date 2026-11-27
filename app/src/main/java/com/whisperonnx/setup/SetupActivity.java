@@ -25,13 +25,7 @@ import androidx.preference.PreferenceManager;
 import java.io.IOException;
 import java.io.InputStream;
 
-/**
- * Opens when a local model is needed but missing (first launch). Offers the in-app download of
- * Parakeet or Whisper, a remote server instead, or installing a Whisper zip that's already on
- * the phone. Choosing one saves it as the backend and closes the screen.
- */
 public class SetupActivity extends AppCompatActivity {
-
     private final ModelInstaller installer = new ModelInstaller(this);
     private ActivityResultLauncher<Intent> pickZip;
     private SharedPreferences sp;
@@ -89,7 +83,6 @@ public class SetupActivity extends AppCompatActivity {
         return extracting || installer.isRunning();
     }
 
-    /** Saves the choice and returns to whatever opened setup (the test screen or the keyboard's app). */
     private void done(int backend) {
         Backends.select(sp, backend);
         finish();

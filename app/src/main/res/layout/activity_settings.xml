@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Settings styled after FUTO keyboard settings: plain rows, accent section labels, switches -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -15,7 +14,6 @@
             android:orientation="vertical"
             android:paddingBottom="24dp">
 
-            <!-- ===== Quick entry to the test screen (MainActivity) ===== -->
             <LinearLayout
                 android:id="@+id/row_test_transcription"
                 style="@style/Settings.Row"
@@ -47,7 +45,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- ===== Transcription backend ===== -->
             <TextView
                 style="@style/Settings.Header"
                 android:paddingTop="8dp"
@@ -104,7 +101,6 @@
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
-            <!-- ===== Send to endpoint (filled by SettingsActivity) ===== -->
             <TextView
                 style="@style/Settings.Header"
                 android:text="@string/settings_endpoints" />
@@ -121,7 +117,6 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical" />
 
-            <!-- ===== Quick record ===== -->
             <TextView
                 style="@style/Settings.Header"
                 android:text="@string/quick_record" />
@@ -164,7 +159,6 @@
                     android:text="@string/settings_assistant_summary" />
             </LinearLayout>
 
-            <!-- ===== General ===== -->
             <TextView
                 style="@style/Settings.Header"
                 android:text="@string/settings_general" />

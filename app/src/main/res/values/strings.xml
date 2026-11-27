@@ -89,7 +89,6 @@
     <string name="setup_zip_summary">Already have whisper_small_int8.zip on the phone? Pick it here.</string>
     <string name="setup_unpacking">Unpacking %1$s…</string>
     <string name="loading_model">Loading %1$s…</string>
-    <!-- Names below follow docs/GLOSSARY.md -->
     <string name="switch_keyboard_button">Switch keyboard</string>
     <string name="model_parakeet">Parakeet</string>
     <string name="model_whisper">Whisper small</string>
@@ -107,13 +106,11 @@
     <string name="model_download_failed">Download failed: %1$s. Try again to resume.</string>
     <string name="setup_zip_unreadable">Can\'t open the file</string>
     <string name="setup_zip_wrong">This isn\'t the Whisper model zip</string>
-    <!-- Order matches Backends.WHISPER, PARAKEET, REMOTE -->
     <string-array name="backend_labels">
         <item>Whisper small</item>
         <item>Parakeet (recommended)</item>
         <item>OpenAI-compatible server</item>
     </string-array>
-    <!-- Quick record (widget and digital assistant) -->
     <string name="quick_record">Quick record</string>
     <string name="quick_record_widget_description">Tap to record up to 30 s and send it to an endpoint. Place one for each endpoint</string>
     <string name="quick_record_starting">Starting…</string>

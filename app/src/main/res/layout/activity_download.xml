@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- First-run setup: choose where speech is transcribed. Same rows and palette as Settings. -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -36,7 +35,6 @@
                 android:gravity="center_horizontal"
                 android:text="@string/setup_intro" />
 
-            <!-- ===== On this phone ===== -->
             <TextView
                 style="@style/Settings.Header"
                 android:text="@string/setup_on_phone" />
@@ -89,7 +87,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- ===== On a server ===== -->
             <TextView
                 style="@style/Settings.Header"
                 android:text="@string/setup_on_server" />
@@ -118,7 +115,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- ===== Offline install of the Whisper zip ===== -->
             <TextView
                 style="@style/Settings.Header"
                 android:text="@string/setup_other" />

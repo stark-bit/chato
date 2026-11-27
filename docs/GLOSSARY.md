@@ -72,10 +72,8 @@ Kept to avoid churn, and so stored settings keep working:
 
 - The `Whisper` class runs whichever backend is selected, including Parakeet and the server.
 - The Java package is `com.whisperonnx`; the app ID is `dev.starkbit.chato`. Each feature has its own
-  package, see [ARCHITECTURE.md](ARCHITECTURE.md).
-- Android stores some old class names (`MainActivity`, `WhisperInputMethodService`,
-  `WhisperRecognitionService`, `WhisperRecognizeActivity`, `QuickRecordActivity`,
-  `QuickRecordWidget`), so they stay registered as aliases or empty classes. See
-  [ARCHITECTURE.md](ARCHITECTURE.md#registered-names).
+  package.
+- Android stores some old class names, so they stay registered as aliases or empty classes in
+  `com.whisperonnx`. `ComponentsTest` lists them.
 - `backend_type=openai` and the `openai_*` keys mean the server, whatever software runs it.
 - `activity_main.xml` is the test screen; `activity_download.xml` is the setup screen.

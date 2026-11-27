@@ -5,12 +5,9 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-/** Recorder.findQuietCut: chunks should be split in the quietest spot of the search window. */
 public class RecorderCutTest {
+    private static final int FRAME = Recorder.VAD_FRAME_SIZE * 2;
 
-    private static final int FRAME = Recorder.VAD_FRAME_SIZE * 2;  // bytes
-
-    /** 16-bit little-endian PCM, every sample at the given amplitude. */
     private static byte[] tone(int bytes, int amplitude) {
         byte[] pcm = new byte[bytes];
         for (int i = 0; i + 1 < bytes; i += 2) {
@@ -39,7 +36,7 @@ public class RecorderCutTest {
 
     @Test public void ignoresQuietAudioOutsideTheWindow() {
         byte[] pcm = tone(FRAME * 10, 10000);
-        silence(pcm, 0, FRAME * 2);  // quiet, but before the window
+        silence(pcm, 0, FRAME * 2);
         int from = FRAME * 4, to = FRAME * 10;
         int cut = Recorder.findQuietCut(pcm, from, to);
         assertTrue("cut " + cut, cut >= from && cut <= to);

@@ -22,7 +22,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 public class WhisperModelTest {
-
     @Rule public TemporaryFolder tmp = new TemporaryFolder();
 
     private static byte[] zip(String... names) throws IOException {
@@ -53,7 +52,6 @@ public class WhisperModelTest {
                 WhisperModel.extract(new ByteArrayInputStream(zip(bad)), dir, null);
                 fail("accepted " + bad);
             } catch (IOException expected) {
-                // ok
             }
         }
         assertFalse(new File(tmp.getRoot(), "evil.onnx").exists());

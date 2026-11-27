@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Mic key (idle). Rainbow GradientBorderDrawable replaces it while recording -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
     android:color="#22FFFFFF">
     <item>

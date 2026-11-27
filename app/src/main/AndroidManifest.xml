@@ -13,7 +13,6 @@
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!--  without this we get: caller doesn't have permission:android.permission.RECORD_AUDIO -->
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
@@ -28,9 +27,6 @@
         android:largeHeap="true"
         android:theme="@style/Theme.Whisper.ActionBar"
         android:networkSecurityConfig="@xml/network_security_config">
-        <!-- An <activity-alias> or a one-line class in com.whisperonnx keeps each name Android
-             stores (launcher icon, enabled keyboard, voice input, assistant, placed widgets)
-             from before the code moved into feature packages. See docs/ARCHITECTURE.md. -->
         <activity android:name=".testscreen.TestScreenActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:theme="@style/Theme.Whisper.Settings"
@@ -113,7 +109,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Quick record: the widget and the digital assistant gesture open QuickRecordActivity -->
         <activity android:name=".quickrecord.QuickRecordActivity"
             android:theme="@style/Theme.Chato.Invisible"
             android:label="@string/quick_record"

@@ -67,7 +67,6 @@ public class TestScreenActivity extends AppCompatActivity {
     private MaterialSwitch append;
     private Spinner spinnerBackend;
     private TextView tvBackendInfo;
-    /** Backend the loaded model was created for, so re-selecting it doesn't reload. */
     private int loadedBackend = -1;
     private final ModelInstaller modelInstaller = new ModelInstaller(this);
     private ProgressBar processingBar;
@@ -78,9 +77,9 @@ public class TestScreenActivity extends AppCompatActivity {
         if (gradientDrawable == null) {
             float density = getResources().getDisplayMetrics().density;
             gradientDrawable = new GradientBorderDrawable(
-                10 * density,   // cornerRadius
-                0.5f * density, // borderWidth (near-invisible)
-                15 * density    // glowBlur
+                10 * density,
+                0.5f * density,
+                15 * density
             );
         }
         return gradientDrawable;
@@ -126,7 +125,6 @@ public class TestScreenActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.activity_main, menu);
 
         return true;
@@ -162,14 +160,10 @@ public class TestScreenActivity extends AppCompatActivity {
         btnInfo = findViewById(R.id.btnInfo);
         btnInfo.setOnClickListener(view -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/woheller69/whisperIMEplus#Donate"))));
 
-
-
-        // Implementation of record button functionality
         btnRecord = findViewById(R.id.btnRecord);
 
         btnRecord.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                // Pressed
                 applyGradientBackground();
                 Log.d(TAG, "Start recording...");
                 if (!mWhisper.isInProgress()) {
@@ -188,7 +182,6 @@ public class TestScreenActivity extends AppCompatActivity {
                 } else (Toast.makeText(this,getString(R.string.please_wait),Toast.LENGTH_SHORT)).show();
 
             } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                // Released
                 revertBackground();
                 if (mRecorder != null && mRecorder.isInProgress()) {
                     Log.d(TAG, "Recording is in progress... stopping...");
@@ -201,16 +194,13 @@ public class TestScreenActivity extends AppCompatActivity {
         tvResult = findViewById(R.id.tvResult);
         fabCopy = findViewById(R.id.fabCopy);
         fabCopy.setOnClickListener(v -> {
-            // Get the text from tvResult
             String textToCopy = tvResult.getText().toString().trim();
 
-            // Copy the text to the clipboard
             ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
             ClipData clip = ClipData.newPlainText(getString(R.string.model_output), textToCopy);
             clipboard.setPrimaryClip(clip);
         });
 
-        // Audio recording functionality
         mRecorder = new Recorder(this);
         mRecorder.setListener(new Recorder.RecorderListener() {
             @Override
@@ -239,7 +229,6 @@ public class TestScreenActivity extends AppCompatActivity {
         });
         FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
         if (GithubStar.shouldShowStarDialog(this)) GithubStar.starDialog(this, "https://github.com/woheller69/whisperIMEplus");
-        // Assume this Activity is the current activity, check record permission
         checkPermissions();
 
     }
@@ -262,7 +251,6 @@ public class TestScreenActivity extends AppCompatActivity {
         }
     }
 
-    // Model initialization
     private void initModel() {
         mWhisper = new Whisper(this);
         if (mWhisper.isModelMissing()) Components.openSetup(this);
@@ -277,7 +265,6 @@ public class TestScreenActivity extends AppCompatActivity {
                     runOnUiThread(() -> tvStatus.setText(getString(R.string.processing)));
                     startTime = System.currentTimeMillis();
                 } else if (!message.equals(Whisper.MSG_PROCESSING_DONE) && !message.equals(Whisper.MSG_QUEUE_EMPTY)) {
-                    // Errors (server, model loading, empty result): show them instead of spinning forever
                     runOnUiThread(() -> {
                         processingBar.setIndeterminate(false);
                         tvStatus.setText(message);
@@ -302,7 +289,6 @@ public class TestScreenActivity extends AppCompatActivity {
                 });
             }
         });
-        // Local: "Loading …" until MSG_MODEL_LOADED. Server, or setup screen opened: nothing to wait for
         boolean remote = OpenAITranscriber.BACKEND_OPENAI.equals(
                 sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL));
         if (!remote && !mWhisper.isModelMissing()) {
@@ -321,7 +307,6 @@ public class TestScreenActivity extends AppCompatActivity {
         }
     }
 
-    /** Backend dropdown: switching reloads the model so the next recording uses it. */
     private void setupBackendPicker() {
         spinnerBackend = findViewById(R.id.spinner_backend);
         tvBackendInfo = findViewById(R.id.tvBackendInfo);
@@ -340,7 +325,6 @@ public class TestScreenActivity extends AppCompatActivity {
                     spinnerBackend.setSelection(loadedBackend);
                     return;
                 }
-                // A local model that isn't installed yet is downloaded first, then loaded
                 int previous = loadedBackend;
                 Runnable use = () -> {
                     Backends.select(sp, position);
@@ -371,7 +355,6 @@ public class TestScreenActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Settings may have changed the backend or server, or setup installed a model, while we were away
         if (spinnerBackend == null) return;
         int current = Backends.current(sp);
         if (current != loadedBackend || (mWhisper != null && mWhisper.modelInstalledSince())) {
@@ -412,7 +395,6 @@ public class TestScreenActivity extends AppCompatActivity {
         }
     }
 
-    // Recording calls
     private void startRecording() {
         checkPermissions();
         mRecorder.start();
@@ -422,7 +404,6 @@ public class TestScreenActivity extends AppCompatActivity {
         mRecorder.stop();
     }
 
-    // Transcription calls
     private void startProcessing() {
         if (countDownTimer!=null) { countDownTimer.cancel();}
         runOnUiThread(() -> {

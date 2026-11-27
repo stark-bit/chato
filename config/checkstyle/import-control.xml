@@ -1,14 +1,8 @@
 <?xml version="1.0"?>
 <!DOCTYPE import-control PUBLIC "-//Checkstyle//DTD ImportControl Configuration 1.4//EN"
         "https://checkstyle.org/dtds/import_control_1_4.dtd">
-<!--
-  Package boundaries, explained in docs/ARCHITECTURE.md. Imports of outside libraries are allowed
-  unless a rule below says otherwise. ArchUnit (ArchitectureTest) checks the same layers on the
-  compiled classes, which also catches fully qualified names that skip imports.
--->
 <import-control pkg="com.whisperonnx" strategyOnMismatch="allowed">
 
-    <!-- Features: may use the shared packages, never another feature or the vendored code. -->
     <subpackage name="keyboard">
         <disallow pkg="com\.whisperonnx\.(quickrecord|voiceinput|testscreen|setup|settings|thirdparty)" regex="true"/>
     </subpackage>
@@ -28,12 +22,10 @@
         <disallow pkg="com\.whisperonnx\.(keyboard|quickrecord|voiceinput|testscreen|setup|thirdparty)" regex="true"/>
     </subpackage>
 
-    <!-- Shared code with UI: no features. -->
     <subpackage name="ui">
         <disallow pkg="com\.whisperonnx\.(keyboard|quickrecord|voiceinput|testscreen|setup|settings|thirdparty)" regex="true"/>
     </subpackage>
 
-    <!-- Shared code without UI: no features, no ui, no R, no Android UI classes. -->
     <subpackage name="backend">
         <disallow pkg="com\.whisperonnx\.(keyboard|quickrecord|voiceinput|testscreen|setup|settings|ui)" regex="true"/>
         <disallow class="com.whisperonnx.R"/>
@@ -56,7 +48,6 @@
         <disallow pkg="com.google.android.material"/>
     </subpackage>
 
-    <!-- Vendored RTranslator code: a leaf, it uses nothing of ours. -->
     <subpackage name="thirdparty">
         <allow pkg="com.whisperonnx.thirdparty"/>
         <disallow pkg="com.whisperonnx"/>

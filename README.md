@@ -155,7 +155,7 @@ Other targets:
 ```
 make build     # debug APK only: app/build/outputs/apk/debug/app-debug.apk
 make test      # JVM unit tests, no device needed
-make check     # package boundaries, lint and unit tests (see docs/ARCHITECTURE.md)
+make check     # package boundaries, comments, lint and unit tests
 make bench     # compare Whisper and Parakeet on the phone using the WAVs in bench/
 make push-parakeet PARAKEET_DIR=/path/to/models  # copy Parakeet files over USB instead of downloading
 make release   # signed release APK in dist/ (needs a signing key, see below)

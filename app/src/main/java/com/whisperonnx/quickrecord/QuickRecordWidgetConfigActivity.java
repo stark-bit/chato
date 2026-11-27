@@ -13,9 +13,7 @@ import androidx.preference.PreferenceManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
-/** Asks which endpoint a new (or reconfigured) quick record widget sends to. */
 public class QuickRecordWidgetConfigActivity extends AppCompatActivity {
-
     private int widgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
 
     @Override
@@ -23,7 +21,7 @@ public class QuickRecordWidgetConfigActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         Bundle extras = getIntent().getExtras();
         if (extras != null) widgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
-        setResult(RESULT_CANCELED, result());  // backing out doesn't add the widget
+        setResult(RESULT_CANCELED, result());  // External: backing out leaves RESULT_CANCELED, so Android doesn't add the widget
         if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
             finish();
             return;

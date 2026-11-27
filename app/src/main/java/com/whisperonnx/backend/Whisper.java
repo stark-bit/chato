@@ -23,7 +23,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Whisper {
-
     public interface WhisperListener {
         void onUpdateReceived(String message);
         void onResultReceived(WhisperResult result);
@@ -32,12 +31,9 @@ public class Whisper {
     private static final String TAG = "Whisper";
     public static final String MSG_PROCESSING = "Processing...";
     public static final String MSG_PROCESSING_DONE = "Processing done...!";
-    /** Sent when the chunk queue has been fully processed. */
     public static final String MSG_QUEUE_EMPTY = "Queue empty";
-    /** Sent once the local model has finished loading (not for the remote backend). */
     public static final String MSG_MODEL_LOADED = "Model loaded";
 
-    /** Which on-device engine "local" means: Whisper small, or the experimental Parakeet. */
     public static final String PREF_LOCAL_ENGINE = "local_engine";
     public static final String ENGINE_WHISPER = "whisper";
     public static final String ENGINE_PARAKEET = "parakeet";
@@ -49,7 +45,6 @@ public class Whisper {
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
     private Recognizer.Action mAction;
-    /** The app only transcribes English. */
     public static final String LANGUAGE = "en";
     private final String mLangCode = LANGUAGE;
     private WhisperListener mUpdateListener;
@@ -68,7 +63,6 @@ public class Whisper {
     private volatile ParakeetRecognizer parakeet;
     private final CountDownLatch parakeetReady = new CountDownLatch(1);
 
-    // Chunked (streaming) transcription: processed strictly in order on one thread
     private final BlockingQueue<byte[]> chunkQueue = new LinkedBlockingQueue<>();
     private final AtomicInteger chunksPending = new AtomicInteger(0);
     private Thread chunkThread;
@@ -88,7 +82,6 @@ public class Whisper {
         mLocalEngine = engine;
 
         if (mBackendType.equals(OpenAITranscriber.BACKEND_OPENAI) || mLocalEngine.equals(ENGINE_PARAKEET)) {
-            // Remote backend or Parakeet: no Whisper model files needed, just start process loop
             recordBufferThread = new Thread(this::processRecordBufferLoop, "whisper-record");
             recordBufferThread.start();
             return;
@@ -100,37 +93,27 @@ public class Whisper {
             return;
         }
 
-        if (!WhisperModel.isInstalled(mContext)) {  // the caller opens the setup screen, see isModelMissing()
+        if (!WhisperModel.isInstalled(mContext)) {
             needsSetup = true;
-        } else { // Start thread for RecordBuffer transcription
+        } else {
             recordBufferThread = new Thread(this::processRecordBufferLoop, "whisper-record");
             recordBufferThread.start();
         }
 
     }
 
-    /**
-     * True if this instance started without a model (so the setup screen opened) and one has been
-     * installed since. The caller should then create a fresh instance.
-     */
     public boolean modelInstalledSince() {
         return needsSetup && (WhisperModel.isInstalled(mContext) || ParakeetRecognizer.isInstalled(mContext));
     }
 
-    /**
-     * True if this instance has loaded, or is loading, a local model. An instance created while
-     * the remote backend was selected has none, so switching to local needs a new instance.
-     */
     public boolean hasLocalModel() {
         return localModelRequested;
     }
 
-    /** True if no model was found, so nothing loads. The caller should open the setup screen. */
     public boolean isModelMissing() {
         return needsSetup;
     }
 
-    /** The local engine this instance was created with. */
     public String getLocalEngine() {
         return mLocalEngine;
     }
@@ -141,11 +124,10 @@ public class Whisper {
 
     public void loadModel() {
         if (mBackendType.equals(OpenAITranscriber.BACKEND_OPENAI)) {
-            // No model to load for remote backend
             return;
         }
         localModelRequested = true;
-        if (needsSetup) return;  // the setup screen is open; modelInstalledSince() triggers a reload
+        if (needsSetup) return;
         if (mLocalEngine.equals(ENGINE_PARAKEET)) {
             new Thread(() -> {
                 try {
@@ -173,7 +155,6 @@ public class Whisper {
                 sendUpdate("Whisper failed to load");
             }
         });
-
 
         recognizer.addCallback(new RecognizerListener() {
             @Override
@@ -206,7 +187,7 @@ public class Whisper {
             chunkThread = null;
         }
         if (recordBufferThread != null) {
-            recordBufferThread.interrupt();  // otherwise it waits for work forever
+            recordBufferThread.interrupt();
             recordBufferThread = null;
         }
         if (recognizer != null) {
@@ -222,7 +203,7 @@ public class Whisper {
         }
     }
 
-    /** Whisper's translate task, which turns speech into English text. Off means transcribe. */
+    // External: Whisper's translate task turns speech into English text
     public void setTranslate(boolean translate) {
         this.mAction = translate ? Recognizer.ACTION_TRANSLATE : Recognizer.ACTION_TRANSCRIBE;
     }
@@ -249,7 +230,6 @@ public class Whisper {
         return mInProgress.get();
     }
 
-    /** Queues a PCM chunk for transcription. Results arrive in order via onResultReceived. */
     public synchronized void enqueueChunk(byte[] pcm) {
         if (chunkThread == null) {
             chunkThread = new Thread(this::processChunkLoop, "whisper-chunks");
@@ -263,7 +243,6 @@ public class Whisper {
         return chunksPending.get() > 0;
     }
 
-    /** Drops chunks that have not started processing yet. */
     public void clearChunks() {
         int dropped = 0;
         while (chunkQueue.poll() != null) dropped++;
@@ -294,7 +273,6 @@ public class Whisper {
         }
     }
 
-    /** Transcribes one chunk and waits for its result so output order matches speech order. */
     private void transcribeChunkBlocking(byte[] pcm) throws InterruptedException {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
         String backend = sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL);
@@ -361,7 +339,6 @@ public class Whisper {
                 return;
             }
 
-            // Refresh backend type (user may have toggled)
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
             mBackendType = sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL);
 
@@ -424,7 +401,6 @@ public class Whisper {
         });
     }
 
-    /** Runs Parakeet synchronously on the calling (worker) thread, waiting for it to load first. */
     private void transcribeParakeet(float[] samples) throws InterruptedException {
         if (!parakeetReady.await(60, TimeUnit.SECONDS) || parakeet == null) {
             sendUpdate("Parakeet model not loaded");

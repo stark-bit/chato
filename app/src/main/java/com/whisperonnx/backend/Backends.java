@@ -4,13 +4,7 @@ import android.content.SharedPreferences;
 
 import java.net.URI;
 
-/**
- * The three transcription choices shown in Settings and on the test screen, and how they map
- * to preferences: "backend_type" (local / openai) plus, for local, "local_engine".
- */
 public final class Backends {
-
-    /** Positions in the dropdowns; labels are R.array.backend_labels in the same order. */
     public static final int WHISPER = 0, PARAKEET = 1, REMOTE = 2;
 
     private Backends() {}
@@ -32,7 +26,6 @@ public final class Backends {
         ed.apply();
     }
 
-    /** One line saying what will actually run for {@code choice}. */
     public static String describe(SharedPreferences sp, int choice, boolean parakeetInstalled) {
         switch (choice) {
             case REMOTE:
