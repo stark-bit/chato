@@ -1,9 +1,11 @@
 package com.whisperonnx.voiceinput;
 
 import com.whisperonnx.R;
+import com.whisperonnx.backend.TranscriptionStatus;
 import com.whisperonnx.backend.Whisper;
 import com.whisperonnx.backend.WhisperResult;
 import com.whisperonnx.recording.Recorder;
+import com.whisperonnx.recording.RecorderEvent;
 import com.whisperonnx.ui.Components;
 import com.whisperonnx.ui.HapticFeedback;
 
@@ -39,7 +41,7 @@ public class VoiceInputService extends RecognitionService {
         initModel(callback);
 
         mRecorder = new Recorder(this);
-        mRecorder.setListener(message -> onRecorderUpdate(message, callback));
+        mRecorder.setListener((event, detail) -> onRecorderUpdate(event, callback));
 
         if (!mWhisper.isInProgress()) {
             HapticFeedback.vibrate(this);
@@ -48,17 +50,17 @@ public class VoiceInputService extends RecognitionService {
         }
     }
 
-    private void onRecorderUpdate(String message, Callback callback) {
-        switch (message) {
-            case Recorder.MSG_RECORDING:
+    private void onRecorderUpdate(RecorderEvent event, Callback callback) {
+        switch (event) {
+            case RECORDING:
                 call(() -> callback.rmsChanged(10));
                 break;
-            case Recorder.MSG_RECORDING_DONE:
+            case DONE:
                 HapticFeedback.vibrate(this);
                 call(() -> callback.rmsChanged(-20.0f));
                 startTranscription();
                 break;
-            case Recorder.MSG_RECORDING_ERROR:
+            case TOO_SHORT:
                 call(() -> callback.error(ERROR_CLIENT));
                 break;
         }
@@ -102,7 +104,7 @@ public class VoiceInputService extends RecognitionService {
         mWhisper.loadModel();
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
-            public void onUpdateReceived(String message) { }
+            public void onUpdateReceived(TranscriptionStatus status, String detail) { }
 
             @Override
             public void onResultReceived(WhisperResult whisperResult) {

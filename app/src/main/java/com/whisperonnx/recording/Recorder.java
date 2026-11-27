@@ -29,7 +29,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Recorder {
     public interface RecorderListener {
-        void onUpdateReceived(String message);
+        void onUpdateReceived(RecorderEvent event, String detail);
     }
 
     public interface ChunkListener {
@@ -42,12 +42,6 @@ public class Recorder {
     private static final int BYTES_PER_SECOND = SAMPLE_RATE * 2;
 
     private static final String TAG = "Recorder";
-    public static final String ACTION_STOP = "Stop";
-    public static final String ACTION_RECORD = "Record";
-    public static final String MSG_RECORDING = "Recording...";
-    public static final String MSG_RECORDING_DONE = "Recording done...!";
-    public static final String MSG_RECORDING_ERROR = "Recording error...";
-    public static final String MSG_NO_PERMISSION = "No mic permission";
 
     private final Context mContext;
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
@@ -136,9 +130,13 @@ public class Recorder {
         return mInProgress.get();
     }
 
-    private void sendUpdate(String message) {
+    private void sendUpdate(RecorderEvent event) {
+        sendUpdate(event, null);
+    }
+
+    private void sendUpdate(RecorderEvent event, String detail) {
         if (mListener != null)
-            mListener.onUpdateReceived(message);
+            mListener.onUpdateReceived(event, detail);
     }
 
     private void recordLoop() {
@@ -160,7 +158,7 @@ public class Recorder {
                 recordAudio();
             } catch (Exception e) {
                 Log.e(TAG, "Recording error...", e);
-                sendUpdate(e.getMessage());
+                sendUpdate(RecorderEvent.FAILED, e.getMessage());
             } finally {
                 mInProgress.set(false);
             }
@@ -170,7 +168,7 @@ public class Recorder {
     private void recordAudio() {
         if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             Log.d(TAG, "AudioRecord permission is not granted");
-            sendUpdate(MSG_NO_PERMISSION);
+            sendUpdate(RecorderEvent.NO_PERMISSION);
             return;
         }
 
@@ -212,7 +210,7 @@ public class Recorder {
         audioManager.setBluetoothScoOn(false);
 
         deliver(outputBuffer, chunkListener);
-        sendUpdate(totalBytesRead > 6400 ? MSG_RECORDING_DONE : MSG_RECORDING_ERROR);
+        sendUpdate(totalBytesRead > 6400 ? RecorderEvent.DONE : RecorderEvent.TOO_SHORT);
 
         synchronized (fileSavedLock) {
             fileSavedLock.notify();
@@ -250,7 +248,7 @@ public class Recorder {
 
     private boolean trackSpeech(byte[] audioData, int bytesRead, boolean isRecording, byte[] vadAudioBuffer) {
         if (!useVAD) {
-            if (!isRecording) sendUpdate(MSG_RECORDING);
+            if (!isRecording) sendUpdate(RecorderEvent.RECORDING);
             return true;
         }
         if (bytesRead != VAD_FRAME_SIZE * 2) return isRecording;
@@ -258,7 +256,7 @@ public class Recorder {
         boolean isSpeech = vad.isSpeech(vadAudioBuffer);
         if (isSpeech && !isRecording) {
             Log.d(TAG, "VAD Speech detected: recording starts");
-            sendUpdate(MSG_RECORDING);
+            sendUpdate(RecorderEvent.RECORDING);
         }
         if (!isSpeech && isRecording) mInProgress.set(false);
         return isSpeech;

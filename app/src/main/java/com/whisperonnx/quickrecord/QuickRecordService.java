@@ -2,15 +2,18 @@ package com.whisperonnx.quickrecord;
 
 import com.whisperonnx.prefs.Prefs;
 import com.whisperonnx.R;
-import com.whisperonnx.backend.OpenAITranscriber;
+import com.whisperonnx.backend.TranscriptionStatus;
 import com.whisperonnx.backend.Whisper;
 import com.whisperonnx.backend.WhisperResult;
 import com.whisperonnx.endpoint.EndpointSender;
+import com.whisperonnx.endpoint.SendFailure;
 import com.whisperonnx.endpoint.SendSession;
 import com.whisperonnx.recording.OtherAudioPauser;
 import com.whisperonnx.recording.Recorder;
+import com.whisperonnx.recording.RecorderEvent;
 import com.whisperonnx.ui.Components;
 import com.whisperonnx.ui.HapticFeedback;
+import com.whisperonnx.ui.Labels;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -105,8 +108,8 @@ public class QuickRecordService extends Service {
         }
         whisper.setListener(new Whisper.WhisperListener() {
             @Override
-            public void onUpdateReceived(String message) {
-                onWhisperUpdate(message);
+            public void onUpdateReceived(TranscriptionStatus status, String detail) {
+                onWhisperUpdate(status, detail);
             }
 
             @Override
@@ -121,7 +124,7 @@ public class QuickRecordService extends Service {
             @Override public void type(String text) { }
             @Override public void send(EndpointSender.Endpoint ep, String text) {
                 pendingSends++;
-                EndpointSender.post(ep, text, QuickRecordService.this::onSent);
+                EndpointSender.post(ep, Labels.endpoint(QuickRecordService.this, ep), text, QuickRecordService.this::onSent);
             }
         }, handler::post);
         session.begin(endpoint);
@@ -129,9 +132,9 @@ public class QuickRecordService extends Service {
         recorder = new Recorder(this);
         recorder.setChunkMs(MAX_MS);
         recorder.setChunkListener(pcm -> whisper.enqueueChunk(pcm));
-        recorder.setListener(message -> {
-            if (message.equals(Recorder.MSG_RECORDING)) return;
-            handler.post(() -> onRecorderUpdate(message));
+        recorder.setListener((event, detail) -> {
+            if (event == RecorderEvent.RECORDING) return;
+            handler.post(() -> onRecorderUpdate(event, detail));
         });
 
         otherAudio = new OtherAudioPauser(this);
@@ -146,7 +149,7 @@ public class QuickRecordService extends Service {
         if (wanted >= 1 && wanted <= EndpointSender.COUNT) {
             EndpointSender.Endpoint ep = EndpointSender.load(prefs, wanted);
             if (ep.isConfigured()) return wanted;
-            finish(getString(R.string.quick_record_no_url, ep.displayName()));
+            finish(getString(R.string.quick_record_no_url, Labels.endpoint(this, ep)));
             return 0;
         }
         boolean[] configured = new boolean[EndpointSender.COUNT];
@@ -156,19 +159,9 @@ public class QuickRecordService extends Service {
         return picked;
     }
 
-    private void onWhisperUpdate(String message) {
-        switch (message) {
-            case Whisper.MSG_QUEUE_EMPTY:
-                handler.post(this::onQueueEmpty);
-                break;
-            case Whisper.MSG_PROCESSING:
-            case Whisper.MSG_PROCESSING_DONE:
-            case Whisper.MSG_MODEL_LOADED:
-            case OpenAITranscriber.MSG_EMPTY_TRANSCRIPTION:
-                break;
-            default:
-                handler.post(() -> lastError = message);
-        }
+    private void onWhisperUpdate(TranscriptionStatus status, String detail) {
+        if (status == TranscriptionStatus.QUEUE_EMPTY) handler.post(this::onQueueEmpty);
+        else if (status.isProblem) handler.post(() -> lastError = Labels.problem(this, status, detail));
     }
 
     private void onQueueEmpty() {
@@ -176,20 +169,20 @@ public class QuickRecordService extends Service {
         if (recordingEnded) onTranscriptionFinished();
     }
 
-    private void onRecorderUpdate(String message) {
+    private void onRecorderUpdate(RecorderEvent event, String detail) {
         if (recorder == null) return;
-        switch (message) {
-            case Recorder.MSG_RECORDING_DONE:
+        switch (event) {
+            case DONE:
                 onRecordingEnded();
                 break;
-            case Recorder.MSG_RECORDING_ERROR:
+            case TOO_SHORT:
                 finish(getString(R.string.error_no_input));
                 break;
-            case Recorder.MSG_NO_PERMISSION:
+            case NO_PERMISSION:
                 finish(getString(R.string.need_record_audio_permission));
                 break;
             default:
-                finish(message);
+                finish(Labels.recordingFailed(this, detail));
         }
     }
 
@@ -217,14 +210,14 @@ public class QuickRecordService extends Service {
         maybeFinish();
     }
 
-    private void onSent(EndpointSender.Endpoint ep, String text, String error) {
+    private void onSent(EndpointSender.Endpoint ep, String text, SendFailure failure) {
         pendingSends--;
-        if (error == null) {
+        if (failure == null) {
             sent++;
         } else {
             ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Dictation", text));
-            lastError = getString(R.string.endpoint_failed, ep.displayName(), error);
+            lastError = getString(R.string.endpoint_failed, Labels.endpoint(this, ep), Labels.sendFailure(this, failure));
             HapticFeedback.vibrate(this);
         }
         maybeFinish();
@@ -233,7 +226,7 @@ public class QuickRecordService extends Service {
     private void maybeFinish() {
         if (!transcriptionFinished || pendingSends > 0) return;
         if (lastError != null) finish(lastError);
-        else if (sent > 0) finish(getString(R.string.endpoint_sent, endpoint.displayName()));
+        else if (sent > 0) finish(getString(R.string.endpoint_sent, Labels.endpoint(this, endpoint)));
         else finish(getString(R.string.error_no_input));
     }
 
@@ -276,7 +269,7 @@ public class QuickRecordService extends Service {
 
     private String currentText() {
         return state == State.RECORDING ? getString(R.string.quick_record_recording)
-                : getString(R.string.endpoint_target, endpoint == null ? "" : endpoint.displayName());
+                : getString(R.string.endpoint_target, endpoint == null ? "" : Labels.endpoint(this, endpoint));
     }
 
     private void startForeground(String text) {

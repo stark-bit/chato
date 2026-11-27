@@ -5,15 +5,18 @@ import com.whisperonnx.BuildConfig;
 import com.whisperonnx.R;
 import com.whisperonnx.backend.Backends;
 import com.whisperonnx.backend.ParakeetRecognizer;
+import com.whisperonnx.backend.TranscriptionStatus;
 import com.whisperonnx.backend.Whisper;
 import com.whisperonnx.backend.WhisperModel;
 import com.whisperonnx.backend.WhisperResult;
 import com.whisperonnx.recording.Recorder;
+import com.whisperonnx.recording.RecorderEvent;
 import com.whisperonnx.ui.Permissions;
 import com.whisperonnx.ui.Components;
 import com.whisperonnx.ui.RecordCountdown;
 import com.whisperonnx.ui.RecordGlow;
 import com.whisperonnx.ui.HapticFeedback;
+import com.whisperonnx.ui.Labels;
 import com.whisperonnx.ui.ModelInstaller;
 import com.whisperonnx.ui.ThemeUtils;
 
@@ -172,20 +175,20 @@ public class TestScreenActivity extends AppCompatActivity {
         stopRecording();
     }
 
-    private void onRecorderUpdate(String message) {
-        Log.d(TAG, "Update is received, Message: " + message);
-        switch (message) {
-            case Recorder.MSG_RECORDING:
+    private void onRecorderUpdate(RecorderEvent event, String detail) {
+        Log.d(TAG, "Recorder: " + event + " " + detail);
+        switch (event) {
+            case RECORDING:
                 runOnUiThread(() -> tvStatus.setText(getString(R.string.test_recording, getString(R.string.record_button))));
                 runOnUiThread(this::clearResultUnlessAppending);
                 glow.start();
                 break;
-            case Recorder.MSG_RECORDING_DONE:
+            case DONE:
                 HapticFeedback.vibrate(mContext);
                 glow.stop();
                 startProcessing();
                 break;
-            case Recorder.MSG_RECORDING_ERROR:
+            case TOO_SHORT:
                 HapticFeedback.vibrate(mContext);
                 cancelCountDown();
                 runOnUiThread(() -> {
@@ -205,25 +208,33 @@ public class TestScreenActivity extends AppCompatActivity {
         if (countDownTimer != null) countDownTimer.cancel();
     }
 
-    private void onWhisperUpdate(String message) {
-        Log.d(TAG, "Update is received, Message: " + message);
-        switch (message) {
-            case Whisper.MSG_MODEL_LOADED:
+    private void onWhisperUpdate(TranscriptionStatus status, String detail) {
+        Log.d(TAG, "Whisper: " + status + " " + detail);
+        switch (status) {
+            case MODEL_LOADED:
                 runOnUiThread(() -> tvStatus.setText(R.string.test_ready));
                 break;
-            case Whisper.MSG_PROCESSING:
+            case PROCESSING:
                 runOnUiThread(() -> tvStatus.setText(getString(R.string.processing)));
                 startTime = System.currentTimeMillis();
                 break;
-            case Whisper.MSG_PROCESSING_DONE:
-            case Whisper.MSG_QUEUE_EMPTY:
+            case EMPTY_TRANSCRIPTION:
+                showProblem(getString(R.string.error_no_input));
                 break;
             default:
-                runOnUiThread(() -> {
-                    processingBar.setIndeterminate(false);
-                    tvStatus.setText(message);
-                });
+                showProblem(status, detail);
         }
+    }
+
+    private void showProblem(TranscriptionStatus status, String detail) {
+        if (status.isProblem) showProblem(Labels.problem(this, status, detail));
+    }
+
+    private void showProblem(String text) {
+        runOnUiThread(() -> {
+            processingBar.setIndeterminate(false);
+            tvStatus.setText(text);
+        });
     }
 
     private void showResult(String text, long timeTaken) {
@@ -260,8 +271,8 @@ public class TestScreenActivity extends AppCompatActivity {
         if (mWhisper.isModelMissing()) Components.openSetup(this);
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
-            public void onUpdateReceived(String message) {
-                onWhisperUpdate(message);
+            public void onUpdateReceived(TranscriptionStatus status, String detail) {
+                onWhisperUpdate(status, detail);
             }
 
             @Override
@@ -331,7 +342,7 @@ public class TestScreenActivity extends AppCompatActivity {
         deinitModel();
         initModel();
         loadedBackend = backend;
-        tvBackendInfo.setText(Backends.describe(prefs, backend, ParakeetRecognizer.isInstalled(this)));
+        tvBackendInfo.setText(Labels.backend(this, Backends.describe(prefs, backend, ParakeetRecognizer.isInstalled(this))));
     }
 
     @Override
@@ -343,7 +354,7 @@ public class TestScreenActivity extends AppCompatActivity {
             spinnerBackend.setSelection(current, false);
             loadBackend(current);
         } else {
-            tvBackendInfo.setText(Backends.describe(prefs, current, ParakeetRecognizer.isInstalled(this)));
+            tvBackendInfo.setText(Labels.backend(this, Backends.describe(prefs, current, ParakeetRecognizer.isInstalled(this))));
         }
     }
 

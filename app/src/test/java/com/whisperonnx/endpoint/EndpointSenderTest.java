@@ -61,40 +61,35 @@ public class EndpointSenderTest {
 
     @Test public void fillTemplate_escapedTextRoundTripsThroughJson() throws Exception {
         String tricky = "He said \"hi\"\\ then\nleft\t😀 \u0002";
-        String body = EndpointSender.fillTemplate(ep("http://x", "", Prefs.DEFAULT_ENDPOINT_BODY), tricky);
+        String body = EndpointSender.fillTemplate(ep("http://x", "", Prefs.DEFAULT_ENDPOINT_BODY), "Notes", tricky);
         assertEquals(tricky, new JSONObject(body).getString("text"));
     }
 
     @Test public void fillTemplate_rawTextIsInsertedUnchanged() {
-        String body = EndpointSender.fillTemplate(ep("http://x", "", "<p>{{text_raw}}</p>"), "a \"b\"\nc");
+        String body = EndpointSender.fillTemplate(ep("http://x", "", "<p>{{text_raw}}</p>"), "Notes", "a \"b\"\nc");
         assertEquals("<p>a \"b\"\nc</p>", body);
     }
 
     @Test public void fillTemplate_fillsNameAndTimestamp() {
-        String body = EndpointSender.fillTemplate(ep("http://x", "", "{{name}}|{{timestamp}}"), "t");
+        String body = EndpointSender.fillTemplate(ep("http://x", "", "{{name}}|{{timestamp}}"), "Notes", "t");
         String[] parts = body.split("\\|");
         assertEquals("Notes", parts[0]);
         assertTrue(parts[1], parts[1].matches("\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d([+-]\\d\\d:\\d\\d|Z)"));
     }
 
-    @Test public void fillTemplate_unnamedEndpointUsesDefaultName() {
-        EndpointSender.Endpoint e = new EndpointSender.Endpoint(2, "", "http://x", "", "{{name}}", false);
-        assertEquals("Endpoint 2", EndpointSender.fillTemplate(e, "t"));
-    }
-
     @Test public void fillTemplate_emptyTemplateFallsBackToDefault() throws Exception {
-        String body = EndpointSender.fillTemplate(ep("http://x", "", ""), "hello");
+        String body = EndpointSender.fillTemplate(ep("http://x", "", ""), "Notes", "hello");
         assertEquals("hello", new JSONObject(body).getString("text"));
     }
 
     @Test public void fillTemplate_textContainingPlaceholderIsNotExpandedTwice() throws Exception {
-        String body = EndpointSender.fillTemplate(ep("http://x", "", Prefs.DEFAULT_ENDPOINT_BODY), "say {{name}}");
+        String body = EndpointSender.fillTemplate(ep("http://x", "", Prefs.DEFAULT_ENDPOINT_BODY), "Notes", "say {{name}}");
         assertEquals("say {{name}}", new JSONObject(body).getString("text"));
     }
 
     @Test public void fillTemplate_jotBodyStaysValidJson() throws Exception {
         String text = "Buy \"milk\"\nand <!-- voice --> eggs";
-        String body = EndpointSender.fillTemplate(ep("http://x", "", JOT_BODY), text);
+        String body = EndpointSender.fillTemplate(ep("http://x", "", JOT_BODY), "Notes", text);
         JSONObject edit = new JSONObject(body).getJSONArray("edits").getJSONObject(0);
         assertEquals("<!-- voice -->", edit.getString("oldText"));
         assertEquals("- " + text + "\n<!-- voice -->", edit.getString("newText"));
@@ -102,7 +97,7 @@ public class EndpointSenderTest {
 
     @Test public void buildRequest_parsesHeaders() throws Exception {
         Request req = EndpointSender.buildRequest(ep("https://example.com/api",
-                "Authorization: Bearer abc:def\n\nnot a header\n: novalue\n  X-Trim  :  v  ", "{}"), "t");
+                "Authorization: Bearer abc:def\n\nnot a header\n: novalue\n  X-Trim  :  v  ", "{}"), "Notes", "t");
         assertEquals("POST", req.method());
         assertEquals("Bearer abc:def", req.header("Authorization"));
         assertEquals("v", req.header("X-Trim"));
@@ -112,7 +107,7 @@ public class EndpointSenderTest {
 
     @Test public void buildRequest_contentTypeHeaderOverridesDefault() throws Exception {
         Request req = EndpointSender.buildRequest(ep("https://example.com",
-                "content-type: text/plain", "{{text_raw}}"), "hello");
+                "content-type: text/plain", "{{text_raw}}"), "Notes", "hello");
         assertTrue(req.body().contentType().toString().startsWith("text/plain"));
         assertNull(req.header("content-type"));
         assertEquals("hello", bodyOf(req));
@@ -120,21 +115,21 @@ public class EndpointSenderTest {
 
     @Test public void buildRequest_handlesWindowsLineEndings() {
         Request req = EndpointSender.buildRequest(ep("https://example.com",
-                "A: 1\r\nB: 2\r\n", "{}"), "t");
+                "A: 1\r\nB: 2\r\n", "{}"), "Notes", "t");
         assertEquals("1", req.header("A"));
         assertEquals("2", req.header("B"));
     }
 
     @Test public void buildRequest_badUrlThrowsIllegalArgument() {
         try {
-            EndpointSender.buildRequest(ep("not a url", "", "{}"), "t");
+            EndpointSender.buildRequest(ep("not a url", "", "{}"), "Notes", "t");
             fail("expected IllegalArgumentException");
         } catch (IllegalArgumentException expected) { }
     }
 
     @Test public void buildRequest_badHeaderThrowsIllegalArgument() {
         try {
-            EndpointSender.buildRequest(ep("https://example.com", "X-Bad: caf\u00e9\u0001", "{}"), "t");
+            EndpointSender.buildRequest(ep("https://example.com", "X-Bad: caf\u00e9\u0001", "{}"), "Notes", "t");
             fail("expected IllegalArgumentException");
         } catch (IllegalArgumentException expected) { }
     }
@@ -142,7 +137,7 @@ public class EndpointSenderTest {
     @Test public void execute_sendsRequestAndReportsSuccess() throws Exception {
         server.enqueue(new MockResponse().setResponseCode(200));
         Request req = EndpointSender.buildRequest(ep(server.url("/api/notes/abc/edit").toString(),
-                "Authorization: Bearer token", JOT_BODY), "hello");
+                "Authorization: Bearer token", JOT_BODY), "Notes", "hello");
 
         assertNull(EndpointSender.execute(client, req));
 
@@ -157,28 +152,28 @@ public class EndpointSenderTest {
 
     @Test public void execute_anyTwoHundredIsSuccess() {
         server.enqueue(new MockResponse().setResponseCode(204));
-        Request req = EndpointSender.buildRequest(ep(server.url("/").toString(), "", "{}"), "t");
+        Request req = EndpointSender.buildRequest(ep(server.url("/").toString(), "", "{}"), "Notes", "t");
         assertNull(EndpointSender.execute(client, req));
     }
 
     @Test public void execute_httpErrorIsReported() {
         server.enqueue(new MockResponse().setResponseCode(400).setBody("oldText not found"));
-        Request req = EndpointSender.buildRequest(ep(server.url("/").toString(), "", "{}"), "t");
-        assertEquals("HTTP 400", EndpointSender.execute(client, req));
+        Request req = EndpointSender.buildRequest(ep(server.url("/").toString(), "", "{}"), "Notes", "t");
+        assertFailure(SendFailure.Kind.HTTP, "400", EndpointSender.execute(client, req));
     }
 
     @Test public void execute_serverErrorIsReported() {
         server.enqueue(new MockResponse().setResponseCode(503));
-        Request req = EndpointSender.buildRequest(ep(server.url("/").toString(), "", "{}"), "t");
-        assertEquals("HTTP 503", EndpointSender.execute(client, req));
+        Request req = EndpointSender.buildRequest(ep(server.url("/").toString(), "", "{}"), "Notes", "t");
+        assertFailure(SendFailure.Kind.HTTP, "503", EndpointSender.execute(client, req));
     }
 
     @Test public void execute_networkFailureIsReported() throws Exception {
         String url = server.url("/").toString();
         server.shutdown();
-        Request req = EndpointSender.buildRequest(ep(url, "", "{}"), "t");
-        String error = EndpointSender.execute(client, req);
-        assertTrue(error, error.startsWith("Network error"));
+        Request req = EndpointSender.buildRequest(ep(url, "", "{}"), "Notes", "t");
+        SendFailure failure = EndpointSender.execute(client, req);
+        assertEquals(SendFailure.Kind.NETWORK, failure.kind);
     }
 
     @Test public void quickRecordUsesThePreferredEndpointOrTheFirstWithAUrl() {
@@ -187,5 +182,10 @@ public class EndpointSenderTest {
         assertEquals(2, EndpointSender.pickQuickRecord(1, new boolean[]{false, true}));
         assertEquals(2, EndpointSender.pickQuickRecord(7, new boolean[]{false, true}));
         assertEquals(0, EndpointSender.pickQuickRecord(1, new boolean[]{false, false}));
+    }
+
+    private static void assertFailure(SendFailure.Kind kind, String detail, SendFailure actual) {
+        assertEquals(kind, actual.kind);
+        assertEquals(detail, actual.detail);
     }
 }

@@ -4,6 +4,7 @@ import com.whisperonnx.prefs.Prefs;
 import com.whisperonnx.R;
 import com.whisperonnx.endpoint.EndpointSender;
 import com.whisperonnx.ui.Components;
+import com.whisperonnx.ui.Labels;
 
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
@@ -39,7 +40,7 @@ public class QuickRecordWidgetProvider extends AppWidgetProvider {
         int chosen = prefs.widgetEndpoint(widgetId);
         int index = chosen != 0 ? chosen : prefs.quickRecordEndpoint();
         boolean recording = QuickRecordService.isRecordingTo(index);
-        String name = EndpointSender.load(prefs, index).displayName();
+        String name = Labels.endpoint(context, EndpointSender.load(prefs, index));
 
         RemoteViews v = new RemoteViews(context.getPackageName(), R.layout.widget_quick_record);
         v.setInt(R.id.widget_quick_record, "setBackgroundResource",

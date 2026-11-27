@@ -24,15 +24,11 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Whisper {
     public interface WhisperListener {
-        void onUpdateReceived(String message);
+        void onUpdateReceived(TranscriptionStatus status, String detail);
         void onResultReceived(WhisperResult result);
     }
 
     private static final String TAG = "Whisper";
-    public static final String MSG_PROCESSING = "Processing...";
-    public static final String MSG_PROCESSING_DONE = "Processing done...!";
-    public static final String MSG_QUEUE_EMPTY = "Queue empty";
-    public static final String MSG_MODEL_LOADED = "Model loaded";
 
 
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
@@ -125,10 +121,10 @@ public class Whisper {
             new Thread(() -> {
                 try {
                     parakeet = new ParakeetRecognizer(ParakeetRecognizer.dir(mContext));
-                    sendUpdate(MSG_MODEL_LOADED);
+                    sendUpdate(TranscriptionStatus.MODEL_LOADED);
                 } catch (Throwable e) {
                     Log.e(TAG, "Parakeet failed to load", e);
-                    sendUpdate("Parakeet failed to load: " + e.getMessage());
+                    sendUpdate(TranscriptionStatus.MODEL_FAILED, e.getMessage());
                 } finally {
                     parakeetReady.countDown();
                 }
@@ -139,13 +135,13 @@ public class Whisper {
             @Override
             public void onInitializationFinished() {
                 Log.d(TAG, "Recognizer initialized");
-                sendUpdate(MSG_MODEL_LOADED);
+                sendUpdate(TranscriptionStatus.MODEL_LOADED);
             }
 
             @Override
             public void onError(int[] reasons, long value) {
                 Log.d(TAG, "Recognizer init error");
-                sendUpdate("Whisper failed to load");
+                sendUpdate(TranscriptionStatus.MODEL_FAILED);
             }
         });
 
@@ -161,7 +157,7 @@ public class Whisper {
 
                 long timeTaken = System.currentTimeMillis() - startTime;
                 Log.d(TAG, "Time Taken for transcription: " + timeTaken + "ms");
-                sendUpdate(MSG_PROCESSING_DONE);
+                sendUpdate(TranscriptionStatus.PROCESSING_DONE);
             }
 
             @Override
@@ -256,11 +252,11 @@ public class Whisper {
                 return;
             } catch (Exception e) {
                 Log.e(TAG, "Chunk transcription failed", e);
-                sendUpdate("Transcription failed: " + e.getMessage());
+                sendUpdate(TranscriptionStatus.FAILED, e.getMessage());
             } finally {
                 if (chunksPending.decrementAndGet() <= 0) {
                     chunksPending.set(0);
-                    sendUpdate(MSG_QUEUE_EMPTY);
+                    sendUpdate(TranscriptionStatus.QUEUE_EMPTY);
                 }
             }
         }
@@ -281,9 +277,9 @@ public class Whisper {
                 }
 
                 @Override
-                public void onError(String errorMessage) {
-                    Log.e(TAG, "OpenAI chunk error: " + errorMessage);
-                    sendUpdate(errorMessage);
+                public void onError(TranscriptionStatus status, String detail) {
+                    Log.e(TAG, "OpenAI chunk error: " + status + " " + detail);
+                    sendUpdate(status, detail);
                     latch.countDown();
                 }
             });
@@ -292,7 +288,7 @@ public class Whisper {
             return;
         } else {
             if (recognizer == null) {
-                sendUpdate("Local model not loaded");
+                sendUpdate(TranscriptionStatus.MODEL_NOT_LOADED);
                 return;
             }
             localResultLatch = latch;
@@ -301,7 +297,7 @@ public class Whisper {
 
         if (!latch.await(120, TimeUnit.SECONDS)) {
             Log.e(TAG, "Chunk transcription timed out");
-            sendUpdate("Transcription timed out");
+            sendUpdate(TranscriptionStatus.TIMED_OUT);
         }
         localResultLatch = null;
     }
@@ -326,7 +322,7 @@ public class Whisper {
     private void processRecordBuffer() {
         try {
             if (RecordBuffer.getOutputBuffer() == null) {
-                sendUpdate("No audio data available");
+                sendUpdate(TranscriptionStatus.NO_AUDIO);
                 return;
             }
 
@@ -341,7 +337,7 @@ public class Whisper {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error during transcription", e);
-            sendUpdate("Transcription failed: " + e.getMessage());
+            sendUpdate(TranscriptionStatus.FAILED, e.getMessage());
         } finally {
             mInProgress.set(false);
         }
@@ -349,10 +345,10 @@ public class Whisper {
 
     private void processRecordBufferLocal() throws Exception {
         startTime = System.currentTimeMillis();
-        sendUpdate(MSG_PROCESSING);
+        sendUpdate(TranscriptionStatus.PROCESSING);
         if (mLocalEngine.equals(Prefs.ENGINE_PARAKEET)) {
             transcribeParakeet(RecordBuffer.getSamples());
-            sendUpdate(MSG_PROCESSING_DONE);
+            sendUpdate(TranscriptionStatus.PROCESSING_DONE);
             return;
         }
         recognizer.recognize(RecordBuffer.getSamples(), 1, mLangCode, mAction);
@@ -360,7 +356,7 @@ public class Whisper {
 
     private void processRecordBufferRemote() {
         startTime = System.currentTimeMillis();
-        sendUpdate(MSG_PROCESSING);
+        sendUpdate(TranscriptionStatus.PROCESSING);
 
         if (openaiTranscriber == null) {
             openaiTranscriber = new OpenAITranscriber();
@@ -368,7 +364,7 @@ public class Whisper {
 
         byte[] pcmData = RecordBuffer.getOutputBuffer();
         if (pcmData.length < 6400) {
-            sendUpdate("Recording too short");
+            sendUpdate(TranscriptionStatus.TOO_SHORT);
             return;
         }
 
@@ -380,20 +376,20 @@ public class Whisper {
 
                 WhisperResult result = new WhisperResult(transcription, LANGUAGE, mAction);
                 sendResult(result);
-                sendUpdate(MSG_PROCESSING_DONE);
+                sendUpdate(TranscriptionStatus.PROCESSING_DONE);
             }
 
             @Override
-            public void onError(String errorMessage) {
-                Log.e(TAG, "OpenAI transcription error: " + errorMessage);
-                sendUpdate(errorMessage);
+            public void onError(TranscriptionStatus status, String detail) {
+                Log.e(TAG, "OpenAI transcription error: " + status + " " + detail);
+                sendUpdate(status, detail);
             }
         });
     }
 
     private void transcribeParakeet(float[] samples) throws InterruptedException {
         if (!parakeetReady.await(60, TimeUnit.SECONDS) || parakeet == null) {
-            sendUpdate("Parakeet model not loaded");
+            sendUpdate(TranscriptionStatus.MODEL_NOT_LOADED);
             return;
         }
         try {
@@ -402,13 +398,17 @@ public class Whisper {
             sendResult(new WhisperResult(text, LANGUAGE, mAction));
         } catch (Exception e) {
             Log.e(TAG, "Parakeet transcription failed", e);
-            sendUpdate("Transcription failed: " + e.getMessage());
+            sendUpdate(TranscriptionStatus.FAILED, e.getMessage());
         }
     }
 
-    private void sendUpdate(String message) {
+    private void sendUpdate(TranscriptionStatus status) {
+        sendUpdate(status, null);
+    }
+
+    private void sendUpdate(TranscriptionStatus status, String detail) {
         if (mUpdateListener != null) {
-            mUpdateListener.onUpdateReceived(message);
+            mUpdateListener.onUpdateReceived(status, detail);
         }
     }
 

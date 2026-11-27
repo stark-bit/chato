@@ -2,14 +2,17 @@ package com.whisperonnx.keyboard;
 
 import com.whisperonnx.prefs.Prefs;
 import com.whisperonnx.R;
-import com.whisperonnx.backend.OpenAITranscriber;
+import com.whisperonnx.backend.TranscriptionStatus;
 import com.whisperonnx.backend.Whisper;
 import com.whisperonnx.backend.WhisperResult;
 import com.whisperonnx.endpoint.EndpointSender;
+import com.whisperonnx.endpoint.SendFailure;
 import com.whisperonnx.endpoint.SendSession;
 import com.whisperonnx.recording.OtherAudioPauser;
 import com.whisperonnx.recording.Recorder;
+import com.whisperonnx.recording.RecorderEvent;
 import com.whisperonnx.ui.Components;
+import com.whisperonnx.ui.Labels;
 import com.whisperonnx.ui.RecordGlow;
 import com.whisperonnx.ui.HapticFeedback;
 
@@ -70,7 +73,7 @@ public class KeyboardService extends InputMethodService {
             if (ic != null) ic.commitText(text, 1);
         }
         @Override public void send(EndpointSender.Endpoint ep, String text) {
-            EndpointSender.post(ep, text, KeyboardService.this::onEndpointResult);
+            EndpointSender.post(ep, Labels.endpoint(KeyboardService.this, ep), text, KeyboardService.this::onEndpointResult);
         }
     }, handler::post);
     private Context mContext;
@@ -194,18 +197,18 @@ public class KeyboardService extends InputMethodService {
         });
     }
 
-    private void onRecorderUpdate(String message) {
-        switch (message) {
-            case Recorder.MSG_RECORDING:
+    private void onRecorderUpdate(RecorderEvent event, String detail) {
+        switch (event) {
+            case RECORDING:
                 glow.start();
                 keepScreenOn(true);
                 break;
-            case Recorder.MSG_RECORDING_DONE:
+            case DONE:
                 endRecording();
                 glow.stop();
                 handler.post(this::onSessionEnded);
                 break;
-            case Recorder.MSG_RECORDING_ERROR:
+            case TOO_SHORT:
                 endRecording();
                 handler.post(this::onSessionEnded);
                 handler.post(() -> {
@@ -392,7 +395,7 @@ public class KeyboardService extends InputMethodService {
         updateSendTargetUi();
         showTransientStatus(sendTarget == 0
                 ? getString(R.string.endpoint_target_cursor)
-                : getString(R.string.endpoint_target, EndpointSender.load(prefs, sendTarget).displayName()));
+                : getString(R.string.endpoint_target, Labels.endpoint(this, EndpointSender.load(prefs, sendTarget))));
     }
 
     private int nextConfiguredEndpoint() {
@@ -484,8 +487,8 @@ public class KeyboardService extends InputMethodService {
         if (mWhisper.isModelMissing()) Components.openSetup(this);
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
-            public void onUpdateReceived(String message) {
-                onWhisperUpdate(message);
+            public void onUpdateReceived(TranscriptionStatus status, String detail) {
+                onWhisperUpdate(status, detail);
             }
 
             @Override
@@ -501,24 +504,30 @@ public class KeyboardService extends InputMethodService {
         mWhisper.loadModel();
     }
 
-    private void onWhisperUpdate(String message) {
-        if (modeAuto && message.equals(OpenAITranscriber.MSG_EMPTY_TRANSCRIPTION)) {
-            Log.d(TAG, "Ignoring empty transcription in auto mode");
-            return;
-        }
-        switch (message) {
-            case Whisper.MSG_MODEL_LOADED:
+    private void onWhisperUpdate(TranscriptionStatus status, String detail) {
+        switch (status) {
+            case MODEL_LOADED:
                 handler.post(this::onModelLoaded);
                 break;
-            case Whisper.MSG_QUEUE_EMPTY:
+            case QUEUE_EMPTY:
                 handler.post(() -> session.onQueueEmpty());
                 break;
-            case Whisper.MSG_PROCESSING:
-            case Whisper.MSG_PROCESSING_DONE:
+            case EMPTY_TRANSCRIPTION:
+                onEmptyTranscription();
                 break;
             default:
-                handler.post(() -> showStatus(message));
+                showProblem(status, detail);
         }
+    }
+
+    private void onEmptyTranscription() {
+        if (modeAuto) return;
+        handler.post(() -> showStatus(getString(R.string.error_no_input)));
+    }
+
+    private void showProblem(TranscriptionStatus status, String detail) {
+        if (!status.isProblem) return;
+        handler.post(() -> showStatus(Labels.problem(this, status, detail)));
     }
 
     private void onModelLoaded() {
@@ -534,15 +543,15 @@ public class KeyboardService extends InputMethodService {
         session.end(mWhisper != null && mWhisper.hasPendingChunks());
     }
 
-    private void onEndpointResult(EndpointSender.Endpoint ep, String text, String error) {
-        if (error == null) {
+    private void onEndpointResult(EndpointSender.Endpoint ep, String text, SendFailure failure) {
+        if (failure == null) {
             HapticFeedback.tick(mContext);
-            showTransientStatus(getString(R.string.endpoint_sent, ep.displayName()));
+            showTransientStatus(getString(R.string.endpoint_sent, Labels.endpoint(this, ep)));
         } else {
             HapticFeedback.vibrate(mContext);
             ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Dictation", text));
-            showStatus(getString(R.string.endpoint_failed, ep.displayName(), error));
+            showStatus(getString(R.string.endpoint_failed, Labels.endpoint(this, ep), Labels.sendFailure(this, failure)));
         }
     }
 

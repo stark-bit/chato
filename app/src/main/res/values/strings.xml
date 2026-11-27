@@ -126,4 +126,23 @@
     <string name="settings_quick_record_endpoint">Send to</string>
     <string name="settings_assistant_title">Use as digital assistant</string>
     <string name="settings_assistant_summary">Choose Chato under Default digital assistant app. The assistant gesture (e.g. holding the power button) then starts and stops quick record.</string>
+    <string name="status_model_failed">Couldn\'t load the model on this phone</string>
+    <string name="status_model_not_loaded">The model on this phone isn\'t loaded yet</string>
+    <string name="status_no_audio">No audio was recorded</string>
+    <string name="status_too_short">Recording too short</string>
+    <string name="status_timed_out">Transcription timed out</string>
+    <string name="status_failed">Transcription failed</string>
+    <string name="status_server_not_set_up">Server not set up. Add it in Settings</string>
+    <string name="status_server_rejected">The server returned an error</string>
+    <string name="status_network_error">Network error</string>
+    <string name="status_recording_failed">Recording failed</string>
+    <string name="status_with_detail">%1$s: %2$s</string>
+    <string name="send_failed_config">Invalid endpoint settings</string>
+    <string name="send_failed_http">HTTP %1$s</string>
+    <string name="send_failed_network">Network error</string>
+    <string name="backend_whisper_description">On this phone · Whisper small (int8)</string>
+    <string name="backend_parakeet_description">On this phone · NVIDIA Parakeet TDT 0.6B</string>
+    <string name="backend_parakeet_missing_description">Not downloaded yet. Whisper small is used until it is</string>
+    <string name="backend_server_description">Server %1$s</string>
+    <string name="backend_server_model_description">Server %1$s · model %2$s</string>
 </resources>

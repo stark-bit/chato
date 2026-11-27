@@ -53,4 +53,24 @@
             </property>
         </properties>
     </rule>
+
+    <rule name="SentenceInCore"
+          language="java"
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+          message="Backend, recording, endpoint and prefs hold no UI text. Report an enum value (TranscriptionStatus, RecorderEvent, SendFailure.Kind), with any technical detail as a separate string, and turn it into a strings.xml label in ui.Labels.">
+        <description>No English sentences in core packages, except in log calls, exceptions, HTTP headers and tests.</description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value><![CDATA[
+//StringLiteral[matches(@Image, '^"[A-Z][a-z][^"]*[ .:!?…]')]
+  [ancestor::CompilationUnit/PackageDeclaration[matches(@Name, '^com\.whisperonnx\.(backend|recording|endpoint|prefs)(\.|$)')]]
+  [not(ancestor::MethodCall[TypeExpression/ClassType[@SimpleName = 'Log']])]
+  [not(ancestor::ConstructorCall[ends-with(ClassType/@SimpleName, 'Exception')])]
+  [not(ancestor::MethodCall[@MethodName = ('addHeader', 'header')])]
+  [not(ancestor::CompilationUnit/ImportDeclaration[starts-with(@ImportedName, 'org.junit')])]
+]]></value>
+            </property>
+        </properties>
+    </rule>
 </ruleset>

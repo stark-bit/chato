@@ -44,12 +44,10 @@ public class EndpointSender {
         }
 
         public boolean isConfigured() { return !url.isEmpty(); }
-
-        public String displayName() { return name.isEmpty() ? "Endpoint " + index : name; }
     }
 
     public interface ResultCallback {
-        void onDone(Endpoint endpoint, String text, String error);
+        void onDone(Endpoint endpoint, String text, SendFailure failure);
     }
 
     public static Endpoint load(Prefs prefs, int index) {
@@ -74,24 +72,24 @@ public class EndpointSender {
     private static final ExecutorService sendQueue = Executors.newSingleThreadExecutor();
     private static Handler mainHandler;
 
-    public static void post(Endpoint ep, String text, ResultCallback callback) {
+    public static void post(Endpoint ep, String label, String text, ResultCallback callback) {
         final Request req;
         try {
-            req = buildRequest(ep, text);
+            req = buildRequest(ep, label, text);
         } catch (IllegalArgumentException e) {
-            callback.onDone(ep, text, "Invalid endpoint config: " + e.getMessage());
+            callback.onDone(ep, text, new SendFailure(SendFailure.Kind.INVALID_CONFIG, e.getMessage()));
             return;
         }
         if (mainHandler == null) mainHandler = new Handler(Looper.getMainLooper());
         final Handler main = mainHandler;
 
         sendQueue.execute(() -> {
-            String err = execute(client, req);
-            main.post(() -> callback.onDone(ep, text, err));
+            SendFailure failure = execute(client, req);
+            main.post(() -> callback.onDone(ep, text, failure));
         });
     }
 
-    static Request buildRequest(Endpoint ep, String text) {
+    static Request buildRequest(Endpoint ep, String label, String text) {
         Request.Builder builder = new Request.Builder().url(ep.url);
         String contentType = "application/json; charset=utf-8";
         for (String line : ep.headers.split("\n")) {
@@ -102,22 +100,22 @@ public class EndpointSender {
             if (name.equalsIgnoreCase("Content-Type")) contentType = value;
             else builder.addHeader(name, value);
         }
-        String body = fillTemplate(ep, text);
+        String body = fillTemplate(ep, label, text);
         return builder.post(RequestBody.create(body, MediaType.parse(contentType))).build();
     }
 
-    static String execute(OkHttpClient client, Request req) {
+    static SendFailure execute(OkHttpClient client, Request req) {
         try (Response response = client.newCall(req).execute()) {
-            return response.isSuccessful() ? null : "HTTP " + response.code();
+            return response.isSuccessful() ? null : new SendFailure(SendFailure.Kind.HTTP, String.valueOf(response.code()));
         } catch (IOException e) {
             Log.e(TAG, "POST to " + req.url() + " failed", e);
-            return "Network error: " + e.getMessage();
+            return new SendFailure(SendFailure.Kind.NETWORK, e.getMessage());
         }
     }
 
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{(text_raw|text|timestamp|name)\\}\\}");
 
-    static String fillTemplate(Endpoint ep, String text) {
+    static String fillTemplate(Endpoint ep, String label, String text) {
         String timestamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(new Date());
         String template = ep.body.isEmpty() ? Prefs.DEFAULT_ENDPOINT_BODY : ep.body;
         Matcher m = PLACEHOLDER.matcher(template);
@@ -128,7 +126,7 @@ public class EndpointSender {
                 case "text_raw": value = text; break;
                 case "text": value = jsonEscape(text); break;
                 case "timestamp": value = timestamp; break;
-                default: value = jsonEscape(ep.displayName()); break;
+                default: value = jsonEscape(label); break;
             }
             m.appendReplacement(out, Matcher.quoteReplacement(value));
         }

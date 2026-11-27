@@ -22,14 +22,10 @@ import okhttp3.Response;
 public class OpenAITranscriber {
     public interface Callback {
         void onSuccess(String transcription);
-        void onError(String errorMessage);
+        void onError(TranscriptionStatus status, String detail);
     }
 
     private static final String TAG = "OpenAITranscriber";
-
-
-
-    public static final String MSG_EMPTY_TRANSCRIPTION = "OpenAI returned empty transcription";
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final OkHttpClient client = new OkHttpClient.Builder()
@@ -43,10 +39,10 @@ public class OpenAITranscriber {
                 transcribeNow(Prefs.of(context), pcmData, callback);
             } catch (IOException e) {
                 Log.e(TAG, "Network error", e);
-                callback.onError("Network error: " + e.getMessage());
+                callback.onError(TranscriptionStatus.NETWORK_ERROR, e.getMessage());
             } catch (Exception e) {
                 Log.e(TAG, "Unexpected error", e);
-                callback.onError("Error: " + e.getMessage());
+                callback.onError(TranscriptionStatus.FAILED, e.getMessage());
             }
         });
     }
@@ -54,22 +50,17 @@ public class OpenAITranscriber {
     private void transcribeNow(Prefs prefs, byte[] pcmData, Callback callback) throws IOException {
         String endpoint = prefs.serverUrl();
         String apiKey = prefs.serverApiKey();
-        if (endpoint.isEmpty()) {
-            callback.onError("OpenAI endpoint not configured");
-            return;
-        }
-        if (apiKey.isEmpty()) {
-            callback.onError("Server API key not set. Add it in Settings");
+        if (endpoint.isEmpty() || apiKey.isEmpty()) {
+            callback.onError(TranscriptionStatus.SERVER_NOT_SET_UP, null);
             return;
         }
 
         Response response = client.newCall(request(endpoint, apiKey, prefs.serverModel(), pcmData)).execute();
         if (!response.isSuccessful()) {
-            String errorBody = response.body() != null
-                    ? response.body().string()
-                    : "HTTP " + response.code();
+            String errorBody = response.body() != null ? response.body().string().trim() : "";
             Log.e(TAG, "OpenAI error: " + errorBody);
-            callback.onError("OpenAI error " + response.code() + ": " + errorBody);
+            callback.onError(TranscriptionStatus.SERVER_REJECTED,
+                    errorBody.isEmpty() ? String.valueOf(response.code()) : response.code() + ": " + errorBody);
             return;
         }
 
@@ -77,7 +68,7 @@ public class OpenAITranscriber {
                 ? response.body().string().trim()
                 : "";
         if (transcription.isEmpty()) {
-            callback.onError(MSG_EMPTY_TRANSCRIPTION);
+            callback.onError(TranscriptionStatus.EMPTY_TRANSCRIPTION, null);
             return;
         }
         callback.onSuccess(transcription);

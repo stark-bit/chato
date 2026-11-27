@@ -2,9 +2,11 @@ package com.whisperonnx.voiceinput;
 
 import com.whisperonnx.prefs.Prefs;
 import com.whisperonnx.R;
+import com.whisperonnx.backend.TranscriptionStatus;
 import com.whisperonnx.backend.Whisper;
 import com.whisperonnx.backend.WhisperResult;
 import com.whisperonnx.recording.Recorder;
+import com.whisperonnx.recording.RecorderEvent;
 import com.whisperonnx.ui.Components;
 import com.whisperonnx.ui.RecordCountdown;
 import com.whisperonnx.ui.RecordGlow;
@@ -46,17 +48,17 @@ public class VoiceInputActivity extends AppCompatActivity {
     private boolean modeAuto = false;
     private RecordGlow glow;
 
-    private void onRecorderUpdate(String message) {
-        switch (message) {
-            case Recorder.MSG_RECORDING:
+    private void onRecorderUpdate(RecorderEvent event, String detail) {
+        switch (event) {
+            case RECORDING:
                 glow.start();
                 break;
-            case Recorder.MSG_RECORDING_DONE:
+            case DONE:
                 HapticFeedback.vibrate(mContext);
                 glow.stop();
                 startTranscription();
                 break;
-            case Recorder.MSG_RECORDING_ERROR:
+            case TOO_SHORT:
                 HapticFeedback.vibrate(mContext);
                 cancelCountDown();
                 runOnUiThread(() -> {
@@ -170,7 +172,7 @@ public class VoiceInputActivity extends AppCompatActivity {
         mWhisper.loadModel();
         mWhisper.setListener(new Whisper.WhisperListener() {
             @Override
-            public void onUpdateReceived(String message) { }
+            public void onUpdateReceived(TranscriptionStatus status, String detail) { }
 
             @Override
             public void onResultReceived(WhisperResult whisperResult) {
