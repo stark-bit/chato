@@ -3,7 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/ime_bg"
     android:fitsSystemWindows="true"
     android:keepScreenOn="true"
     tools:context=".SetupActivity">
@@ -40,6 +39,7 @@
                 android:text="@string/setup_on_phone" />
 
             <LinearLayout
+                android:baselineAligned="false"
                 android:id="@+id/row_parakeet"
                 style="@style/Settings.Row"
                 android:background="?attr/selectableItemBackground"
@@ -64,6 +64,7 @@
             </LinearLayout>
 
             <LinearLayout
+                android:baselineAligned="false"
                 android:id="@+id/row_whisper"
                 style="@style/Settings.Row"
                 android:background="?attr/selectableItemBackground"
@@ -92,6 +93,7 @@
                 android:text="@string/setup_on_server" />
 
             <LinearLayout
+                android:baselineAligned="false"
                 android:id="@+id/row_server"
                 style="@style/Settings.Row"
                 android:background="?attr/selectableItemBackground"
@@ -120,6 +122,7 @@
                 android:text="@string/setup_other" />
 
             <LinearLayout
+                android:baselineAligned="false"
                 android:id="@+id/row_zip"
                 style="@style/Settings.Row"
                 android:background="?attr/selectableItemBackground"

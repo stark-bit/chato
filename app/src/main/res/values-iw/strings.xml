@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="need_record_audio_permission">הרשאת RECORD_AUDIO לא ניתנה</string>
-    <string name="status">סטטוס:</string>
-    <string name="append">צירוף:</string>
     <string name="copy_to_clipboard">העתק</string>
     <string name="info">מידע</string>
     <string name="processing">מעבד…</string>
@@ -16,12 +14,5 @@
     <string name="return_button">חזור</string>
     <string name="delete_button">מחק</string>
     <string name="model_output">פלט דגם</string>
-    <string name="processing_done">העיבוד הושלם ב </string>
-    <string name="language">שפה:</string>
-    <string name="mode_transcription">תמלול</string>
-    <string name="mode_translation">‌תרגום</string>
     <string name="instructions">לחץ והחזק את לחצן המיקרופון תוך כדי דיבור.</string>
-    <string name="text_to_speech">טקסט לדיבור:</string>
-    <string name="tts_language_not_supported">TTS: שפה לא נתמכת</string>
-    <string name="tts_initialization_failed">TTS: האתחול נכשל</string>
 </resources>

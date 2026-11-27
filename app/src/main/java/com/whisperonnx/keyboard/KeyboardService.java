@@ -139,7 +139,8 @@ public class KeyboardService extends InputMethodService {
 
     }
 
-    @SuppressLint("ClickableViewAccessibility")
+    // External: Android attaches the input view to its window itself, so it has no parent to inflate into
+    @SuppressLint({"ClickableViewAccessibility", "InflateParams"})
     @Override
     public View onCreateInputView() {  // External: Android calls this before onStartInputView
         prefs = Prefs.of(this);

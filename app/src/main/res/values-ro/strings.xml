@@ -2,8 +2,6 @@
 <resources>
     <string name="instructions">Apasă și menține apăsat butonul microfonului în timp ce vorbești.</string>
     <string name="need_record_audio_permission">Permisiunea RECORD_AUDIO nu este acordată</string>
-    <string name="status">Stare:</string>
-    <string name="append">Adaugă:</string>
     <string name="copy_to_clipboard">Copiază</string>
     <string name="info">Informații</string>
     <string name="processing">Se procesează…</string>
@@ -14,12 +12,5 @@
     <string name="return_button">Înapoi</string>
     <string name="delete_button">Șterge</string>
     <string name="model_output">Ieșire model</string>
-    <string name="processing_done">Procesare efectuată în </string>
-    <string name="language">Limbă:</string>
-    <string name="mode_transcription">transcriere</string>
-    <string name="mode_translation">traducere</string>
     <string name="dialog_StarOnGitHub">Îți place această aplicație? Dă o stea pe Github sau cumpără dezvoltatorului o cafea prin PayPal.</string>
-    <string name="text_to_speech">Text-în-voce:</string>
-    <string name="tts_language_not_supported">TTS: Limba nu este acceptată</string>
-    <string name="tts_initialization_failed">TTS: Inițializarea eșuată</string>
 </resources>

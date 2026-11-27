@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- External: the keyboard service inflates this without AppCompat, so only android:tint works (UseAppTint does not apply) -->
+<!-- External: the keyboard window has no background of its own, so this root paints it (Overdraw does not apply) -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    tools:ignore="UseAppTint"
+    tools:ignore="UseAppTint,Overdraw"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -186,7 +187,7 @@
                 android:layout_marginEnd="3dp"
                 android:layout_marginBottom="1dp"
                 android:visibility="gone"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 android:textColor="@color/ime_on_accent"
                 android:importantForAccessibility="no" />

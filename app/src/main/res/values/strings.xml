@@ -3,8 +3,6 @@
     <string name="app_name" translatable="false">Chato</string>
     <string name="voice_input" translatable="false">Chato</string>
     <string name="need_record_audio_permission">"RECORD_AUDIO permission is not granted"</string>
-    <string name="status">Status:</string>
-    <string name="append">Append:</string>
     <string name="copy_to_clipboard">Copy</string>
     <string name="info">Info</string>
     <string name="processing">Processing…</string>
@@ -39,14 +37,7 @@
     <string name="endpoint_failed">%1$s: %2$s. Text copied to clipboard</string>
     <string name="endpoint_none_configured">No endpoint configured. Add one in Settings</string>
     <string name="model_output">Model output</string>
-    <string name="processing_done">Processing done in\u2009</string>
-    <string name="language">Language:</string>
-    <string name="mode_transcription">transcription</string>
-    <string name="mode_translation">translation</string>
     <string name="instructions">Press and hold the microphone button while speaking.</string>
-    <string name="text_to_speech">Text-to-speech:</string>
-    <string name="tts_language_not_supported">TTS: Language not supported</string>
-    <string name="tts_initialization_failed">TTS: Initialization failed</string>
     <string name="auto_button">Auto mode</string>
     <string name="error_no_input">No voice input received</string>
     <string name="settings">Settings</string>

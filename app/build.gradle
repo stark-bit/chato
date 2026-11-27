@@ -12,6 +12,7 @@ android {
     lint {
         disable 'MissingTranslation'
         error 'HardcodedText', 'SetTextI18n'
+        warningsAsErrors true
         abortOnError true
     }
 
