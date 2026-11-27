@@ -52,7 +52,7 @@ NC     := \033[0m # No Color
 .DEFAULT_GOAL := help
 
 # ---- Targets ---------------------------------------------------------------
-.PHONY: help device build install uninstall clean run test push-parakeet bench release
+.PHONY: help device build install uninstall clean run test check push-parakeet bench release
 
 help: ## Show this help message
 	@echo "$(CYAN)WhisperIME+ Makefile$(NC)"
@@ -115,6 +115,11 @@ clean: ## Remove build artifacts
 test: ## Run unit tests (JVM, no device needed)
 	$(GRADLEW) testDebugUnitTest
 
+check: ## Package boundaries, lint and unit tests, fastest first (no device needed)
+	$(GRADLEW) checkstyle
+	$(GRADLEW) lintDebug
+	$(GRADLEW) testDebugUnitTest
+
 # ---- On-device Parakeet (experimental) -------------------------------------
 PARAKEET_DIR ?= /mnt/Wolf_1/_stacks/parakeet/data/models
 BENCH_WAVS   ?= bench
@@ -140,7 +145,7 @@ endif
 	$(ADB) -s $(DEVICE) shell mkdir -p $(FILES_DIR)/bench
 	$(ADB) -s $(DEVICE) shell rm -f $(FILES_DIR)/bench/results.txt
 	$(ADB) -s $(DEVICE) push $(BENCH_WAVS)/*.wav $(FILES_DIR)/bench/
-	$(ADB) -s $(DEVICE) shell am instrument -w -e class com.whisperonnx.asr.LocalEngineBenchmark \
+	$(ADB) -s $(DEVICE) shell am instrument -w -e class com.whisperonnx.backend.LocalEngineBenchmark \
 		$(PACKAGE).test/androidx.test.runner.AndroidJUnitRunner
 	@echo ""
 	@$(ADB) -s $(DEVICE) shell cat $(FILES_DIR)/bench/results.txt

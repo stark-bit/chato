@@ -59,6 +59,8 @@
     <string name="test_result">Result</string>
     <string name="test_ready">Ready</string>
     <string name="test_done">Done in %1$d ms</string>
+    <string name="test_done_with_backend">%1$s · %2$s</string>
+    <string name="test_recording">%1$s…</string>
     <string name="settings_minimum_silence">Minimum silence in auto mode (ms)</string>
     <string name="setting_bluetooth">Use Bluetooth devices</string>
 
@@ -91,6 +93,20 @@
     <string name="switch_keyboard_button">Switch keyboard</string>
     <string name="model_parakeet">Parakeet</string>
     <string name="model_whisper">Whisper small</string>
+    <string name="model_installed">%1$s installed</string>
+    <string name="model_install_failed">Install failed: %1$s</string>
+    <string name="model_download_title">Download %1$s?</string>
+    <string name="model_download_message">The %1$s model (%2$d MB) is downloaded once from %3$s. Wi-Fi recommended.</string>
+    <string name="model_download_parakeet_note">Until it is installed, Whisper is used.</string>
+    <string name="model_download">Download</string>
+    <string name="model_downloading">Downloading %1$s</string>
+    <string name="model_download_starting">Starting…</string>
+    <string name="model_download_progress">%1$d / %2$d MB</string>
+    <string name="model_unpacking">Unpacking…</string>
+    <string name="model_download_cancelled">Download cancelled. Try again to resume.</string>
+    <string name="model_download_failed">Download failed: %1$s. Try again to resume.</string>
+    <string name="setup_zip_unreadable">Can\'t open the file</string>
+    <string name="setup_zip_wrong">This isn\'t the Whisper model zip</string>
     <!-- Order matches Backends.WHISPER, PARAKEET, REMOTE -->
     <string-array name="backend_labels">
         <item>Whisper small</item>

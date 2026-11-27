@@ -24,7 +24,7 @@ Short model names inside sentences, e.g. "Loading Parakeet…": `model_parakeet`
 
 ## Keyboard
 
-The keyboard has a **top row** and a **bottom row**.
+The keyboard (`KeyboardService`) has a **top row** and a **bottom row**.
 
 | Term | Meaning | UI label | Code | Stored as | Avoid |
 |---|---|---|---|---|---|
@@ -50,7 +50,7 @@ The keyboard has a **top row** and a **bottom row**.
 | **Endpoint** | A URL that dictated text is POSTed to. There are two: endpoint 1 and endpoint 2. | "Endpoint 1", "Send to endpoint" (Settings section) | `EndpointSender` | `endpoint1_*`, `endpoint2_*` | webhook, server (that's the backend) |
 | **Body template** | The POST body, with `{{text}}`, `{{text_raw}}`, `{{timestamp}}` and `{{name}}` placeholders. | "Body template" | `EndpointSender` | `endpointN_body` | payload |
 | **Quick record** | Records up to 30 s without the keyboard, then sends the text to an endpoint: the widget's own, or the one chosen in Settings for the assistant gesture. Started and stopped by the quick record widget or the digital assistant gesture. A notification shows while it runs. | "Quick record" | `QuickRecordService`, `QuickRecordActivity` | `quickRecordEndpoint` (1 or 2) | voice memo, background recording |
-| **Quick record widget** | A home screen widget with one mic button that starts and stops quick record for one endpoint, chosen when it's placed. Shows the endpoint's number and name; lit while recording for it. Place one per endpoint. | "Quick record" | `QuickRecordWidget`, `QuickRecordWidgetConfigActivity` | `quickRecordWidget_<id>` | |
+| **Quick record widget** | A home screen widget with one mic button that starts and stops quick record for one endpoint, chosen when it's placed. Shows the endpoint's number and name; lit while recording for it. Place one per endpoint. | "Quick record" | `QuickRecordWidgetProvider`, `QuickRecordWidgetConfigActivity` | `quickRecordWidget_<id>` | |
 | **Digital assistant** | Chato chosen as Android's default digital assistant app, so the assistant gesture (e.g. holding the power button) starts and stops quick record. | "Use as digital assistant" | `QuickRecordActivity` (`ACTION_ASSIST`) | | assistant mode |
 
 "Server" always means the transcription backend. "Endpoint" always means a send target URL.
@@ -61,16 +61,21 @@ The server's address is the **Server URL**, never "endpoint URL", even though it
 
 | Term | Meaning | UI label | Code | Avoid |
 |---|---|---|---|---|
-| **Test screen** | Pick a backend, record, see the text and the time taken. Opens from the launcher and from Settings. | "Test transcription" (Settings row) | `MainActivity`, `activity_main.xml` | main screen |
+| **Test screen** | Pick a backend, record, see the text and the time taken. Opens from the launcher and from Settings. | "Test transcription" (Settings row) | `TestScreenActivity`, `activity_main.xml` | main screen |
 | **Setup screen** | Opens when a model on the phone is needed but missing. Offers the model download or the server. | "Set up Chato" | `SetupActivity`, `activity_download.xml` | download screen |
 | **Settings** | Backend, server, endpoints, quick record, auto mode silence, Bluetooth. | "Settings" | `SettingsActivity` | preferences |
-| **System voice input** | Chato as Android's speech recognizer for other apps. | | `WhisperRecognitionService`, `WhisperRecognizeActivity` | |
+| **System voice input** | Chato as Android's speech recognizer for other apps. | | `VoiceInputService`, `VoiceInputActivity` | |
 
 ## Code names that don't match the terms
 
 Kept to avoid churn, and so stored settings keep working:
 
 - The `Whisper` class runs whichever backend is selected, including Parakeet and the server.
-- The Java package is `com.whisperonnx`; the app ID is `dev.starkbit.chato`.
+- The Java package is `com.whisperonnx`; the app ID is `dev.starkbit.chato`. Each feature has its own
+  package, see [ARCHITECTURE.md](ARCHITECTURE.md).
+- Android stores some old class names (`MainActivity`, `WhisperInputMethodService`,
+  `WhisperRecognitionService`, `WhisperRecognizeActivity`, `QuickRecordActivity`,
+  `QuickRecordWidget`), so they stay registered as aliases or empty classes. See
+  [ARCHITECTURE.md](ARCHITECTURE.md#registered-names).
 - `backend_type=openai` and the `openai_*` keys mean the server, whatever software runs it.
-- `MainActivity` is the test screen; `activity_download.xml` is the setup screen.
+- `activity_main.xml` is the test screen; `activity_download.xml` is the setup screen.

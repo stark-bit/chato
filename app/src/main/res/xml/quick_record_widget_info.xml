@@ -9,6 +9,6 @@
     android:initialLayout="@layout/widget_quick_record"
     android:previewLayout="@layout/widget_quick_record"
     android:description="@string/quick_record_widget_description"
-    android:configure="com.whisperonnx.QuickRecordWidgetConfigActivity"
+    android:configure="com.whisperonnx.quickrecord.QuickRecordWidgetConfigActivity"
     android:widgetFeatures="reconfigurable"
     android:widgetCategory="home_screen" />

@@ -7,5 +7,5 @@
         android:icon="@drawable/ic_settings"
         app:showAsAction="always"
         app:iconTint="@color/ime_on_key"
-        android:title="Settings" />
+        android:title="@string/settings" />
 </menu>

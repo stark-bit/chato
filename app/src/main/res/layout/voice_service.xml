@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Compact IME layout styled after FUTO keyboard -->
+<!-- Compact IME layout styled after FUTO keyboard. The keyboard service inflates it without
+     AppCompat, so android:tint is the one that works here (UseAppTint doesn't apply). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="UseAppTint"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
