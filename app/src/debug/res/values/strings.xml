@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Chato debug</string>
+    <string name="device_check_hint" translatable="false">Device check field</string>
+    <string name="device_check_done" translatable="false">Enter actions: %d</string>
+</resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name="com.whisperonnx.devicecheck.DeviceCheckActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Whisper.Settings"
+            android:windowSoftInputMode="stateAlwaysVisible" />
+    </application>
+</manifest>

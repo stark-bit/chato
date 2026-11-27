@@ -25,7 +25,7 @@ import java.util.List;
 public class ArchitectureTest {
     private static final String ROOT = "com.whisperonnx";
     private static final List<String> FEATURES =
-            Arrays.asList("keyboard", "quickrecord", "voiceinput", "testscreen", "setup", "settings");
+            Arrays.asList("keyboard", "quickrecord", "voiceinput", "testscreen", "setup", "settings", "devicecheck");
     private static final String[] CORE = {ROOT + ".backend..", ROOT + ".recording..", ROOT + ".endpoint..", ROOT + ".prefs.."};
     private static final List<String> SHARED = Arrays.asList("ui", "backend", "recording", "endpoint", "prefs", "thirdparty");
 

@@ -22,6 +22,10 @@
         <disallow pkg="com\.whisperonnx\.(keyboard|quickrecord|voiceinput|testscreen|setup|thirdparty)" regex="true"/>
     </subpackage>
 
+    <subpackage name="devicecheck">
+        <disallow pkg="com\.whisperonnx\.(keyboard|quickrecord|voiceinput|testscreen|setup|settings|thirdparty)" regex="true"/>
+    </subpackage>
+
     <subpackage name="ui">
         <disallow pkg="com\.whisperonnx\.(keyboard|quickrecord|voiceinput|testscreen|setup|settings|thirdparty)" regex="true"/>
     </subpackage>

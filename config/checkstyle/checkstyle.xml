@@ -52,7 +52,7 @@
         </module>
         <module name="ImportControl">
             <property name="file" value="${config_loc}/import-control.xml"/>
-            <property name="path" value="^.*[\\/]src[\\/]main[\\/].*$"/>
+            <property name="path" value="^.*[\\/]src[\\/](main|debug)[\\/].*$"/>
             <message key="import.control.disallowed"
                      value="Import {0} crosses a package boundary. Features do not import each other: open the screen of another feature through ui/Components, and move shared code into backend/, recording/, endpoint/ or ui/. Shared code without UI does not import features, ui, R or Android UI classes."/>
         </module>

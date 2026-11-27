@@ -6,6 +6,7 @@ GRADLEW  := ./gradlew
 APK      := app/build/outputs/apk/debug/app-debug.apk
 TEST_APK := app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 PACKAGE  := dev.starkbit.chato
+DEBUG_PACKAGE := $(PACKAGE).debug
 
 # External: adb lists ready phones as "device", others as "offline" or "unauthorized"
 DEVICE ?= $(shell $(ADB) devices 2>/dev/null | grep -v 'List' | grep 'device$$' | head -1 | awk '{print $$1}')
@@ -18,7 +19,7 @@ NC     := \033[0m
 
 .DEFAULT_GOAL := help
 
-.PHONY: help device build install uninstall clean run test check push-parakeet bench release
+.PHONY: help device build install uninstall clean run test check device-check push-parakeet bench release
 
 help: ## Show this help message
 	@echo "$(CYAN)WhisperIME+ Makefile$(NC)"
@@ -54,12 +55,12 @@ endif
 	$(ADB) -s $(DEVICE) install -r $(APK)
 	@echo "$(GREEN)Installed.$(NC)"
 
-uninstall: ## Remove app from device
+uninstall: ## Remove the debug app from device
 ifeq ($(DEVICE),)
 	$(error $(RED)No device found. Run 'make device' first.$(NC))
 endif
 	@echo "$(CYAN)Uninstalling from $(DEVICE)...$(NC)"
-	$(ADB) -s $(DEVICE) uninstall $(PACKAGE)
+	$(ADB) -s $(DEVICE) uninstall $(DEBUG_PACKAGE)
 	@echo "$(GREEN)Uninstalled.$(NC)"
 
 run: build install ## Build and install (full pipeline)
@@ -86,9 +87,16 @@ check: ## Package boundaries, comments, complexity, copy-paste, lint and unit te
 	$(GRADLEW) lintDebug
 	$(GRADLEW) testDebugUnitTest
 
+device-check: build ## Drive a debug copy on the phone against fake servers on this machine (CHECKS="check_keys ...")
+ifeq ($(DEVICE),)
+	$(error $(RED)No device found. Run 'make device' first.$(NC))
+endif
+	DEVICE=$(DEVICE) python3 -I tools/devicecheck/check.py $(CHECKS)
+
 PARAKEET_DIR ?= /mnt/Wolf_1/_stacks/parakeet/data/models
 BENCH_WAVS   ?= bench
 FILES_DIR    := /sdcard/Android/data/$(PACKAGE)/files
+DEBUG_FILES_DIR := /sdcard/Android/data/$(DEBUG_PACKAGE)/files
 
 push-parakeet: ## Copy Parakeet model files to the phone (PARAKEET_DIR=...)
 ifeq ($(DEVICE),)
@@ -107,10 +115,10 @@ endif
 	$(GRADLEW) assembleDebug assembleDebugAndroidTest
 	$(ADB) -s $(DEVICE) install -r $(APK)
 	$(ADB) -s $(DEVICE) install -r -t $(TEST_APK)
-	$(ADB) -s $(DEVICE) shell mkdir -p $(FILES_DIR)/bench
-	$(ADB) -s $(DEVICE) shell rm -f $(FILES_DIR)/bench/results.txt
-	$(ADB) -s $(DEVICE) push $(BENCH_WAVS)/*.wav $(FILES_DIR)/bench/
+	$(ADB) -s $(DEVICE) shell mkdir -p $(DEBUG_FILES_DIR)/bench
+	$(ADB) -s $(DEVICE) shell rm -f $(DEBUG_FILES_DIR)/bench/results.txt
+	$(ADB) -s $(DEVICE) push $(BENCH_WAVS)/*.wav $(DEBUG_FILES_DIR)/bench/
 	$(ADB) -s $(DEVICE) shell am instrument -w -e class com.whisperonnx.backend.LocalEngineBenchmark \
-		$(PACKAGE).test/androidx.test.runner.AndroidJUnitRunner
+		$(DEBUG_PACKAGE).test/androidx.test.runner.AndroidJUnitRunner
 	@echo ""
-	@$(ADB) -s $(DEVICE) shell cat $(FILES_DIR)/bench/results.txt
+	@$(ADB) -s $(DEVICE) shell cat $(DEBUG_FILES_DIR)/bench/results.txt

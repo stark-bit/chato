@@ -43,6 +43,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+        }
         release {
             if (project.hasProperty('CHATO_KEYSTORE')) signingConfig signingConfigs.release
             minifyEnabled false
@@ -104,9 +107,10 @@ checkstyle {
 tasks.register('checkstyle', Checkstyle) {
     description = 'Checks package boundaries and project rules in the Java sources'
     source 'src/main/java', 'src/test/java', 'src/androidTest/java', 'src/main/res', 'src/main/AndroidManifest.xml',
+            'src/debug/java', 'src/debug/res', 'src/debug/AndroidManifest.xml', rootProject.file('tools'),
             'build.gradle', rootProject.file('build.gradle'), rootProject.file('settings.gradle'),
             rootProject.file('Makefile'), rootProject.file('config/checkstyle'), rootProject.file('.claude/hooks')
-    include '**/*.java', '**/*.xml', '**/*.gradle', '**/Makefile', '**/*.sh'
+    include '**/*.java', '**/*.xml', '**/*.gradle', '**/Makefile', '**/*.sh', '**/*.py'
     classpath = files()
     ignoreFailures = false
     maxWarnings = 0
@@ -119,7 +123,7 @@ tasks.register('pmd', Pmd) {
     description = 'Checks the Java sources for branching that is hard to follow'
     ruleSetFiles = rootProject.files('config/pmd/ruleset.xml')
     ruleSets = []
-    source 'src/main/java', 'src/test/java', 'src/androidTest/java'
+    source 'src/main/java', 'src/debug/java', 'src/test/java', 'src/androidTest/java'
     include '**/*.java'
     exclude '**/thirdparty/**'
     classpath = files()

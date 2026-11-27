@@ -64,6 +64,7 @@ The server's address is the **Server URL**, never "endpoint URL", even though it
 | **Test screen** | Pick a backend, record, see the text and the time taken. Opens from the launcher and from Settings. | "Test transcription" (Settings row) | `TestScreenActivity`, `activity_main.xml` | main screen |
 | **Setup screen** | Opens when a model on the phone is needed but missing. Offers the model download or the server. | "Set up Chato" | `SetupActivity`, `activity_download.xml` | download screen |
 | **Settings** | Backend, server, endpoints, quick record, auto mode silence, Bluetooth. | "Settings" | `SettingsActivity` | preferences |
+| **Device check screen** | Debug builds only: a text field that `make device-check` types into. | "Device check field" | `DeviceCheckActivity` (in `src/debug`) | test app |
 | **System voice input** | Chato as Android's speech recognizer for other apps. | | `VoiceInputService`, `VoiceInputActivity` | |
 
 ## Code names that don't match the terms
