@@ -3,10 +3,9 @@ package com.whisperonnx.backend;
 import com.whisperonnx.recording.WavUtils;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.util.Log;
 
-import androidx.preference.PreferenceManager;
+import com.whisperonnx.prefs.Prefs;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
@@ -27,16 +26,8 @@ public class OpenAITranscriber {
     }
 
     private static final String TAG = "OpenAITranscriber";
-    private static final String DEFAULT_ENDPOINT = "https://api.openai.com/v1/audio/transcriptions";
-    private static final String DEFAULT_MODEL = "whisper-1";
 
-    public static final String PREF_BACKEND_TYPE = "backend_type";
-    public static final String PREF_OPENAI_ENDPOINT = "openai_endpoint";
-    public static final String PREF_OPENAI_API_KEY = "openai_api_key";
-    public static final String PREF_OPENAI_MODEL = "openai_model";
 
-    public static final String BACKEND_LOCAL = "local";
-    public static final String BACKEND_OPENAI = "openai";
 
     public static final String MSG_EMPTY_TRANSCRIPTION = "OpenAI returned empty transcription";
 
@@ -49,7 +40,7 @@ public class OpenAITranscriber {
     public void transcribe(Context context, byte[] pcmData, Callback callback) {
         executor.execute(() -> {
             try {
-                transcribeNow(PreferenceManager.getDefaultSharedPreferences(context), pcmData, callback);
+                transcribeNow(Prefs.of(context), pcmData, callback);
             } catch (IOException e) {
                 Log.e(TAG, "Network error", e);
                 callback.onError("Network error: " + e.getMessage());
@@ -60,9 +51,9 @@ public class OpenAITranscriber {
         });
     }
 
-    private void transcribeNow(SharedPreferences sp, byte[] pcmData, Callback callback) throws IOException {
-        String endpoint = sp.getString(PREF_OPENAI_ENDPOINT, DEFAULT_ENDPOINT);
-        String apiKey = sp.getString(PREF_OPENAI_API_KEY, "");
+    private void transcribeNow(Prefs prefs, byte[] pcmData, Callback callback) throws IOException {
+        String endpoint = prefs.serverUrl();
+        String apiKey = prefs.serverApiKey();
         if (endpoint.isEmpty()) {
             callback.onError("OpenAI endpoint not configured");
             return;
@@ -72,7 +63,7 @@ public class OpenAITranscriber {
             return;
         }
 
-        Response response = client.newCall(request(endpoint, apiKey, sp.getString(PREF_OPENAI_MODEL, DEFAULT_MODEL), pcmData)).execute();
+        Response response = client.newCall(request(endpoint, apiKey, prefs.serverModel(), pcmData)).execute();
         if (!response.isSuccessful()) {
             String errorBody = response.body() != null
                     ? response.body().string()

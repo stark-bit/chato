@@ -1,6 +1,7 @@
 package com.whisperonnx.endpoint;
 
-import android.content.SharedPreferences;
+import com.whisperonnx.prefs.Prefs;
+
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -24,7 +25,6 @@ import okhttp3.Response;
 public class EndpointSender {
     private static final String TAG = "EndpointSender";
     public static final int COUNT = 2;
-    public static final String DEFAULT_BODY = "{\"text\": \"{{text}}\"}";
 
     public static class Endpoint {
         public final int index;
@@ -52,18 +52,14 @@ public class EndpointSender {
         void onDone(Endpoint endpoint, String text, String error);
     }
 
-    public static String key(int index, String field) { return "endpoint" + index + "_" + field; }
-
-    public static Endpoint load(SharedPreferences sp, int index) {
+    public static Endpoint load(Prefs prefs, int index) {
         return new Endpoint(index,
-                sp.getString(key(index, "name"), "").trim(),
-                sp.getString(key(index, "url"), "").trim(),
-                sp.getString(key(index, "headers"), ""),
-                sp.getString(key(index, "body"), DEFAULT_BODY),
-                sp.getBoolean(key(index, "combine"), true));
+                prefs.endpointText(index, Prefs.EndpointField.NAME).trim(),
+                prefs.endpointText(index, Prefs.EndpointField.URL).trim(),
+                prefs.endpointText(index, Prefs.EndpointField.HEADERS),
+                prefs.endpointText(index, Prefs.EndpointField.BODY),
+                prefs.endpointCombine(index));
     }
-
-    public static final String PREF_QUICK_RECORD = "quickRecordEndpoint";
 
     public static int pickQuickRecord(int preferred, boolean[] configured) {
         if (preferred >= 1 && preferred <= configured.length && configured[preferred - 1]) return preferred;
@@ -123,7 +119,7 @@ public class EndpointSender {
 
     static String fillTemplate(Endpoint ep, String text) {
         String timestamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(new Date());
-        String template = ep.body.isEmpty() ? DEFAULT_BODY : ep.body;
+        String template = ep.body.isEmpty() ? Prefs.DEFAULT_ENDPOINT_BODY : ep.body;
         Matcher m = PLACEHOLDER.matcher(template);
         StringBuffer out = new StringBuffer(template.length() + text.length() + 16);
         while (m.find()) {

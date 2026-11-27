@@ -1,5 +1,6 @@
 package com.whisperonnx.quickrecord;
 
+import com.whisperonnx.prefs.Prefs;
 import com.whisperonnx.R;
 import com.whisperonnx.endpoint.EndpointSender;
 import com.whisperonnx.ui.Components;
@@ -10,18 +11,12 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.view.View;
 import android.widget.RemoteViews;
 
-import androidx.preference.PreferenceManager;
 
 public class QuickRecordWidgetProvider extends AppWidgetProvider {
-    static String endpointKey(int widgetId) {
-        return "quickRecordWidget_" + widgetId;
-    }
-
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         for (int id : ids) manager.updateAppWidget(id, views(context, id));
@@ -29,9 +24,7 @@ public class QuickRecordWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onDeleted(Context context, int[] ids) {
-        SharedPreferences.Editor e = PreferenceManager.getDefaultSharedPreferences(context).edit();
-        for (int id : ids) e.remove(endpointKey(id));
-        e.apply();
+        Prefs.of(context).forgetWidgets(ids);
     }
 
     static void updateAll(Context context) {
@@ -42,11 +35,11 @@ public class QuickRecordWidgetProvider extends AppWidgetProvider {
     }
 
     static RemoteViews views(Context context, int widgetId) {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
-        int chosen = sp.getInt(endpointKey(widgetId), 0);
-        int index = chosen != 0 ? chosen : sp.getInt(EndpointSender.PREF_QUICK_RECORD, 1);
+        Prefs prefs = Prefs.of(context);
+        int chosen = prefs.widgetEndpoint(widgetId);
+        int index = chosen != 0 ? chosen : prefs.quickRecordEndpoint();
         boolean recording = QuickRecordService.isRecordingTo(index);
-        String name = EndpointSender.load(sp, index).displayName();
+        String name = EndpointSender.load(prefs, index).displayName();
 
         RemoteViews v = new RemoteViews(context.getPackageName(), R.layout.widget_quick_record);
         v.setInt(R.id.widget_quick_record, "setBackgroundResource",

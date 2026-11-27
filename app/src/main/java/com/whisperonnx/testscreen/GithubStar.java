@@ -2,45 +2,28 @@ package com.whisperonnx.testscreen;
 
 import com.whisperonnx.BuildConfig;
 import com.whisperonnx.R;
+import com.whisperonnx.prefs.Prefs;
 
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
-
-import androidx.preference.PreferenceManager;
 
 public class GithubStar {
     public static void setAskForStar(boolean askForStar, Context context) {
-        SharedPreferences prefManager = PreferenceManager.getDefaultSharedPreferences(context);
-        SharedPreferences.Editor editor = prefManager.edit();
-        editor.putBoolean("askForStar", askForStar);
-        editor.apply();
+        Prefs.of(context).setAskForStar(askForStar);
     }
 
     public static boolean shouldShowStarDialog(Context context) {
-        SharedPreferences prefManager = PreferenceManager.getDefaultSharedPreferences(context);
-        int versionCode = prefManager.getInt("versionCode", 0);
-        boolean askForStar = prefManager.getBoolean("askForStar", true);
-
-        if (prefManager.contains("versionCode") && BuildConfig.VERSION_CODE > versionCode && askForStar) {
-            SharedPreferences.Editor editor = prefManager.edit();
-            editor.putInt("versionCode", BuildConfig.VERSION_CODE);
-            editor.apply();
-            return true;
-        } else {
-            SharedPreferences.Editor editor = prefManager.edit();
-            editor.putInt("versionCode", BuildConfig.VERSION_CODE);
-            editor.apply();
-            return false;
-        }
+        Prefs prefs = Prefs.of(context);
+        boolean show = prefs.starVersionIsOlderThan(BuildConfig.VERSION_CODE) && prefs.askForStar();
+        prefs.setStarVersion(BuildConfig.VERSION_CODE);
+        return show;
     }
 
     public static void starDialog(Context context, String url) {
-        SharedPreferences prefManager = PreferenceManager.getDefaultSharedPreferences(context);
-        if (prefManager.getBoolean("askForStar", true)) {
+        if (Prefs.of(context).askForStar()) {
             AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(context);
             alertDialogBuilder.setMessage(R.string.dialog_StarOnGitHub);
             alertDialogBuilder.setPositiveButton(context.getString(android.R.string.ok), new DialogInterface.OnClickListener() {

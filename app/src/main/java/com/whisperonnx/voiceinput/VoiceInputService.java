@@ -11,7 +11,6 @@ import static android.speech.SpeechRecognizer.ERROR_CLIENT;
 import static android.speech.SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -24,7 +23,6 @@ import android.util.Log;
 import android.widget.Toast;
 
 import androidx.core.content.ContextCompat;
-import androidx.preference.PreferenceManager;
 
 import java.util.ArrayList;
 
@@ -33,12 +31,9 @@ public class VoiceInputService extends RecognitionService {
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
     private boolean recognitionCancelled = false;
-    private SharedPreferences sp = null;
 
     @Override
     protected void onStartListening(Intent recognizerIntent, Callback callback) {
-        sp = PreferenceManager.getDefaultSharedPreferences(this);
-
         checkRecordPermission(callback);
 
         initModel(callback);

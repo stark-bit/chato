@@ -1,5 +1,6 @@
 package com.whisperonnx.setup;
 
+import com.whisperonnx.prefs.Prefs;
 import com.whisperonnx.R;
 import com.whisperonnx.backend.Backends;
 import com.whisperonnx.backend.ModelDownloader;
@@ -9,7 +10,6 @@ import com.whisperonnx.ui.Components;
 import com.whisperonnx.ui.ModelInstaller;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -20,7 +20,6 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.preference.PreferenceManager;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,7 +27,7 @@ import java.io.InputStream;
 public class SetupActivity extends AppCompatActivity {
     private final ModelInstaller installer = new ModelInstaller(this);
     private ActivityResultLauncher<Intent> pickZip;
-    private SharedPreferences sp;
+    private Prefs prefs;
     private ProgressBar progressBar;
     private TextView zipSummary;
     private boolean extracting;
@@ -37,7 +36,7 @@ public class SetupActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_download);
-        sp = PreferenceManager.getDefaultSharedPreferences(this);
+        prefs = Prefs.of(this);
         progressBar = findViewById(R.id.progress_bar);
         zipSummary = findViewById(R.id.summary_zip);
 
@@ -69,7 +68,7 @@ public class SetupActivity extends AppCompatActivity {
 
     private void chooseServer() {
         if (busy()) return;
-        Backends.select(sp, Backends.REMOTE);
+        Backends.select(prefs, Backends.REMOTE);
         Components.open(this, Components.SETTINGS);
         finish();
     }
@@ -91,7 +90,7 @@ public class SetupActivity extends AppCompatActivity {
     }
 
     private void done(int backend) {
-        Backends.select(sp, backend);
+        Backends.select(prefs, backend);
         finish();
     }
 

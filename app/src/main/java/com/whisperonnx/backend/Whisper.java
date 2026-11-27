@@ -1,15 +1,15 @@
 package com.whisperonnx.backend;
 
+import com.whisperonnx.prefs.Prefs;
+
 import com.whisperonnx.recording.RecordBuffer;
 import com.whisperonnx.thirdparty.rtranslator.NeuralNetworkApi;
 import com.whisperonnx.thirdparty.rtranslator.voice.Recognizer;
 import com.whisperonnx.thirdparty.rtranslator.voice.RecognizerListener;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.util.Log;
 
-import androidx.preference.PreferenceManager;
 
 import java.io.File;
 import java.util.concurrent.BlockingQueue;
@@ -34,13 +34,6 @@ public class Whisper {
     public static final String MSG_QUEUE_EMPTY = "Queue empty";
     public static final String MSG_MODEL_LOADED = "Model loaded";
 
-    public static final String PREF_LOCAL_ENGINE = "local_engine";
-    public static final String ENGINE_WHISPER = "whisper";
-    public static final String ENGINE_PARAKEET = "parakeet";
-
-    public static String localEngine(SharedPreferences sp) {
-        return sp.getString(PREF_LOCAL_ENGINE, ENGINE_WHISPER);
-    }
 
     private final AtomicBoolean mInProgress = new AtomicBoolean(false);
 
@@ -56,7 +49,7 @@ public class Whisper {
     private Context mContext;
     private long startTime;
     private OpenAITranscriber openaiTranscriber;
-    private String mBackendType;
+    private boolean mUseServer;
     private final String mLocalEngine;
     private boolean needsSetup;
     private volatile boolean localModelRequested;
@@ -72,16 +65,16 @@ public class Whisper {
     public Whisper(Context context) {
         mContext = context;
 
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
-        mBackendType = sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL);
-        String engine = localEngine(sp);
-        if (engine.equals(ENGINE_PARAKEET) && !ParakeetRecognizer.isInstalled(context)) {
+        Prefs prefs = Prefs.of(context);
+        mUseServer = prefs.useServer();
+        String engine = prefs.localEngine();
+        if (engine.equals(Prefs.ENGINE_PARAKEET) && !ParakeetRecognizer.isInstalled(context)) {
             Log.w(TAG, "Parakeet selected but not installed in " + ParakeetRecognizer.dir(context) + ", using Whisper");
-            engine = ENGINE_WHISPER;
+            engine = Prefs.ENGINE_WHISPER;
         }
         mLocalEngine = engine;
 
-        if (mBackendType.equals(OpenAITranscriber.BACKEND_OPENAI) || mLocalEngine.equals(ENGINE_PARAKEET)) {
+        if (mUseServer || mLocalEngine.equals(Prefs.ENGINE_PARAKEET)) {
             recordBufferThread = new Thread(this::processRecordBufferLoop, "whisper-record");
             recordBufferThread.start();
             return;
@@ -123,12 +116,12 @@ public class Whisper {
     }
 
     public void loadModel() {
-        if (mBackendType.equals(OpenAITranscriber.BACKEND_OPENAI)) {
+        if (mUseServer) {
             return;
         }
         localModelRequested = true;
         if (needsSetup) return;
-        if (mLocalEngine.equals(ENGINE_PARAKEET)) {
+        if (mLocalEngine.equals(Prefs.ENGINE_PARAKEET)) {
             new Thread(() -> {
                 try {
                     parakeet = new ParakeetRecognizer(ParakeetRecognizer.dir(mContext));
@@ -274,12 +267,10 @@ public class Whisper {
     }
 
     private void transcribeChunkBlocking(byte[] pcm) throws InterruptedException {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        String backend = sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL);
         startTime = System.currentTimeMillis();
         CountDownLatch latch = new CountDownLatch(1);
 
-        if (backend.equals(OpenAITranscriber.BACKEND_OPENAI)) {
+        if (Prefs.of(mContext).useServer()) {
             if (openaiTranscriber == null) openaiTranscriber = new OpenAITranscriber();
             openaiTranscriber.transcribe(mContext, pcm, new OpenAITranscriber.Callback() {
                 @Override
@@ -296,7 +287,7 @@ public class Whisper {
                     latch.countDown();
                 }
             });
-        } else if (mLocalEngine.equals(ENGINE_PARAKEET)) {
+        } else if (mLocalEngine.equals(Prefs.ENGINE_PARAKEET)) {
             transcribeParakeet(RecordBuffer.getSamples(pcm));
             return;
         } else {
@@ -339,10 +330,9 @@ public class Whisper {
                 return;
             }
 
-            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-            mBackendType = sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL);
+            mUseServer = Prefs.of(mContext).useServer();
 
-            if (mBackendType.equals(OpenAITranscriber.BACKEND_OPENAI)) {
+            if (mUseServer) {
                 Log.d(TAG, "Routing to REMOTE (OpenAI) backend");
                 processRecordBufferRemote();
             } else {
@@ -360,7 +350,7 @@ public class Whisper {
     private void processRecordBufferLocal() throws Exception {
         startTime = System.currentTimeMillis();
         sendUpdate(MSG_PROCESSING);
-        if (mLocalEngine.equals(ENGINE_PARAKEET)) {
+        if (mLocalEngine.equals(Prefs.ENGINE_PARAKEET)) {
             transcribeParakeet(RecordBuffer.getSamples());
             sendUpdate(MSG_PROCESSING_DONE);
             return;

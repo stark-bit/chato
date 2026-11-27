@@ -48,6 +48,11 @@
         <disallow pkg="com.google.android.material"/>
     </subpackage>
 
+    <subpackage name="prefs">
+        <disallow pkg="com\.whisperonnx\.(?!prefs)\w+" regex="true"/>
+        <disallow class="com.whisperonnx.R"/>
+    </subpackage>
+
     <subpackage name="thirdparty">
         <allow pkg="com.whisperonnx.thirdparty"/>
         <disallow pkg="com.whisperonnx"/>

@@ -1,6 +1,6 @@
 package com.whisperonnx.backend;
 
-import android.content.SharedPreferences;
+import com.whisperonnx.prefs.Prefs;
 
 import java.net.URI;
 
@@ -9,27 +9,20 @@ public final class Backends {
 
     private Backends() {}
 
-    public static int current(SharedPreferences sp) {
-        if (OpenAITranscriber.BACKEND_OPENAI.equals(
-                sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL))) {
-            return REMOTE;
-        }
-        return Whisper.ENGINE_PARAKEET.equals(Whisper.localEngine(sp)) ? PARAKEET : WHISPER;
+    public static int current(Prefs prefs) {
+        if (prefs.useServer()) return REMOTE;
+        return Prefs.ENGINE_PARAKEET.equals(prefs.localEngine()) ? PARAKEET : WHISPER;
     }
 
-    public static void select(SharedPreferences sp, int choice) {
-        SharedPreferences.Editor ed = sp.edit().putString(OpenAITranscriber.PREF_BACKEND_TYPE,
-                choice == REMOTE ? OpenAITranscriber.BACKEND_OPENAI : OpenAITranscriber.BACKEND_LOCAL);
-        if (choice != REMOTE) {
-            ed.putString(Whisper.PREF_LOCAL_ENGINE, choice == PARAKEET ? Whisper.ENGINE_PARAKEET : Whisper.ENGINE_WHISPER);
-        }
-        ed.apply();
+    public static void select(Prefs prefs, int choice) {
+        if (choice == REMOTE) prefs.setUseServer(true);
+        else prefs.setLocal(choice == PARAKEET ? Prefs.ENGINE_PARAKEET : Prefs.ENGINE_WHISPER);
     }
 
-    public static String describe(SharedPreferences sp, int choice, boolean parakeetInstalled) {
+    public static String describe(Prefs prefs, int choice, boolean parakeetInstalled) {
         switch (choice) {
             case REMOTE:
-                return describeServer(sp);
+                return describeServer(prefs);
             case PARAKEET:
                 return parakeetInstalled
                         ? "On this phone · NVIDIA Parakeet TDT 0.6B"
@@ -39,10 +32,10 @@ public final class Backends {
         }
     }
 
-    private static String describeServer(SharedPreferences sp) {
-        String host = hostOf(sp.getString(OpenAITranscriber.PREF_OPENAI_ENDPOINT, ""));
-        if (host == null || host.isEmpty()) return "Server not set up. Add it in Settings";
-        String model = sp.getString(OpenAITranscriber.PREF_OPENAI_MODEL, "");
+    private static String describeServer(Prefs prefs) {
+        String host = hostOf(prefs.serverUrl());
+        if (host == null || host.isEmpty() || prefs.serverApiKey().isEmpty()) return "Server not set up. Add it in Settings";
+        String model = prefs.serverModel();
         return "Server " + host + (model.isEmpty() ? "" : " · model " + model);
     }
 

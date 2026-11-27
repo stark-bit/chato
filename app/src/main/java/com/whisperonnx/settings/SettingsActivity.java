@@ -1,10 +1,12 @@
 package com.whisperonnx.settings;
 
+import com.whisperonnx.prefs.Prefs;
 import com.whisperonnx.R;
 import com.whisperonnx.backend.Backends;
 import com.whisperonnx.backend.ParakeetRecognizer;
 import com.whisperonnx.backend.WhisperModel;
 import com.whisperonnx.endpoint.EndpointSender;
+import com.whisperonnx.ui.Permissions;
 import com.whisperonnx.ui.Components;
 import com.whisperonnx.ui.ModelInstaller;
 import com.whisperonnx.ui.ThemeUtils;
@@ -12,7 +14,6 @@ import com.whisperonnx.ui.ThemeUtils;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -29,13 +30,11 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
-import androidx.preference.PreferenceManager;
 
 import com.google.android.material.slider.RangeSlider;
 
@@ -45,7 +44,7 @@ import java.util.List;
 public class SettingsActivity extends AppCompatActivity {
     private static final String TAG = "SettingsActivity";
 
-    private SharedPreferences sp = null;
+    private Prefs prefs = null;
     private final ModelInstaller modelInstaller = new ModelInstaller(this);
     private CompoundButton modeBluetooth;
     private RangeSlider minSilence;
@@ -59,13 +58,11 @@ public class SettingsActivity extends AppCompatActivity {
         ActionBar actionBar = getSupportActionBar();
         actionBar.setDisplayHomeAsUpEnabled(true);
 
-        sp = PreferenceManager.getDefaultSharedPreferences(this);
+        prefs = Prefs.of(this);
         modeBluetooth = findViewById(R.id.mode_bluetooth);
-        modeBluetooth.setChecked(sp.getBoolean("bluetooth",false));
+        modeBluetooth.setChecked(prefs.bluetooth());
         modeBluetooth.setOnCheckedChangeListener((compoundButton, isChecked) -> {
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putBoolean("bluetooth", isChecked);
-            editor.apply();
+            prefs.setBluetooth(isChecked);
             if (isChecked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
                     && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT},111);
@@ -86,19 +83,18 @@ public class SettingsActivity extends AppCompatActivity {
         backendAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerBackendType.setAdapter(backendAdapter);
 
-        String backendType = sp.getString("backend_type", "local");
-        spinnerBackendType.setSelection(Backends.current(sp));
+        spinnerBackendType.setSelection(Backends.current(prefs));
 
-        editEndpoint.setText(sp.getString("openai_endpoint", "https://api.openai.com/v1/audio/transcriptions"));
-        editApiKey.setText(sp.getString("openai_api_key", ""));
-        editModel.setText(sp.getString("openai_model", "whisper-1"));
+        editEndpoint.setText(prefs.serverUrl());
+        editApiKey.setText(prefs.serverApiKey());
+        editModel.setText(prefs.serverModel());
 
-        layoutOpenaiSettings.setVisibility(backendType.equals("openai") ? View.VISIBLE : View.GONE);
+        layoutOpenaiSettings.setVisibility(prefs.useServer() ? View.VISIBLE : View.GONE);
 
         spinnerBackendType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                Backends.select(sp, position);
+                Backends.select(prefs, position);
                 if (position == Backends.PARAKEET && !ParakeetRecognizer.isInstalled(SettingsActivity.this)) {
                     modelInstaller.offerParakeet(() -> { }, () -> spinnerBackendType.setSelection(Backends.WHISPER));
                 } else if (position == Backends.WHISPER && !WhisperModel.isInstalled(SettingsActivity.this)) {
@@ -122,14 +118,11 @@ public class SettingsActivity extends AppCompatActivity {
         editModel.addTextChangedListener(openaiSaveWatcher);
 
         minSilence = findViewById(R.id.settings_min_silence);
-        float silence = sp.getInt("silenceDurationMs", 800);
-        minSilence.setValues(silence);
+        minSilence.setValues((float) prefs.silenceMs());
         minSilence.addOnChangeListener(new RangeSlider.OnChangeListener() {
             @Override
             public void onValueChange(@NonNull RangeSlider slider, float value, boolean fromUser) {
-                SharedPreferences.Editor editor = sp.edit();
-                editor.putInt("silenceDurationMs", (int) value);
-                editor.apply();
+                prefs.setSilenceMs((int) value);
             }
         });
 
@@ -148,16 +141,16 @@ public class SettingsActivity extends AppCompatActivity {
             final int index = i;
             View item = getLayoutInflater().inflate(R.layout.item_endpoint_settings, container, false);
             ((TextView) item.findViewById(R.id.endpoint_title)).setText(getString(R.string.endpoint_title, index));
-            EndpointSender.Endpoint ep = EndpointSender.load(sp, index);
-            bindText(item.findViewById(R.id.edit_endpoint_name), EndpointSender.key(index, "name"), ep.name);
-            bindText(item.findViewById(R.id.edit_endpoint_url), EndpointSender.key(index, "url"), ep.url);
-            bindText(item.findViewById(R.id.edit_endpoint_headers), EndpointSender.key(index, "headers"), ep.headers);
-            bindText(item.findViewById(R.id.edit_endpoint_body), EndpointSender.key(index, "body"), ep.body);
+            EndpointSender.Endpoint ep = EndpointSender.load(prefs, index);
+            bindText(item.findViewById(R.id.edit_endpoint_name), index, Prefs.EndpointField.NAME, ep.name);
+            bindText(item.findViewById(R.id.edit_endpoint_url), index, Prefs.EndpointField.URL, ep.url);
+            bindText(item.findViewById(R.id.edit_endpoint_headers), index, Prefs.EndpointField.HEADERS, ep.headers);
+            bindText(item.findViewById(R.id.edit_endpoint_body), index, Prefs.EndpointField.BODY, ep.body);
             CompoundButton combine = item.findViewById(R.id.check_endpoint_combine);
             item.findViewById(R.id.row_endpoint_combine).setOnClickListener(v -> combine.toggle());
             combine.setChecked(ep.combine);
             combine.setOnCheckedChangeListener((b, checked) ->
-                    sp.edit().putBoolean(EndpointSender.key(index, "combine"), checked).apply());
+                    prefs.setEndpointCombine(index, checked));
             container.addView(item);
         }
     }
@@ -169,11 +162,11 @@ public class SettingsActivity extends AppCompatActivity {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, labels);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
-        spinner.setSelection(Math.max(0, Math.min(EndpointSender.COUNT, sp.getInt(EndpointSender.PREF_QUICK_RECORD, 1)) - 1));
+        spinner.setSelection(Math.max(0, Math.min(EndpointSender.COUNT, prefs.quickRecordEndpoint()) - 1));
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                sp.edit().putInt(EndpointSender.PREF_QUICK_RECORD, position + 1).apply();
+                prefs.setQuickRecordEndpoint(position + 1);
             }
 
             @Override
@@ -193,27 +186,17 @@ public class SettingsActivity extends AppCompatActivity {
         });
     }
 
-    private void bindText(EditText edit, String prefKey, String value) {
+    private void bindText(EditText edit, int index, Prefs.EndpointField field, String value) {
         edit.setText(value);
         edit.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(Editable s) { sp.edit().putString(prefKey, s.toString()).apply(); }
+            @Override public void afterTextChanged(Editable s) { prefs.setEndpointText(index, field, s.toString()); }
         });
     }
 
     private void checkPermissions() {
-        List<String> perms = new ArrayList<>();
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            perms.add(Manifest.permission.RECORD_AUDIO);
-            Toast.makeText(this, getString(R.string.need_record_audio_permission), Toast.LENGTH_SHORT).show();
-        }
-        if ((Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) && (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)){
-            perms.add(Manifest.permission.POST_NOTIFICATIONS);
-        }
-        if (!perms.isEmpty()) {
-            requestPermissions(perms.toArray(new String[] {}), 0);
-        }
+        Permissions.requestMissing(this, false);
     }
 
     @Override
@@ -240,10 +223,8 @@ public class SettingsActivity extends AppCompatActivity {
         EditText editApiKey = findViewById(R.id.edit_openai_api_key);
         EditText editModel = findViewById(R.id.edit_openai_model);
 
-        sp.edit()
-            .putString("openai_endpoint", editEndpoint.getText().toString().trim())
-            .putString("openai_api_key", editApiKey.getText().toString().trim())
-            .putString("openai_model", editModel.getText().toString().trim())
-            .apply();
+        prefs.setServer(editEndpoint.getText().toString().trim(),
+                editApiKey.getText().toString().trim(),
+                editModel.getText().toString().trim());
     }
 }

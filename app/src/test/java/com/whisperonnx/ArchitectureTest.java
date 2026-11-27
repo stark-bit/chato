@@ -26,8 +26,8 @@ public class ArchitectureTest {
     private static final String ROOT = "com.whisperonnx";
     private static final List<String> FEATURES =
             Arrays.asList("keyboard", "quickrecord", "voiceinput", "testscreen", "setup", "settings");
-    private static final String[] CORE = {ROOT + ".backend..", ROOT + ".recording..", ROOT + ".endpoint.."};
-    private static final List<String> SHARED = Arrays.asList("ui", "backend", "recording", "endpoint", "thirdparty");
+    private static final String[] CORE = {ROOT + ".backend..", ROOT + ".recording..", ROOT + ".endpoint..", ROOT + ".prefs.."};
+    private static final List<String> SHARED = Arrays.asList("ui", "backend", "recording", "endpoint", "prefs", "thirdparty");
 
     private static JavaClasses classes;
 
@@ -61,7 +61,7 @@ public class ArchitectureTest {
     @Test
     public void sharedCodeDoesNotDependOnFeatures() {
         noClasses().that().resideInAnyPackage(ROOT + ".ui..", ROOT + ".backend..", ROOT + ".recording..",
-                        ROOT + ".endpoint..", ROOT + ".thirdparty..")
+                        ROOT + ".endpoint..", ROOT + ".prefs..", ROOT + ".thirdparty..")
                 .should().dependOnClassesThat().resideInAnyPackage(packages(FEATURES))
                 .orShould().dependOnClassesThat(registeredNames())
                 .because("shared code is used by features, never the other way round.")
@@ -107,6 +107,27 @@ public class ArchitectureTest {
                         }
                     }
                 })
+                .check(classes);
+    }
+
+    @Test
+    public void onlyPrefsTouchesSharedPreferences() {
+        noClasses().that().resideOutsideOfPackages(ROOT + ".prefs..", ROOT + ".thirdparty..")
+                .should().dependOnClassesThat().haveFullyQualifiedName("android.content.SharedPreferences")
+                .orShould().dependOnClassesThat().haveFullyQualifiedName("android.content.SharedPreferences$Editor")
+                .orShould().dependOnClassesThat().haveFullyQualifiedName("androidx.preference.PreferenceManager")
+                .orShould().callMethod("android.content.Context", "getSharedPreferences", "java.lang.String", "int")
+                .because("each setting has one key and one default, in prefs.Prefs. Add a typed getter and"
+                        + " setter there instead of reading SharedPreferences with a string key.")
+                .check(classes);
+    }
+
+    @Test
+    public void prefsIsALeaf() {
+        noClasses().that().resideInAPackage(ROOT + ".prefs..")
+                .should().dependOnClassesThat(resideInAPackage(ROOT + "..")
+                        .and(not(resideInAPackage(ROOT + ".prefs.."))))
+                .because("every package reads settings, so prefs depends on none of them.")
                 .check(classes);
     }
 

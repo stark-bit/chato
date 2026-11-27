@@ -5,6 +5,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.whisperonnx.prefs.Prefs;
+
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -59,7 +61,7 @@ public class EndpointSenderTest {
 
     @Test public void fillTemplate_escapedTextRoundTripsThroughJson() throws Exception {
         String tricky = "He said \"hi\"\\ then\nleft\t😀 \u0002";
-        String body = EndpointSender.fillTemplate(ep("http://x", "", EndpointSender.DEFAULT_BODY), tricky);
+        String body = EndpointSender.fillTemplate(ep("http://x", "", Prefs.DEFAULT_ENDPOINT_BODY), tricky);
         assertEquals(tricky, new JSONObject(body).getString("text"));
     }
 
@@ -86,7 +88,7 @@ public class EndpointSenderTest {
     }
 
     @Test public void fillTemplate_textContainingPlaceholderIsNotExpandedTwice() throws Exception {
-        String body = EndpointSender.fillTemplate(ep("http://x", "", EndpointSender.DEFAULT_BODY), "say {{name}}");
+        String body = EndpointSender.fillTemplate(ep("http://x", "", Prefs.DEFAULT_ENDPOINT_BODY), "say {{name}}");
         assertEquals("say {{name}}", new JSONObject(body).getString("text"));
     }
 

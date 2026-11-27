@@ -1,15 +1,14 @@
 package com.whisperonnx.quickrecord;
 
+import com.whisperonnx.prefs.Prefs;
 import com.whisperonnx.R;
 import com.whisperonnx.endpoint.EndpointSender;
 
 import android.appwidget.AppWidgetManager;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.preference.PreferenceManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -27,10 +26,10 @@ public class QuickRecordWidgetConfigActivity extends AppCompatActivity {
             return;
         }
 
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
+        Prefs prefs = Prefs.of(this);
         String[] items = new String[EndpointSender.COUNT];
         for (int i = 1; i <= EndpointSender.COUNT; i++) {
-            EndpointSender.Endpoint ep = EndpointSender.load(sp, i);
+            EndpointSender.Endpoint ep = EndpointSender.load(prefs, i);
             String title = getString(R.string.endpoint_title, i);
             items[i - 1] = ep.name.isEmpty() ? title : title + ": " + ep.name;
             if (!ep.isConfigured()) items[i - 1] += " " + getString(R.string.quick_record_widget_no_url);
@@ -38,7 +37,7 @@ public class QuickRecordWidgetConfigActivity extends AppCompatActivity {
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.quick_record_widget_pick)
                 .setItems(items, (d, which) -> {
-                    sp.edit().putInt(QuickRecordWidgetProvider.endpointKey(widgetId), which + 1).apply();
+                    prefs.setWidgetEndpoint(widgetId, which + 1);
                     AppWidgetManager.getInstance(this).updateAppWidget(widgetId, QuickRecordWidgetProvider.views(this, widgetId));
                     setResult(RESULT_OK, result());
                     finish();

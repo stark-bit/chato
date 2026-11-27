@@ -1,17 +1,18 @@
 package com.whisperonnx.voiceinput;
 
+import com.whisperonnx.prefs.Prefs;
 import com.whisperonnx.R;
 import com.whisperonnx.backend.Whisper;
 import com.whisperonnx.backend.WhisperResult;
 import com.whisperonnx.recording.Recorder;
 import com.whisperonnx.ui.Components;
-import com.whisperonnx.ui.GradientBorderDrawable;
+import com.whisperonnx.ui.RecordCountdown;
+import com.whisperonnx.ui.RecordGlow;
 import com.whisperonnx.ui.HapticFeedback;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -27,7 +28,6 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
-import androidx.preference.PreferenceManager;
 
 import java.util.ArrayList;
 
@@ -40,57 +40,27 @@ public class VoiceInputActivity extends AppCompatActivity {
     private ProgressBar processingBar = null;
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
-    private SharedPreferences sp = null;
+    private Prefs prefs = null;
     private Context mContext;
     private CountDownTimer countDownTimer;
     private boolean modeAuto = false;
-    private GradientBorderDrawable gradientDrawable;
-
-    private GradientBorderDrawable getGradientDrawable() {
-        if (gradientDrawable == null) {
-            float density = getResources().getDisplayMetrics().density;
-            gradientDrawable = new GradientBorderDrawable(
-                10 * density,
-                0.5f * density,
-                15 * density
-            );
-        }
-        return gradientDrawable;
-    }
-
-    private void applyGradientBackground() {
-        runOnUiThread(() -> {
-            GradientBorderDrawable drawable = getGradientDrawable();
-            drawable.setHostView(btnRecord);
-            GradientBorderDrawable.enableGlowClipping(btnRecord);
-            btnRecord.setBackground(drawable);
-            drawable.startAnimation();
-        });
-    }
-
-    private void revertBackground() {
-        runOnUiThread(() -> {
-            if (gradientDrawable != null) gradientDrawable.stopAnimation();
-            GradientBorderDrawable.restoreGlowClipping(btnRecord);
-            btnRecord.setBackgroundResource(R.drawable.rounded_button_background);
-        });
-    }
+    private RecordGlow glow;
 
     private void onRecorderUpdate(String message) {
         switch (message) {
             case Recorder.MSG_RECORDING:
-                applyGradientBackground();
+                glow.start();
                 break;
             case Recorder.MSG_RECORDING_DONE:
                 HapticFeedback.vibrate(mContext);
-                revertBackground();
+                glow.stop();
                 startTranscription();
                 break;
             case Recorder.MSG_RECORDING_ERROR:
                 HapticFeedback.vibrate(mContext);
                 cancelCountDown();
                 runOnUiThread(() -> {
-                    revertBackground();
+                    glow.stop();
                     processingBar.setProgress(0);
                     Toast.makeText(mContext, R.string.error_no_input, Toast.LENGTH_SHORT).show();
                 });
@@ -105,20 +75,11 @@ public class VoiceInputActivity extends AppCompatActivity {
     private void startCountedRecording() {
         HapticFeedback.vibrate(this);
         startRecording();
-        runOnUiThread(() -> processingBar.setProgress(100));
-        countDownTimer = new CountDownTimer(30000, 1000) {
-            @Override
-            public void onTick(long l) {
-                runOnUiThread(() -> processingBar.setProgress((int) (l / 300)));
-            }
-            @Override
-            public void onFinish() {}
-        };
-        countDownTimer.start();
+        countDownTimer = RecordCountdown.start(this, processingBar);
     }
 
     private void onRecordPressed() {
-        applyGradientBackground();
+        glow.start();
         if (!checkRecordPermission()) return;
         if (mWhisper.isInProgress()) {
             runOnUiThread(() -> Toast.makeText(this, getString(R.string.please_wait), Toast.LENGTH_SHORT).show());
@@ -128,13 +89,13 @@ public class VoiceInputActivity extends AppCompatActivity {
     }
 
     private void onRecordReleased() {
-        revertBackground();
+        glow.stop();
         if (mRecorder != null && mRecorder.isInProgress()) mRecorder.stop();
     }
 
     private void toggleModeAuto() {
         modeAuto = !modeAuto;
-        sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
+        prefs.setModeAuto(modeAuto);
         btnRecord.setVisibility(modeAuto ? View.GONE : View.VISIBLE);
         btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
         if (mWhisper != null) stopTranscription();
@@ -143,9 +104,9 @@ public class VoiceInputActivity extends AppCompatActivity {
     }
 
     private void toggleBackend() {
-        String next = sp.getString("backend_type", "local").equals("openai") ? "local" : "openai";
-        sp.edit().putString("backend_type", next).apply();
-        btnBackend.setImageResource(next.equals("openai") ? R.drawable.ic_cloud_on_36dp : R.drawable.ic_cloud_off_36dp);
+        boolean server = !prefs.useServer();
+        prefs.setUseServer(server);
+        btnBackend.setImageResource(server ? R.drawable.ic_cloud_on_36dp : R.drawable.ic_cloud_off_36dp);
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -153,7 +114,7 @@ public class VoiceInputActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mContext = this;
-        sp = PreferenceManager.getDefaultSharedPreferences(this);
+        prefs = Prefs.of(this);
 
         initModel();
 
@@ -166,13 +127,13 @@ public class VoiceInputActivity extends AppCompatActivity {
 
         btnCancel = findViewById(R.id.btnCancel);
         btnRecord = findViewById(R.id.btnRecord);
+        glow = new RecordGlow(btnRecord, 10, null, R.drawable.rounded_button_background, this::runOnUiThread);
         btnModeAuto = findViewById(R.id.btnModeAuto);
         btnBackend = findViewById(R.id.btnBackend);
-        String backendType = sp.getString("backend_type", "local");
-        btnBackend.setImageResource(backendType.equals("openai") ? R.drawable.ic_cloud_on_36dp : R.drawable.ic_cloud_off_36dp);
+        btnBackend.setImageResource(prefs.useServer() ? R.drawable.ic_cloud_on_36dp : R.drawable.ic_cloud_off_36dp);
         processingBar = findViewById(R.id.processing_bar);
 
-        modeAuto = sp.getBoolean("imeModeAuto",false);
+        modeAuto = prefs.modeAuto();
         btnModeAuto.setImageResource(modeAuto ? R.drawable.ic_auto_on_36dp : R.drawable.ic_auto_off_36dp);
 
         mRecorder = new Recorder(this);

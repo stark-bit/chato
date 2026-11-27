@@ -1,5 +1,6 @@
 package com.whisperonnx.quickrecord;
 
+import com.whisperonnx.prefs.Prefs;
 import com.whisperonnx.R;
 import com.whisperonnx.backend.OpenAITranscriber;
 import com.whisperonnx.backend.Whisper;
@@ -20,7 +21,6 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.Handler;
@@ -31,7 +31,6 @@ import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
-import androidx.preference.PreferenceManager;
 
 public class QuickRecordService extends Service {
     public static final String ACTION_TOGGLE = "dev.starkbit.chato.action.QUICK_RECORD_TOGGLE";
@@ -92,10 +91,10 @@ public class QuickRecordService extends Service {
     }
 
     private void begin(int wanted) {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
-        int chosen = chooseEndpoint(sp, wanted);
+        Prefs prefs = Prefs.of(this);
+        int chosen = chooseEndpoint(prefs, wanted);
         if (chosen == 0) return;
-        endpoint = EndpointSender.load(sp, chosen);
+        endpoint = EndpointSender.load(prefs, chosen);
         activeEndpoint = chosen;
 
         whisper = new Whisper(this);
@@ -136,23 +135,23 @@ public class QuickRecordService extends Service {
         });
 
         otherAudio = new OtherAudioPauser(this);
-        if (sp.getBoolean("imePauseOtherAudio", false)) otherAudio.pause();
+        if (prefs.pauseOtherAudio()) otherAudio.pause();
         recorder.start();
         handler.postDelayed(stopAtLimit, MAX_MS);
         setState(State.RECORDING);
         HapticFeedback.vibrate(this);
     }
 
-    private int chooseEndpoint(SharedPreferences sp, int wanted) {
+    private int chooseEndpoint(Prefs prefs, int wanted) {
         if (wanted >= 1 && wanted <= EndpointSender.COUNT) {
-            EndpointSender.Endpoint ep = EndpointSender.load(sp, wanted);
+            EndpointSender.Endpoint ep = EndpointSender.load(prefs, wanted);
             if (ep.isConfigured()) return wanted;
             finish(getString(R.string.quick_record_no_url, ep.displayName()));
             return 0;
         }
         boolean[] configured = new boolean[EndpointSender.COUNT];
-        for (int i = 1; i <= EndpointSender.COUNT; i++) configured[i - 1] = EndpointSender.load(sp, i).isConfigured();
-        int picked = EndpointSender.pickQuickRecord(sp.getInt(EndpointSender.PREF_QUICK_RECORD, 1), configured);
+        for (int i = 1; i <= EndpointSender.COUNT; i++) configured[i - 1] = EndpointSender.load(prefs, i).isConfigured();
+        int picked = EndpointSender.pickQuickRecord(prefs.quickRecordEndpoint(), configured);
         if (picked == 0) finish(getString(R.string.endpoint_none_configured));
         return picked;
     }

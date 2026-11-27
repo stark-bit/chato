@@ -1,8 +1,9 @@
 package com.whisperonnx.recording;
 
+import com.whisperonnx.prefs.Prefs;
+
 import android.Manifest;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -12,7 +13,6 @@ import android.util.Log;
 
 import androidx.annotation.RequiresPermission;
 import androidx.core.app.ActivityCompat;
-import androidx.preference.PreferenceManager;
 
 import com.konovalov.vad.webrtc.Vad;
 import com.konovalov.vad.webrtc.VadWebRTC;
@@ -63,13 +63,13 @@ public class Recorder {
     private boolean useVAD = false;
     private VadWebRTC vad = null;
     static final int VAD_FRAME_SIZE = 480;
-    private SharedPreferences sp;
+    private final Prefs prefs;
 
     private final Thread workerThread;
 
     public Recorder(Context context) {
         this.mContext = context;
-        sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        prefs = Prefs.of(mContext);
         workerThread = new Thread(this::recordLoop);
         workerThread.start();
     }
@@ -103,7 +103,7 @@ public class Recorder {
     }
 
     public void initVad(){
-        int silenceDurationMs = sp.getInt("silenceDurationMs", 3000);
+        int silenceDurationMs = prefs.silenceMs();
         vad = Vad.builder()
                 .setSampleRate(SampleRate.SAMPLE_RATE_16K)
                 .setFrameSize(FrameSize.FRAME_SIZE_480)
@@ -176,7 +176,7 @@ public class Recorder {
 
         int bufferSize = bufferSize();
         AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
-        if (sp.getBoolean("bluetooth", false)){
+        if (prefs.bluetooth()){
             audioManager.startBluetoothSco();
             audioManager.setBluetoothScoOn(true);
         }

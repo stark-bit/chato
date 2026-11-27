@@ -1,5 +1,6 @@
 package com.whisperonnx.keyboard;
 
+import com.whisperonnx.prefs.Prefs;
 import com.whisperonnx.R;
 import com.whisperonnx.backend.OpenAITranscriber;
 import com.whisperonnx.backend.Whisper;
@@ -9,7 +10,7 @@ import com.whisperonnx.endpoint.SendSession;
 import com.whisperonnx.recording.OtherAudioPauser;
 import com.whisperonnx.recording.Recorder;
 import com.whisperonnx.ui.Components;
-import com.whisperonnx.ui.GradientBorderDrawable;
+import com.whisperonnx.ui.RecordGlow;
 import com.whisperonnx.ui.HapticFeedback;
 
 import android.annotation.SuppressLint;
@@ -18,13 +19,11 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.inputmethodservice.InputMethodService;
 
 import android.os.Handler;
 import android.os.Looper;
-import androidx.preference.PreferenceManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -63,7 +62,7 @@ public class KeyboardService extends InputMethodService {
     private String loadingStatus;
     private Recorder mRecorder = null;
     private Whisper mWhisper = null;
-    private SharedPreferences sp = null;
+    private Prefs prefs = null;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final SendSession session = new SendSession(new SendSession.Output() {
         @Override public void type(String text) {
@@ -80,43 +79,12 @@ public class KeyboardService extends InputMethodService {
     private ViewGroup layoutToolbar;
     private ImageButton btnToolbarToggle;
     private boolean toolbarExpanded;
-    private GradientBorderDrawable gradientDrawable;
-
-    private GradientBorderDrawable getGradientDrawable() {
-        if (gradientDrawable == null) {
-            float density = getResources().getDisplayMetrics().density;
-            gradientDrawable = new GradientBorderDrawable(
-                8 * density,
-                0.5f * density,
-                15 * density
-            );
-            gradientDrawable.setCenterColor(getColor(R.color.ime_key_pressed));
-        }
-        return gradientDrawable;
-    }
-
-    private void applyGradientBackground() {
-        handler.post(() -> {
-            GradientBorderDrawable drawable = getGradientDrawable();
-            drawable.setHostView(btnRecord);
-            GradientBorderDrawable.enableGlowClipping(btnRecord);
-            btnRecord.setBackground(drawable);
-            drawable.startAnimation();
-        });
-    }
+    private RecordGlow glow;
 
     // External: Android turns the screen off mid-dictation unless the window keeps it on
     private void keepScreenOn(boolean on) {
         handler.post(() -> {
             if (layoutButtons != null) layoutButtons.setKeepScreenOn(on);
-        });
-    }
-
-    private void revertBackground() {
-        handler.post(() -> {
-            if (gradientDrawable != null) gradientDrawable.stopAnimation();
-            GradientBorderDrawable.restoreGlowClipping(btnRecord);
-            btnRecord.setBackgroundResource(R.drawable.ime_mic_background);
         });
     }
 
@@ -156,7 +124,7 @@ public class KeyboardService extends InputMethodService {
 
     @Override
     public void onStartInputView(EditorInfo attribute, boolean restarting){
-        if (mWhisper != null && (!mWhisper.getLocalEngine().equals(Whisper.localEngine(sp)) || mWhisper.modelInstalledSince())
+        if (mWhisper != null && (!mWhisper.getLocalEngine().equals(prefs.localEngine()) || mWhisper.modelInstalledSince())
                 && !(mRecorder != null && mRecorder.isInProgress())) {
             deinitModel();
         }
@@ -171,7 +139,7 @@ public class KeyboardService extends InputMethodService {
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public View onCreateInputView() {  // External: Android calls this before onStartInputView
-        sp = PreferenceManager.getDefaultSharedPreferences(this);
+        prefs = Prefs.of(this);
         View view = getLayoutInflater().inflate(R.layout.voice_service, null);
         bindViews(view);
         restoreState();
@@ -183,6 +151,7 @@ public class KeyboardService extends InputMethodService {
 
     private void bindViews(View view) {
         btnRecord = view.findViewById(R.id.btnRecord);
+        glow = new RecordGlow(btnRecord, 8, getColor(R.color.ime_key_pressed), R.drawable.ime_mic_background, handler::post);
         btnKeyboard = view.findViewById(R.id.btnKeyboard);
         btnModeAuto = view.findViewById(R.id.btnModeAuto);
         btnEnter = view.findViewById(R.id.btnEnter);
@@ -204,15 +173,15 @@ public class KeyboardService extends InputMethodService {
     }
 
     private void restoreState() {
-        btnBackend.setActivated(sp.getString("backend_type", "local").equals("openai"));
-        modeAuto = sp.getBoolean("imeModeAuto",false);
+        btnBackend.setActivated(prefs.useServer());
+        modeAuto = prefs.modeAuto();
         btnModeAuto.setActivated(modeAuto);
-        pauseOtherAudio = sp.getBoolean("imePauseOtherAudio", false);
+        pauseOtherAudio = prefs.pauseOtherAudio();
         btnPauseAudio.setActivated(pauseOtherAudio);
-        toolbarExpanded = sp.getBoolean("imeToolbarExpanded", true);
+        toolbarExpanded = prefs.toolbarExpanded();
         updateToolbarVisibility();
-        sendTarget = sp.getInt("imeSendTarget", 0);
-        if (sendTarget != 0 && !EndpointSender.load(sp, sendTarget).isConfigured()) sendTarget = 0;
+        sendTarget = prefs.sendTarget();
+        if (sendTarget != 0 && !EndpointSender.load(prefs, sendTarget).isConfigured()) sendTarget = 0;
         updateSendTargetUi();
     }
 
@@ -228,19 +197,19 @@ public class KeyboardService extends InputMethodService {
     private void onRecorderUpdate(String message) {
         switch (message) {
             case Recorder.MSG_RECORDING:
-                applyGradientBackground();
+                glow.start();
                 keepScreenOn(true);
                 break;
             case Recorder.MSG_RECORDING_DONE:
                 endRecording();
-                revertBackground();
+                glow.stop();
                 handler.post(this::onSessionEnded);
                 break;
             case Recorder.MSG_RECORDING_ERROR:
                 endRecording();
                 handler.post(this::onSessionEnded);
                 handler.post(() -> {
-                    revertBackground();
+                    glow.stop();
                     showStatus(getString(R.string.error_no_input));
                 });
                 break;
@@ -298,7 +267,7 @@ public class KeyboardService extends InputMethodService {
         });
         btnToolbarToggle.setOnClickListener(v -> {
             toolbarExpanded = !toolbarExpanded;
-            sp.edit().putBoolean("imeToolbarExpanded", toolbarExpanded).apply();
+            prefs.setToolbarExpanded(toolbarExpanded);
             updateToolbarVisibility();
         });
         btnPauseAudio.setOnClickListener(v -> togglePauseAudio());
@@ -407,7 +376,7 @@ public class KeyboardService extends InputMethodService {
     private void toggleModeAuto() {
         if (mRecorder != null && mRecorder.isInProgress()) stopMicRecording();
         modeAuto = !modeAuto;
-        sp.edit().putBoolean("imeModeAuto", modeAuto).apply();
+        prefs.setModeAuto(modeAuto);
         btnModeAuto.setActivated(modeAuto);
     }
 
@@ -419,23 +388,23 @@ public class KeyboardService extends InputMethodService {
             return;
         }
         sendTarget = next;
-        sp.edit().putInt("imeSendTarget", sendTarget).apply();
+        prefs.setSendTarget(sendTarget);
         updateSendTargetUi();
         showTransientStatus(sendTarget == 0
                 ? getString(R.string.endpoint_target_cursor)
-                : getString(R.string.endpoint_target, EndpointSender.load(sp, sendTarget).displayName()));
+                : getString(R.string.endpoint_target, EndpointSender.load(prefs, sendTarget).displayName()));
     }
 
     private int nextConfiguredEndpoint() {
         for (int i = sendTarget + 1; i <= EndpointSender.COUNT; i++) {
-            if (EndpointSender.load(sp, i).isConfigured()) return i;
+            if (EndpointSender.load(prefs, i).isConfigured()) return i;
         }
         return 0;
     }
 
     private void togglePauseAudio() {
         pauseOtherAudio = !pauseOtherAudio;
-        sp.edit().putBoolean("imePauseOtherAudio", pauseOtherAudio).apply();
+        prefs.setPauseOtherAudio(pauseOtherAudio);
         btnPauseAudio.setActivated(pauseOtherAudio);
         if (!pauseOtherAudio) otherAudio.release();
         else if (mRecorder != null && mRecorder.isInProgress()) otherAudio.pause();
@@ -443,15 +412,13 @@ public class KeyboardService extends InputMethodService {
     }
 
     private void toggleBackend() {
-        String current = sp.getString("backend_type", "local");
-        String next = current.equals("openai") ? "local" : "openai";
-        boolean toLocal = next.equals("local");
+        boolean toLocal = prefs.useServer();
         if (toLocal && isBusy()) {
             showTransientStatus(getString(R.string.please_wait));
             return;
         }
-        Log.d(TAG, "btnBackend: " + current + " -> " + next);
-        sp.edit().putString("backend_type", next).apply();
+        Log.d(TAG, "btnBackend: server " + !toLocal);
+        prefs.setUseServer(!toLocal);
         btnBackend.setActivated(!toLocal);
         if (toLocal && needsLocalModel()) reloadModel();
     }
@@ -465,7 +432,7 @@ public class KeyboardService extends InputMethodService {
     }
 
     private void startMicRecording() {
-        applyGradientBackground();
+        glow.start();
         if (!checkRecordPermission()) return;
         if (mWhisper != null && !mWhisper.isInProgress()) {
             HapticFeedback.vibrate(this);
@@ -484,7 +451,7 @@ public class KeyboardService extends InputMethodService {
     }
 
     private void stopMicRecording() {
-        revertBackground();
+        glow.stop();
         keepScreenOn(false);
         otherAudio.release();
         if (mRecorder != null && mRecorder.isInProgress()) {
@@ -499,8 +466,7 @@ public class KeyboardService extends InputMethodService {
 
     private boolean needsLocalModel() {
         return mWhisper != null && !mWhisper.hasLocalModel()
-                && !OpenAITranscriber.BACKEND_OPENAI.equals(
-                        sp.getString(OpenAITranscriber.PREF_BACKEND_TYPE, OpenAITranscriber.BACKEND_LOCAL));
+                && !prefs.useServer();
     }
 
     private void reloadModel() {
@@ -508,7 +474,7 @@ public class KeyboardService extends InputMethodService {
         initModel();
         if (mWhisper.hasLocalModel() && !mWhisper.isModelMissing()) {
             loadingStatus = getString(R.string.loading_model, getString(
-                    Whisper.ENGINE_PARAKEET.equals(mWhisper.getLocalEngine()) ? R.string.model_parakeet : R.string.model_whisper));
+                    Prefs.ENGINE_PARAKEET.equals(mWhisper.getLocalEngine()) ? R.string.model_parakeet : R.string.model_whisper));
             showStatus(loadingStatus);
         }
     }
@@ -561,7 +527,7 @@ public class KeyboardService extends InputMethodService {
     }
 
     private void beginSession() {
-        session.begin(sendTarget == 0 ? null : EndpointSender.load(sp, sendTarget));
+        session.begin(sendTarget == 0 ? null : EndpointSender.load(prefs, sendTarget));
     }
 
     private void onSessionEnded() {

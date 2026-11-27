@@ -126,3 +126,25 @@ tasks.register('pmd', Pmd) {
     consoleOutput = true
     ignoreFailures = false
 }
+configurations { cpdTool }
+dependencies {
+    cpdTool 'net.sourceforge.pmd:pmd-java:7.7.0', 'net.sourceforge.pmd:pmd-ant:7.7.0', 'org.slf4j:slf4j-nop:1.7.36'
+}
+tasks.register('cpd') {
+    description = 'Fails on copy-pasted Java code'
+    def sources = fileTree('src/main/java') { include '**/*.java'; exclude '**/thirdparty/**' }
+    def report = layout.buildDirectory.file('reports/cpd.txt')
+    inputs.files(sources)
+    outputs.file(report)
+    doLast {
+        ant.taskdef(name: 'cpdTask', classname: 'net.sourceforge.pmd.ant.CPDTask', classpath: configurations.cpdTool.asPath)
+        ant.cpdTask(minimumTokenCount: 70, language: 'java', format: 'text', ignoreAnnotations: true,
+                outputFile: report.get().asFile) {
+            fileset(dir: 'src/main/java') { include(name: '**/*.java'); exclude(name: '**/thirdparty/**') }
+        }
+        def found = report.get().asFile.text.trim()
+        if (found) {
+            throw new GradleException("Copy-pasted code: move the shared part into one method, or into ui/, backend/, recording/ or endpoint/ when two features share it. Do not suppress.\n" + found)
+        }
+    }
+}
