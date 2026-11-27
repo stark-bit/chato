@@ -5,6 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 TRANSCRIPT = "check one two"
 events = []
+failures = {}
 lock = threading.Lock()
 
 
@@ -34,11 +35,23 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/reset":
             with lock:
                 events.clear()
+                failures.clear()
+            return self.reply(200, "")
+        if self.path == "/fail":
+            failure = json.loads(data)
+            with lock:
+                failures[failure["path"]] = failure
             return self.reply(200, "")
         with lock:
             events.append({"path": self.path, "bytes": len(data),
                            "auth": self.headers.get("Authorization", ""),
                            "body": "" if self.path.startswith("/v1/") else data.decode(errors="replace")})
+            failure = failures.get(self.path)
+        if failure and failure.get("drop"):
+            self.close_connection = True
+            return None
+        if failure:
+            return self.reply(failure["code"], failure.get("body", ""))
         if self.path == "/v1/audio/transcriptions":
             return self.reply(200, TRANSCRIPT)
         if self.path.startswith("/endpoint/"):

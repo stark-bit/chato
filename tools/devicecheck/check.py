@@ -133,8 +133,56 @@ def pref(name):
     return (m.group(1) or m.group(2)) if m else None
 
 
+def strings():
+    lang = shell("getprop persist.sys.locale", check=False).strip().replace("-", "-r", 1)
+    found = {}
+    for folder in ("values", f"values-{lang.split('-r')[0]}", f"values-{lang}"):
+        path = os.path.join(ROOT, "app/src/main/res", folder, "strings.xml")
+        if os.path.exists(path):
+            found.update({e.get("name"): e.text for e in ET.parse(path).getroot().iter("string")})
+    return found
+
+
+def label(name, *args):
+    text = STRINGS[name].replace("\\'", "'")
+    for i, arg in enumerate(args, 1):
+        text = re.sub(rf"%{i}\$[sd]", lambda m: str(arg), text)
+        text = re.sub(r"%[sd]", lambda m: str(arg), text, count=1)
+    return text
+
+
+def keyboard_status():
+    texts = [getattr(node(rid), "get", lambda k: None)("text") for rid in ("tv_status_inline", "tv_status")]
+    return next((t for t in texts if t), None)
+
+
+def fail(path, **how):
+    server("/fail", json.dumps({"path": path, **how}).encode())
+
+
+def wait_status(what, expected):
+    seen = []
+
+    def matches():
+        status = keyboard_status()
+        if status and status not in seen:
+            seen.append(status)
+        return status == expected
+
+    try:
+        wait(what, matches, 15)
+    except AssertionError:
+        raise AssertionError(f"expected status {expected!r}, saw {seen or 'none'}")
+
+
+def quick_record_finished(since):
+    log = shell(f"logcat -d -v raw -T '{since}' -s QuickRecord:D", check=False)
+    return re.findall(r"^Finished: (.*)$", log, re.M)
+
+
 def open_check_screen():
-    shell(f"am start -n {CHECK_SCREEN} --activity-single-top")
+    shell(f"am start -n {CHECK_SCREEN} --activity-clear-task")
+    wait("the device check screen", lambda: node("check_field"), 15)
     wait("the keyboard", lambda: node("btnRecord"), 15)
     wait("an empty field", lambda: field_text() == "")
 
@@ -211,6 +259,63 @@ def check_quick_record():
     assert TRANSCRIPT in sent[0]["body"], f"endpoint body has no transcript: {sent[0]['body']!r}"
 
 
+def check_server_error():
+    open_check_screen()
+    server("/reset", b"")
+    fail("/v1/audio/transcriptions", code=500, body="boom")
+    record()
+    wait_status("the server error in the keyboard",
+                label("status_with_detail", label("status_server_rejected"), "500: boom"))
+    assert field_text() == "", "a failed transcription typed into the field"
+
+
+def check_network_error():
+    open_check_screen()
+    server("/reset", b"")
+    fail("/v1/audio/transcriptions", drop=True)
+    record()
+    prefix = label("status_network_error")
+    wait("the network error in the keyboard", lambda: (keyboard_status() or "").startswith(prefix), 15)
+    assert field_text() == "", "a failed transcription typed into the field"
+
+
+def with_send_target(fn):
+    tap("btnSendTarget")
+    wait("send target 1 saved", lambda: pref("imeSendTarget") == "1")
+    try:
+        fn()
+    finally:
+        tap("btnSendTarget")
+        wait("send target back to the cursor", lambda: pref("imeSendTarget") == "0")
+
+
+def check_endpoint_error():
+    open_check_screen()
+    server("/reset", b"")
+    fail("/endpoint/1", code=503)
+    expected = label("endpoint_failed", "Check", label("send_failed_http", 503))
+
+    def send():
+        record()
+        wait_status("the endpoint error in the keyboard", expected)
+
+    with_send_target(send)
+
+
+def check_quick_record_error():
+    shell("input keyevent KEYCODE_HOME")
+    server("/reset", b"")
+    fail("/endpoint/1", code=503)
+    since = shell("date '+%m-%d %H:%M:%S.000'").strip()
+    start = f"am start -n {PKG}/com.whisperonnx.QuickRecordActivity --ei endpoint 1"
+    shell(start)
+    time.sleep(2.5)
+    shell(start)
+    finished = wait("quick record to finish", lambda: quick_record_finished(since), 15)
+    expected = label("endpoint_failed", "Check", label("send_failed_http", 503))
+    assert finished == [expected], f"quick record showed {finished}, expected {expected!r}"
+
+
 def dismiss_notices():
     found = nodes()
     ok = [n for n in found if n.get("resource-id") == "android:id/button1"]
@@ -237,8 +342,11 @@ def describe_screen():
     return ", ".join(x for x in shown if x) or "nothing from the debug app"
 
 
+STRINGS = {}
+
 CHECKS = [check_keys, check_cursor_drag, check_dictation_at_cursor, check_send_target,
-          check_toggles_are_saved, check_quick_record, check_test_screen]
+          check_toggles_are_saved, check_quick_record, check_test_screen, check_server_error,
+          check_network_error, check_endpoint_error, check_quick_record_error]
 
 
 def setup():
@@ -256,6 +364,7 @@ def setup():
     shell(f"ime enable {IME}")
     shell(f"ime set {IME}")
     shell("input keyevent KEYCODE_WAKEUP")
+    STRINGS.update(strings())
     return previous
 
 
