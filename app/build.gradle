@@ -1,29 +1,28 @@
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
     id 'checkstyle'
     id 'pmd'
-    id 'com.diffplug.spotless' version '6.25.0'
+    id 'com.diffplug.spotless' version '8.12.0'
 }
 
 android {
-    namespace 'com.whisperonnx'
-    compileSdk 35
+    namespace = 'com.whisperonnx'
+    compileSdk = 35
 
     lint {
         disable 'MissingTranslation'
         error 'HardcodedText', 'SetTextI18n'
-        warningsAsErrors true
-        abortOnError true
+        warningsAsErrors = true
+        abortOnError = true
     }
 
     defaultConfig {
         applicationId "dev.starkbit.chato"  // External: a different ID from upstream Whisper+, so both can be installed
-        minSdk 28
-        targetSdk 35
-        versionCode 19
-        versionName "1.9"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        minSdk = 28
+        targetSdk = 35
+        versionCode = 19
+        versionName = "1.9"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     }
 
@@ -36,21 +35,21 @@ android {
     signingConfigs {
         release {
             if (project.hasProperty('CHATO_KEYSTORE')) {
-                storeFile file(CHATO_KEYSTORE)
-                storePassword CHATO_KEYSTORE_PASSWORD
-                keyAlias CHATO_KEY_ALIAS
-                keyPassword CHATO_KEY_PASSWORD
+                storeFile = file(CHATO_KEYSTORE)
+                storePassword = CHATO_KEYSTORE_PASSWORD
+                keyAlias = CHATO_KEY_ALIAS
+                keyPassword = CHATO_KEY_PASSWORD
             }
         }
     }
 
     buildTypes {
         debug {
-            applicationIdSuffix ".debug"
+            applicationIdSuffix = ".debug"
         }
         release {
-            if (project.hasProperty('CHATO_KEYSTORE')) signingConfig signingConfigs.release
-            minifyEnabled false
+            if (project.hasProperty('CHATO_KEYSTORE')) signingConfig = signingConfigs.release
+            minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             ndk {
                 abiFilters "arm64-v8a"
@@ -62,10 +61,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = '11'
     }
 
     testOptions {
@@ -80,16 +75,17 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.appcompat:appcompat:1.8.0'
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.preference:preference:1.2.1'
+    implementation 'androidx.lifecycle:lifecycle-runtime:2.11.1'
 
-    implementation 'com.github.gkonovalov.android-vad:webrtc:2.0.9'
+    implementation 'com.github.gkonovalov.android-vad:webrtc:2.0.10'
 
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
-    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.19.0'
-    implementation 'com.microsoft.onnxruntime:onnxruntime-extensions-android:0.12.4'
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.32.0'
+    implementation 'com.microsoft.onnxruntime:onnxruntime-extensions-android:0.13.0'
     implementation 'com.github.woheller69:FreeDroidWarn:+'
 
     testImplementation 'junit:junit:4.13.2'
@@ -134,20 +130,21 @@ tasks.register('pmd', Pmd) {
 }
 configurations { cpdTool }
 dependencies {
-    cpdTool 'net.sourceforge.pmd:pmd-java:7.7.0', 'net.sourceforge.pmd:pmd-ant:7.7.0', 'org.slf4j:slf4j-nop:1.7.36'
+    cpdTool 'net.sourceforge.pmd:pmd-cli:7.7.0', 'net.sourceforge.pmd:pmd-java:7.7.0'
 }
-tasks.register('cpd') {
+tasks.register('cpd', JavaExec) {
     description = 'Fails on copy-pasted Java code'
     def sources = fileTree('src/main/java') { include '**/*.java'; exclude '**/thirdparty/**' }
     def report = layout.buildDirectory.file('reports/cpd.txt')
     inputs.files(sources)
     outputs.file(report)
+    classpath = configurations.cpdTool
+    mainClass = 'net.sourceforge.pmd.cli.PmdCli'
+    args 'cpd', '--minimum-tokens', '70', '--language', 'java', '--format', 'text', '--ignore-annotations',
+            '--no-fail-on-violation', '--dir', file('src/main/java').path,
+            '--exclude', file('src/main/java/com/whisperonnx/thirdparty').path
+    doFirst { standardOutput = new FileOutputStream(report.get().asFile) }
     doLast {
-        ant.taskdef(name: 'cpdTask', classname: 'net.sourceforge.pmd.ant.CPDTask', classpath: configurations.cpdTool.asPath)
-        ant.cpdTask(minimumTokenCount: 70, language: 'java', format: 'text', ignoreAnnotations: true,
-                outputFile: report.get().asFile) {
-            fileset(dir: 'src/main/java') { include(name: '**/*.java'); exclude(name: '**/thirdparty/**') }
-        }
         def found = report.get().asFile.text.trim()
         if (found) {
             throw new GradleException("Copy-pasted code: move the shared part into one method, or into ui/, backend/, recording/ or endpoint/ when two features share it. Do not suppress.\n" + found)

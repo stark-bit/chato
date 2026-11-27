@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- External: onnxruntime-extensions 0.13.0, its newest release, ships a native library that is not 16 KB aligned -->
+<lint>
+    <issue id="Aligned16KB">
+        <ignore regexp="onnxruntime-extensions-android-0\.13\.0" />
+    </issue>
+</lint>
